@@ -1,0 +1,30 @@
+{
+    "name": "nwidart/salesmodels",
+    "description": "",
+    "authors": [
+        {
+            "name": "Nicolas Widart",
+            "email": "n.widart@gmail.com"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {
+
+            }
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\SalesModels\\": "app/",
+            "Modules\\SalesModels\\Database\\Factories\\": "database/factories/",
+            "Modules\\SalesModels\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\SalesModels\\Tests\\": "tests/"
+        }
+    }
+}

@@ -1,0 +1,11 @@
+{
+    "name": "MediaProducts",
+    "alias": "mediaproducts",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\MediaProducts\\Providers\\MediaProductsServiceProvider"
+    ],
+    "files": []
+}

@@ -1,0 +1,25 @@
+parameters:
+    reportUnmatchedIgnoredErrors: false
+
+    paths:
+        - app
+        - config
+        - tests
+        - Modules
+
+    excludePaths:
+        - config/filesystems.php
+
+    level: 5
+
+    ignoreErrors:
+        # invalid types
+        - '#Parameter \#2 \$font of method Imagine\\Draw\\DrawerInterface\:\:text\(\) expects Imagine\\Image\\AbstractFont, Imagine\\Image\\FontInterface given#'
+
+        # false postive on non-empty collection
+        -
+            message: '#Cannot call method getDate\(\) on App\\ValueObject\\FuelPurchase\|null#'
+            path: app/ValueObject/CarReport.php
+
+        # will be solved most likely once Larastan is updated to Laravel 11 conventions
+        - '#Call to an undefined method Illuminate\\Contracts\\(.*?)|Illuminate\\#'

@@ -1,0 +1,30 @@
+{
+    "name": "nwidart/mediaproducts",
+    "description": "",
+    "authors": [
+        {
+            "name": "Nicolas Widart",
+            "email": "n.widart@gmail.com"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {
+
+            }
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\MediaProducts\\": "app/",
+            "Modules\\MediaProducts\\Database\\Factories\\": "database/factories/",
+            "Modules\\MediaProducts\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\MediaProducts\\Tests\\": "tests/"
+        }
+    }
+}
