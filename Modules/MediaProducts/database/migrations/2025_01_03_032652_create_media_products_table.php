@@ -17,8 +17,8 @@ return new class extends Migration
             $table->integer('organisation_id')->index();
             $table->integer('channel_id')->index();
             $table->string('name');
-            $table->time('start_time');
-            $table->integer('duration');
+            $table->time('start_time')->nullable();
+            $table->integer('duration')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

@@ -20,9 +20,9 @@ class SalesModelService
         return response()->json($repository->create($data), 201);
     }
 
-    public function getAll(Repository $repository): JsonResponse
+    public function getAll(Repository $repository, int $organisation_id): JsonResponse
     {
-        return response()->json($repository->getAll(), 200);
+        return response()->json($repository->getAllBy('organisation_id', $organisation_id), 200);
     }
 
     public function delete(Repository $repository, int $id): JsonResponse

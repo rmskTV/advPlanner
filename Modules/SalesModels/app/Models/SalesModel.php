@@ -18,6 +18,16 @@ use App\Models\CatalogObject;
  *      @OA\Property(property="percent", type="float", example="12.00", description="Процент вознаграждения (с продаж) организации"),
  *      @OA\Property(property="guarantee", type="float", example="10000.00", description="Гарантированный платеж владельцу канала"),
  * )
+ *
+ * @OA\Schema(
+ *      schema="SalesModelRequest",
+ *
+ *      @OA\Property(property="name", type="string", example="site.ru", description="Название модели продаж"),
+ *      @OA\Property(property="organisation_id", type="integer", example="12", description="ID организации, которой принадлежит модель продаж"),
+ *      @OA\Property(property="contragent_id", type="integer", example="12", description="ID контрагента, владельца канала, с которым заключен агентский договор"),
+ *      @OA\Property(property="percent", type="float", example="12.00", description="Процент вознаграждения (с продаж) организации"),
+ *      @OA\Property(property="guarantee", type="float", example="10000.00", description="Гарантированный платеж владельцу канала"),
+ * )
  */
 class SalesModel extends CatalogObject
 {

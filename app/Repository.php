@@ -116,6 +116,23 @@ class Repository
         return $this->storeDataToCacheAndPaginator($cacheKey, $data, [$this->prefix.'_list']);
     }
 
+    public function getAllBy(string $columnName, int $value): LengthAwarePaginator
+    {
+
+        $pageNumber = LengthAwarePaginator::resolveCurrentPage();
+        $cacheKey = $this->prefix.'_getAllBy_'.$columnName.'_'.$value.'_'.$this->paginationCount.'_page'.$pageNumber;
+
+        $cachedData = $this->extractListFromCache($cacheKey);
+
+        if ($cachedData !== null) {
+            return $cachedData;
+        }
+
+        $data = $this->model::query()->where($columnName, $value)->paginate($this->paginationCount);
+
+        return $this->storeDataToCacheAndPaginator($cacheKey, $data, [$this->prefix.'_list']);
+    }
+
     /**
      * @param  int  $id  ID удаляемой записи
      */

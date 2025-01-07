@@ -8,7 +8,7 @@ use App\Models\CatalogObject;
  * Класс модели медиапродукта
  *
  * @OA\Schema(
- *      schema="SMediaProduct",
+ *      schema="MediaProduct",
  *
  *      @OA\Property(property="id", type="integer", example="14", description="ID мeдиапродукта"),
  *      @OA\Property(property="uuid", type="string", example="14", description="UUID мeдиапродукта"),
@@ -18,8 +18,17 @@ use App\Models\CatalogObject;
  *      @OA\Property(property="start_time", type="timestamp", example="12:00:00", description="Время начала трансляции мeдиапродукта"),
  *      @OA\Property(property="duration", type="integer", example="15", description="Длительность (в минутах) мeдиапродукта"),
  * )
+ *
+ * @OA\Schema(
+ *      schema="MediaProductRequest",
+ *
+ *      @OA\Property(property="name", type="string", example="site.ru", description="Название мeдиапродукта"),
+ *      @OA\Property(property="channel_id", type="integer", example="12", description="ID канала размещения мeдиапродукта"),
+ *      @OA\Property(property="start_time", type="timestamp", example="12:00:00", description="Время начала трансляции мeдиапродукта"),
+ *      @OA\Property(property="duration", type="integer", example="15", description="Длительность (в минутах) мeдиапродукта"),
+ * )
  */
 class MediaProduct extends CatalogObject
 {
-    protected $fillable = ['name', 'channel_id', 'start_time', 'duration'];
+    protected $fillable = ['name', 'channel_id', 'organisation_id', 'start_time', 'duration'];
 }

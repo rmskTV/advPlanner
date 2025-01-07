@@ -18,14 +18,14 @@ class MediaProductService
             }
         }
 
-        $data['organisation_id'] = Channel::query()->find($request['channel_id'])->ogranisation_id;
+        $data['organisation_id'] = Channel::query()->find($data['channel_id'])->organisation_id;
 
         return response()->json($repository->create($data), 201);
     }
 
-    public function getAll(Repository $repository): JsonResponse
+    public function getAll(Repository $repository, int $channel_id): JsonResponse
     {
-        return response()->json($repository->getAll(), 200);
+        return response()->json($repository->getAllBy('channel_id', $channel_id), 200);
     }
 
     public function delete(Repository $repository, int $id): JsonResponse
@@ -53,6 +53,10 @@ class MediaProductService
                 $data[$key] = $value;
             }
         }
+        if (isset($data['channel_id'])) {
+            $data['organisation_id'] = Channel::query()->find($data['channel_id'])->organisation_id;
+        }
+
         $updated = $repository->update($id, $data);
 
         return response()->json($updated, ($updated) ? 200 : 201);

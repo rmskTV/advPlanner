@@ -8,7 +8,7 @@ Route::group([
     'prefix' => 'salesModels',
 ], function () {
     Route::get('/{id}', [Controller::class, 'show']);
-    Route::get('/', [Controller::class, 'index']);
+    Route::get('/byOrganisations/{organisation_id}', [Controller::class, 'index']);
     Route::put('/', [Controller::class, 'create']);
     Route::patch('/{id}', [Controller::class, 'update']);
     Route::delete('/{id}', [Controller::class, 'destroy']);

@@ -4,10 +4,13 @@ namespace App\Http\Controllers;
 
 /**
  * @OA\Info(
- *    title="4Media admin panel",
- *    description="API DOCS",
- *    version="1.0.0",
- * )
+ *     title="Сервис планирования и размещения рекламы",
+ *     version="0.1",
+ *
+ *      @OA\Contact(
+ *          email="ruslanmoskvitin@gmail.com"
+ *      ),
+ * ),
  */
 abstract class Controller
 {

@@ -361,6 +361,117 @@
       '/var/www/html/public/storage' => '/var/www/html/storage/app/public',
     ),
   ),
+  'l5-swagger' => 
+  array (
+    'default' => 'default',
+    'documentations' => 
+    array (
+      'default' => 
+      array (
+        'api' => 
+        array (
+          'title' => 'L5 Swagger UI',
+        ),
+        'routes' => 
+        array (
+          'api' => 'api/documentation',
+        ),
+        'paths' => 
+        array (
+          'use_absolute_path' => true,
+          'docs_json' => 'api-docs.json',
+          'docs_yaml' => 'api-docs.yaml',
+          'format_to_use_for_docs' => 'json',
+          'annotations' => 
+          array (
+            0 => '/var/www/html/app',
+            1 => '/var/www/html/Modules',
+          ),
+        ),
+      ),
+    ),
+    'defaults' => 
+    array (
+      'routes' => 
+      array (
+        'docs' => 'docs',
+        'oauth2_callback' => 'api/oauth2-callback',
+        'middleware' => 
+        array (
+          'api' => 
+          array (
+          ),
+          'asset' => 
+          array (
+          ),
+          'docs' => 
+          array (
+          ),
+          'oauth2_callback' => 
+          array (
+          ),
+        ),
+        'group_options' => 
+        array (
+        ),
+      ),
+      'paths' => 
+      array (
+        'docs' => '/var/www/html/storage/api-docs',
+        'views' => '/var/www/html/resources/views/vendor/l5-swagger',
+        'base' => '/',
+        'swagger_ui_assets_path' => 'vendor/swagger-api/swagger-ui/dist/',
+        'excludes' => 
+        array (
+        ),
+      ),
+      'scanOptions' => 
+      array (
+        'analyser' => NULL,
+        'analysis' => NULL,
+        'processors' => 
+        array (
+        ),
+        'pattern' => NULL,
+        'exclude' => 
+        array (
+        ),
+        'open_api_spec_version' => '3.0.0',
+      ),
+      'securityDefinitions' => 
+      array (
+        'securitySchemes' => 
+        array (
+        ),
+      ),
+      'generate_always' => false,
+      'generate_yaml_copy' => false,
+      'proxy' => false,
+      'additional_config_url' => NULL,
+      'operations_sort' => NULL,
+      'validator_url' => NULL,
+      'ui' => 
+      array (
+        'display' => 
+        array (
+          'doc_expansion' => 'none',
+          'filter' => true,
+        ),
+        'authorization' => 
+        array (
+          'persist_authorization' => false,
+          'oauth2' => 
+          array (
+            'use_pkce_with_authorization_code_grant' => false,
+          ),
+        ),
+      ),
+      'constants' => 
+      array (
+        'L5_SWAGGER_CONST_HOST' => 'https://v2api.it.4media.ru',
+      ),
+    ),
+  ),
   'logging' => 
   array (
     'default' => 'stack',
@@ -755,126 +866,6 @@
     ),
     'max_age' => 0,
     'supports_credentials' => false,
-  ),
-  'l5-swagger' => 
-  array (
-    'default' => 'default',
-    'documentations' => 
-    array (
-      'default' => 
-      array (
-        'api' => 
-        array (
-          'title' => 'L5 Swagger UI',
-        ),
-        'routes' => 
-        array (
-          'api' => 'api/documentation',
-        ),
-        'paths' => 
-        array (
-          'use_absolute_path' => true,
-          'swagger_ui_assets_path' => 'vendor/swagger-api/swagger-ui/dist/',
-          'docs_json' => 'api-docs.json',
-          'docs_yaml' => 'api-docs.yaml',
-          'format_to_use_for_docs' => 'json',
-          'annotations' => 
-          array (
-            0 => '/var/www/html/app',
-          ),
-        ),
-      ),
-    ),
-    'defaults' => 
-    array (
-      'routes' => 
-      array (
-        'docs' => 'docs',
-        'oauth2_callback' => 'api/oauth2-callback',
-        'middleware' => 
-        array (
-          'api' => 
-          array (
-          ),
-          'asset' => 
-          array (
-          ),
-          'docs' => 
-          array (
-          ),
-          'oauth2_callback' => 
-          array (
-          ),
-        ),
-        'group_options' => 
-        array (
-        ),
-      ),
-      'paths' => 
-      array (
-        'docs' => '/var/www/html/storage/api-docs',
-        'views' => '/var/www/html/resources/views/vendor/l5-swagger',
-        'base' => NULL,
-        'excludes' => 
-        array (
-        ),
-      ),
-      'scanOptions' => 
-      array (
-        'default_processors_configuration' => 
-        array (
-        ),
-        'analyser' => NULL,
-        'analysis' => NULL,
-        'processors' => 
-        array (
-        ),
-        'pattern' => NULL,
-        'exclude' => 
-        array (
-        ),
-        'open_api_spec_version' => '3.0.0',
-      ),
-      'securityDefinitions' => 
-      array (
-        'securitySchemes' => 
-        array (
-        ),
-        'security' => 
-        array (
-          0 => 
-          array (
-          ),
-        ),
-      ),
-      'generate_always' => false,
-      'generate_yaml_copy' => false,
-      'proxy' => false,
-      'additional_config_url' => NULL,
-      'operations_sort' => NULL,
-      'validator_url' => NULL,
-      'ui' => 
-      array (
-        'display' => 
-        array (
-          'dark_mode' => false,
-          'doc_expansion' => 'none',
-          'filter' => true,
-        ),
-        'authorization' => 
-        array (
-          'persist_authorization' => false,
-          'oauth2' => 
-          array (
-            'use_pkce_with_authorization_code_grant' => false,
-          ),
-        ),
-      ),
-      'constants' => 
-      array (
-        'L5_SWAGGER_CONST_HOST' => 'http://my-default-host.com',
-      ),
-    ),
   ),
   'modules' => 
   array (

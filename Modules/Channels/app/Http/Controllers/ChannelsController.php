@@ -11,7 +11,72 @@ use Modules\Channels\Services\ChannelService as Service;
 class ChannelsController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Получение списка каналов
+     *
+     * @param  Service  $service  Сервис для работы со словарем
+     * @param  Repository  $repository  Репозиторий для доступа к данным
+     * @return JsonResponse JSON-ответ с данными
+     *
+     * @OA\Get(
+     *     path="/api/channels",
+     *     tags={"Core/Dictionary/Channels"},
+     *     summary="Получение списка каналов",
+     *     description="Метод для получения списка всех Каналов.",
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="Успешный запрос. Возвращает список Каналов.",
+     *
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="current_page", type="integer"),
+     *             @OA\Property(property="data", type="array",
+     *
+     *                 @OA\Items(
+     *                     ref="#/components/schemas/Channel",
+     *                 )
+     *             ),
+     *
+     *             @OA\Property(property="first_page_url", type="string"),
+     *             @OA\Property(property="from", type="integer"),
+     *             @OA\Property(property="last_page", type="integer"),
+     *             @OA\Property(property="last_page_url", type="string"),
+     *             @OA\Property(property="links", type="array",
+     *
+     *                 @OA\Items(
+     *
+     *                     @OA\Property(property="url", type="string", nullable=true),
+     *                     @OA\Property(property="label", type="string"),
+     *                     @OA\Property(property="active", type="boolean"),
+     *                 )
+     *             ),
+     *             @OA\Property(property="next_page_url", type="string", nullable=true),
+     *             @OA\Property(property="path", type="string"),
+     *             @OA\Property(property="per_page", type="integer"),
+     *             @OA\Property(property="prev_page_url", type="string", nullable=true),
+     *             @OA\Property(property="to", type="integer"),
+     *             @OA\Property(property="total", type="integer"),
+     *         ),
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=404,
+     *         description="Записи не найдены",
+     *
+     *         @OA\JsonContent(
+     *             example={"message": "Записи не найдены"}
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=500,
+     *         description="Внутренняя ошибка сервера",
+     *
+     *         @OA\JsonContent(
+     *             example={"message": "Внутренняя ошибка сервера"}
+     *         )
+     *     )
+     * )
      */
     public function index(Service $service, Repository $repository): JsonResponse
     {
@@ -20,7 +85,57 @@ class ChannelsController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Создание новой организации
+     *
+     * @param  Service  $service  Сервис для работы со словарем
+     * @param  Repository  $repository  Репозиторий для доступа к данным
+     * @return JsonResponse JSON-ответ с результатом операции
+     *
+     * @OA\Put(
+     *     path="/api/channels",
+     *     tags={"Core/Dictionary/Channels"},
+     *     summary="Создание нового канала",
+     *     description="Метод для создания нового канала.",
+     *
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Данные для создания новой организации",
+     *
+     *         @OA\JsonContent(
+     *             required={"name", "oarganisation_id"},
+     *
+     *             ref="#/components/schemas/ChannelRequest",
+     *         ),
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="Успешное создание",
+     *
+     *         @OA\JsonContent(
+     *             type="boolean",
+     *             example=true
+     *         ),
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=400,
+     *         description="Неверный запрос",
+     *
+     *         @OA\JsonContent(
+     *             example={"message": "Неверный запрос"}
+     *         ),
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=500,
+     *         description="Внутренняя ошибка сервера",
+     *
+     *         @OA\JsonContent(
+     *             example={"message": "Внутренняя ошибка сервера"}
+     *         ),
+     *     )
+     * )
      */
     public function create(Service $service, Repository $repository): JsonResponse
     {
@@ -39,7 +154,52 @@ class ChannelsController extends Controller
     }
 
     /**
-     * Show the specified resource.
+     * Получение канала по идентификатору
+     *
+     * @OA\Get (
+     *     path="/api/channels/{id}",
+     *     tags={"Core/Dictionary/Channels"},
+     *     summary="Получение информации о канале",
+     *     description="Метод для получения информации о канале по его идентификатору",
+     *
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         description="Идентификатор канала",
+     *         required=true,
+     *
+     *         @OA\Schema(
+     *             type="integer"
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="Успешный запрос. Возвращает информацию об организации.",
+     *
+     *         @OA\JsonContent(
+     *                 ref="#/components/schemas/Channel",
+     *         ),
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=404,
+     *         description="Запись не найдена",
+     *
+     *         @OA\JsonContent(
+     *             example={"message": "Запись не найдена"}
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=500,
+     *         description="Внутренняя ошибка сервера",
+     *
+     *         @OA\JsonContent(
+     *             example={"message": "Внутренняя ошибка сервера"}
+     *         )
+     *     )
+     * )
      */
     public function show(Service $service, Repository $repository, int $id): JsonResponse
     {
@@ -47,7 +207,68 @@ class ChannelsController extends Controller
     }
 
     /**
-     * Update the specified resource in storage.
+     * Обновление данных канала
+     *
+     * @param  Service  $service  Сервис для работы со словарем
+     * @param  Repository  $repository  Репозиторий для доступа к данным
+     * @param  int  $id  Идентификатор канала
+     * @return JsonResponse JSON-ответ с результатом операции
+     *
+     * @OA\Patch(
+     *     path="/api/channels/{id}",
+     *     tags={"Core/Dictionary/Channels"},
+     *     summary="Обновление данных канала",
+     *     description="Метод для обновления данных канала.",
+     *
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         description="Идентификатор канала",
+     *         required=true,
+     *
+     *         @OA\Schema(
+     *             type="integer"
+     *         )
+     *     ),
+     *
+     *     @OA\RequestBody(
+     *         required=false,
+     *         description="Данные для обновления канала",
+     *
+     *         @OA\JsonContent(
+
+     *             ref="#/components/schemas/ChannelRequest",
+     *         ),
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="Успешное обновление данных",
+     *
+     *         @OA\JsonContent(
+     *             type="boolean",
+     *             example=true
+     *         ),
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=201,
+     *         description="Запрос выполнен, но ничего не обновлено",
+     *
+     *         @OA\JsonContent(
+     *             example={"message": "Запрос выполнен, но ничего не обновлено"}
+     *         ),
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=500,
+     *         description="Внутренняя ошибка сервера",
+     *
+     *         @OA\JsonContent(
+     *             example={"message": "Внутренняя ошибка сервера"}
+     *         ),
+     *     )
+     * )
      */
     public function update(Service $service, Repository $repository, int $id): JsonResponse
     {
@@ -62,7 +283,49 @@ class ChannelsController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Удаление канала
+     *
+     * @param  Service  $service  Сервис для работы со словарем
+     * @param  Repository  $repository  Репозиторий для доступа к данным
+     * @param  int  $id  Идентификатор канала
+     * @return JsonResponse JSON-ответ с результатом операции
+     *
+     * @OA\Delete(
+     *     path="/api/channels/{id}",
+     *     tags={"Core/Dictionary/Channels"},
+     *     summary="Удаление канала",
+     *     description="Метод для удаления канала.",
+     *
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         description="Идентификатор канала",
+     *         required=true,
+     *
+     *         @OA\Schema(
+     *             type="integer"
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="Успешное удаление канала",
+     *
+     *         @OA\JsonContent(
+     *             type="boolean",
+     *             example=true
+     *         ),
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=500,
+     *         description="Внутренняя ошибка сервера",
+     *
+     *         @OA\JsonContent(
+     *             example={"message": "Внутренняя ошибка сервера"}
+     *         ),
+     *     )
+     * )
      */
     public function destroy(Service $service, Repository $repository, int $id): JsonResponse
     {
