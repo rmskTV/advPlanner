@@ -4,7 +4,7 @@ export const OrganisationService = {
     async fetchList(page = 1, perPage = 10) {
 
         try {
-            const response = await axios.get(API_URL + '?page=' + page + '&perPage=' + perPage, {
+            const response = await axios.get(API_URL + '?page=' + page + '&per_page=' + perPage, {
                 params: {
                 },
             });

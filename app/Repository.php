@@ -33,7 +33,12 @@ class Repository
      */
     public function __construct(Model $model, string $prefix, RedisCacheService $cacheService, int $paginationCount)
     {
-        $this->paginationCount = $paginationCount;
+        if (request()->has('per_page')){
+            $this->paginationCount = request()->per_page;
+        }
+        else{
+            $this->paginationCount = $paginationCount;
+        }
         $this->model = $model;
         $this->cacheService = $cacheService;
         $this->prefix = $prefix;
