@@ -42,11 +42,9 @@ class OrganisationService
 
     public function update(array $request, Repository $repository, int $id): JsonResponse
     {
-        $resource = $repository->getById($id);
-
         $data = [];
         foreach ($request as $key => $value) {
-            if (isset($resource->$key) && $key != 'organisation_id') {
+            if ( $key == 'name') {
                 $data[$key] = $value;
             }
         }
