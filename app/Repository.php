@@ -33,10 +33,9 @@ class Repository
      */
     public function __construct(Model $model, string $prefix, RedisCacheService $cacheService, int $paginationCount)
     {
-        if (request()->has('per_page')){
+        if (request()->has('per_page')) {
             $this->paginationCount = request()->per_page;
-        }
-        else{
+        } else {
             $this->paginationCount = $paginationCount;
         }
         $this->model = $model;
@@ -64,7 +63,7 @@ class Repository
             if ($createdRecord !== null) {
                 $cacheKey = $this->prefix.$id;
                 $this->cacheService->set($cacheKey, json_encode($createdRecord));
-                $this->cacheService->deleteTaggedCache([$this->prefix.'_list']);
+                $this->cacheService->forgetBySubstring($this->prefix.'_getAll');
                 Log::info("Cached created record with ID: $id");
             } else {
                 Log::error('Failed to find created record with ID: $id after creation');
@@ -104,11 +103,11 @@ class Repository
         return $data;
     }
 
-    public function getAll(): LengthAwarePaginator
+    public function getAll(array $with = []): LengthAwarePaginator
     {
 
         $pageNumber = LengthAwarePaginator::resolveCurrentPage();
-        $cacheKey = $this->prefix.'_getAll_'.$this->paginationCount.'_page'.$pageNumber;
+        $cacheKey = $this->prefix.'_getAll_with_'.implode('-', $with).'_'.$this->paginationCount.'_page'.$pageNumber;
 
         $cachedData = $this->extractListFromCache($cacheKey);
 
@@ -116,7 +115,9 @@ class Repository
             return $cachedData;
         }
 
-        $data = $this->model::query()->paginate($this->paginationCount);
+        $data = $this->model::query()
+            ->with($with)
+            ->paginate($this->paginationCount);
 
         return $this->storeDataToCacheAndPaginator($cacheKey, $data, [$this->prefix.'_list']);
     }
@@ -148,7 +149,7 @@ class Repository
         if ($deleted) {
             $cacheKey = $this->prefix.$id;
             $this->cacheService->delete($cacheKey);
-            $this->cacheService->deleteTaggedCache([$this->prefix.'_list']);
+            $this->cacheService->forgetBySubstring($this->prefix.'_getAll');
         } else {
             Log::error("Deleted cache for record with ID: $id");
         }
@@ -174,7 +175,7 @@ class Repository
                 $cacheKey = $this->prefix.$id;
                 $this->cacheService->set($cacheKey, json_encode($updatedRecord));
                 Log::info("Updated cache for record with ID: $id");
-                $this->cacheService->deleteTaggedCache([$this->prefix.'_list']);
+                $this->cacheService->forgetBySubstring($this->prefix.'_getAll');
 
                 return $updatedRecord;
 

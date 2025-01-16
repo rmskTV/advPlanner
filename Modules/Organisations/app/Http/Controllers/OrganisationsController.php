@@ -3,7 +3,6 @@
 namespace Modules\Organisations\app\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use http\Client\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
 use Modules\Organisations\Repositories\OrganisationRepository as Repository;

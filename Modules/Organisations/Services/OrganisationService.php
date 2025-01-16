@@ -44,7 +44,7 @@ class OrganisationService
     {
         $data = [];
         foreach ($request as $key => $value) {
-            if ( $key == 'name') {
+            if ($key == 'name') {
                 $data[$key] = $value;
             }
         }

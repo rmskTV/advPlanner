@@ -22,7 +22,7 @@ class ChannelService
 
     public function getAll(Repository $repository): JsonResponse
     {
-        return response()->json($repository->getAll(), 200);
+        return response()->json($repository->getAll(['organisation']), 200);
     }
 
     public function delete(Repository $repository, int $id): JsonResponse

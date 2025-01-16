@@ -15,5 +15,4 @@ Route::get('/uikit/{pathMatch}', function () {
     return view('app');
 });
 
-
 Auth::routes();

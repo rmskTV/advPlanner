@@ -10,6 +10,6 @@ class OrganisationRepository extends Repository
 {
     public function __construct(Organisation $model, RedisCacheService $cacheService)
     {
-        parent::__construct($model, 'channel', $cacheService, 10);
+        parent::__construct($model, 'organisation', $cacheService, 10);
     }
 }

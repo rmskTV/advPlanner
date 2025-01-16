@@ -3,6 +3,8 @@
 namespace Modules\Channels\app\Models;
 
 use App\Models\CatalogObject;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Modules\Organisations\app\Models\Organisation;
 
 /**
  * Класс канала
@@ -29,4 +31,9 @@ class Channel extends CatalogObject
      * The attributes that are mass assignable.
      */
     protected $fillable = ['name', 'organisation_id'];
+
+    public function organisation(): HasOne
+    {
+        return $this->hasOne(Organisation::class, 'id', 'organisation_id');
+    }
 }

@@ -4,6 +4,7 @@ namespace App;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Redis;
 
 class RedisCacheService
 {
@@ -15,11 +16,12 @@ class RedisCacheService
      */
     public function set(string $key, mixed $value, ?array $tags = [], ?int $expiration = null): void
     {
-        Log::info("Setting cache key: {$key}");
+        Log::info("Setting cache key: {$key} for {$value}");
+
         if ($expiration) {
-            Cache::tags($tags)->put($key, $value, $expiration);
+            Cache::put($key, $value, $expiration);
         } else {
-            Cache::tags($tags)->forever($key, $value);
+            Cache::forever($key, $value);
         }
     }
 
@@ -69,10 +71,19 @@ class RedisCacheService
     }
 
     /**
-     * @param  string[]  $array
+     * @param  string  $key_name
      */
-    public function deleteTaggedCache(array $array): void
+    public function forgetBySubstring($key_name): void
     {
-        Cache::tags($array)->flush();
+        $redis = Redis::connection(); // Получаем экземпляр Redis
+        $keys = $redis->keys("*{$key_name}*"); // Получаем ключи по подстроке
+
+        if (! empty($keys)) {
+            foreach ($keys as $key) {
+                Log::info("Delete finded by substring: {$key}");
+                $redis->del($key); // Удаляем каждый ключ
+            }
+        }
+
     }
 }
