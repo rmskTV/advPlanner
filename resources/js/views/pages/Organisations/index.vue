@@ -1,5 +1,6 @@
 <script setup>
-import { OrganisationService as Service} from '../../../service/OrganisationService';
+import OrganisationService from '../../../service/OrganisationService';
+let Service = OrganisationService;
 import { FilterMatchMode } from '@primevue/core/api';
 import { useToast } from 'primevue/usetoast';
 import { onMounted, ref, watch } from 'vue';
@@ -23,7 +24,6 @@ const error = ref(null);
 const perPage = ref(10);
 const totalRecords = ref(0);
 const currentPage = ref(1);
-
 
 const onPage = (event) => {
     const page = event.page + 1; // PrimeVue page индексирует с 0
@@ -139,7 +139,7 @@ async function sendCreateRequest() {
         toast.add({
             severity: 'error',
             summary: 'Ошибка запроса к API',
-            detail: 'Запрос не выполнен',
+            detail: 'Запрос не выполнен ' + err,
             life: 3000
         });
     }
@@ -203,10 +203,6 @@ function hideDialog() {
     submitted.value = false;
 }
 
-
-
-
-
 function exportCSV() {
     dt.value.exportCSV();
 }
@@ -256,7 +252,7 @@ function exportCSV() {
 
                 <Column selectionMode="multiple" style="width: 3rem" :exportable="false"></Column>
                 <Column field="id" header="ID" sortable style="min-width: 12rem"></Column>
-                <Column field="name" header="Name" sortable style="min-width: 16rem"></Column>
+                <Column field="name" header="Название" sortable style="min-width: 16rem"></Column>
 
                 <Column :exportable="false" style="min-width: 12rem">
                     <template #body="slotProps">

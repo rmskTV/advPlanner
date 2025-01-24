@@ -1,8 +1,10 @@
 <script setup>
-import { OrganisationService as Service} from '../../../service/OrganisationService';
+import ChannelService from '../../../service/ChannelService';
+let Service = ChannelService;
 import { FilterMatchMode } from '@primevue/core/api';
 import { useToast } from 'primevue/usetoast';
 import { onMounted, ref, watch } from 'vue';
+import OrganisationService from "../../../service/OrganisationService.js";
 
 const toast = useToast();
 const dt = ref();
@@ -256,7 +258,8 @@ function exportCSV() {
 
                 <Column selectionMode="multiple" style="width: 3rem" :exportable="false"></Column>
                 <Column field="id" header="ID" sortable style="min-width: 12rem"></Column>
-                <Column field="name" header="Name" sortable style="min-width: 16rem"></Column>
+                <Column field="name" header="Название" sortable style="min-width: 16rem"></Column>
+                <Column field="organisation.name" header="Организация" sortable style="min-width: 16rem"></Column>
 
                 <Column :exportable="false" style="min-width: 12rem">
                     <template #body="slotProps">
