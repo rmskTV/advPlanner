@@ -5,6 +5,7 @@ namespace Modules\Organisations\app\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 use Modules\Organisations\Repositories\OrganisationRepository as Repository;
 use Modules\Organisations\Services\OrganisationService as Service;
 
@@ -86,8 +87,8 @@ class OrganisationsController extends Controller
     /**
      * Создание новой организации
      *
-     * @param  Service  $service  Сервис для работы со словарем организаций
-     * @param  Repository  $repository  Репозиторий для доступа к данным об организациях
+     * @param Service $service Сервис для работы со словарем организаций
+     * @param Repository $repository Репозиторий для доступа к данным об организациях
      * @return JsonResponse JSON-ответ с результатом операции
      *
      * @OA\Put(
@@ -135,20 +136,21 @@ class OrganisationsController extends Controller
      *         ),
      *     )
      * )
+     * @throws ValidationException
      */
     public function create(Service $service, Repository $repository): JsonResponse
     {
         $request = request()->post();
 
         $validator = Validator::make($request, [
-            'name' => 'required',
+            'name' => 'required|string|max:255',
         ]);
 
         if ($validator->fails()) {
             return response()->json($validator->errors()->toJson(), 200);
         }
 
-        return $service->create($request, $repository);
+        return $service->create($validator->validated(), $repository);
     }
 
     /**
@@ -207,9 +209,9 @@ class OrganisationsController extends Controller
     /**
      * Обновление данных городского портала
      *
-     * @param  Service  $service  Сервис для работы со словарем Организаций
-     * @param  Repository  $repository  Репозиторий для доступа к данным об организациях
-     * @param  int  $id  Идентификатор городского портала
+     * @param Service $service Сервис для работы со словарем Организаций
+     * @param Repository $repository Репозиторий для доступа к данным об организациях
+     * @param int $id Идентификатор городского портала
      * @return JsonResponse JSON-ответ с результатом операции
      *
      * @OA\Patch(
@@ -234,7 +236,6 @@ class OrganisationsController extends Controller
      *         description="Данные для обновления организации",
      *
      *         @OA\JsonContent(
-
      *             ref="#/components/schemas/OrganisationRequest",
      *         ),
      *     ),
@@ -267,17 +268,26 @@ class OrganisationsController extends Controller
      *         ),
      *     )
      * )
+     * @throws ValidationException
      */
     public function update(Service $service, Repository $repository, int $id): JsonResponse
     {
         // TODO: Только администраторы
         $request = request()->post();
 
+        $validator = Validator::make($request, [
+            'name' => 'required|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors()->toJson(), 200);
+        }
+
         if (! $request || count($request) == 0) {
             return response()->json(true, 200);
         }
 
-        return $service->update($request, $repository, $id);
+        return $service->update($validator->validated(), $repository, $id);
     }
 
     /**

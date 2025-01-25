@@ -46,7 +46,7 @@ class ChannelService
 
         $data = [];
         foreach ($request as $key => $value) {
-            if (isset($resource->$key) && $key != 'organisation_id') {
+            if (isset($resource->$key)) {
                 $data[$key] = $value;
             }
         }

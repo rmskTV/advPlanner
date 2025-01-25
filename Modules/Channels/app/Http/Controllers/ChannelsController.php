@@ -5,6 +5,7 @@ namespace Modules\Channels\app\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 use Modules\Channels\Repositories\ChannelRepository as Repository;
 use Modules\Channels\Services\ChannelService as Service;
 
@@ -87,8 +88,8 @@ class ChannelsController extends Controller
     /**
      * Создание новой организации
      *
-     * @param  Service  $service  Сервис для работы со словарем
-     * @param  Repository  $repository  Репозиторий для доступа к данным
+     * @param Service $service Сервис для работы со словарем
+     * @param Repository $repository Репозиторий для доступа к данным
      * @return JsonResponse JSON-ответ с результатом операции
      *
      * @OA\Put(
@@ -136,13 +137,14 @@ class ChannelsController extends Controller
      *         ),
      *     )
      * )
+     * @throws ValidationException
      */
     public function create(Service $service, Repository $repository): JsonResponse
     {
         $request = request()->post();
 
         $validator = Validator::make($request, [
-            'name' => 'required',
+            'name' => 'required|string|max:255',
             'organisation_id' => 'required|integer|exists:organisations,id',
         ]);
 
@@ -150,7 +152,7 @@ class ChannelsController extends Controller
             return response()->json($validator->errors()->toJson(), 200);
         }
 
-        return $service->create($request, $repository);
+        return $service->create($validator->validated(), $repository);
     }
 
     /**
@@ -209,9 +211,9 @@ class ChannelsController extends Controller
     /**
      * Обновление данных канала
      *
-     * @param  Service  $service  Сервис для работы со словарем
-     * @param  Repository  $repository  Репозиторий для доступа к данным
-     * @param  int  $id  Идентификатор канала
+     * @param Service $service Сервис для работы со словарем
+     * @param Repository $repository Репозиторий для доступа к данным
+     * @param int $id Идентификатор канала
      * @return JsonResponse JSON-ответ с результатом операции
      *
      * @OA\Patch(
@@ -236,7 +238,6 @@ class ChannelsController extends Controller
      *         description="Данные для обновления канала",
      *
      *         @OA\JsonContent(
-
      *             ref="#/components/schemas/ChannelRequest",
      *         ),
      *     ),
@@ -269,17 +270,26 @@ class ChannelsController extends Controller
      *         ),
      *     )
      * )
+     * @throws ValidationException
      */
     public function update(Service $service, Repository $repository, int $id): JsonResponse
     {
         // TODO: Только администраторы
         $request = request()->post();
 
+        $validator = Validator::make($request, [
+            'name' => 'required|string|max:255',
+            'organisation_id' => 'required|integer|exists:organisations,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors()->toJson(), 200);
+        }
+
         if (! $request || count($request) == 0) {
             return response()->json(true, 200);
         }
-
-        return $service->update($request, $repository, $id);
+        return $service->update($validator->validated(), $repository, $id);
     }
 
     /**
