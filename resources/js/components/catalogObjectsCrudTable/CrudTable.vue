@@ -1,7 +1,7 @@
 // GenericCrudTable.vue
 <script setup>
 import { useCrudTable } from './useCrudTable.js';
-import { ref } from 'vue';
+import {onMounted, ref, watch} from 'vue';
 
 const props = defineProps({
     service: { type: Object, required: true },
@@ -10,16 +10,41 @@ const props = defineProps({
     title: { type: String, default: '' },
 });
 
+
+onMounted(() => {
+    document.title = props['title']
+});
+
 const dt = ref();
 
 const {selectedItems,  items, totalRecords, loading, error, perPage, currentPage, filters, loadData,
     item, submitted, itemDialog, openNew, hideDialog, openDialog, sendDeleteRequest,
     saveItem, deleteItemDialog, deleteItemsDialog, deleteItem, deleteSelectedItems, fieldOptions } = useCrudTable(props.service);
 
+
 const onPage = (event) => {
     const page = event.page + 1;
     loadData(page, event.rows);
 };
+
+const setInitialValues = () => {
+    if(itemDialog.value) {
+        const fields = Array.isArray(props.formFields[0]) ? props.formFields.flat() : props.formFields;
+        fields.forEach(field => {
+            if (field.type === 'double' && (item.value[field.name] === null || item.value[field.name] === undefined)) {
+                item.value[field.name] = field.default || 0;
+            }
+        })
+
+    }
+}
+
+watch(itemDialog, (newValue) => {
+    if(newValue){
+        setInitialValues()
+    }
+})
+
 
 function confirmDeleteSelected() {
     deleteItemsDialog.value = true;
@@ -36,6 +61,21 @@ function editItem(itemSlot) {
 
 function exportCSV() {
     dt.value.exportCSV();
+}
+
+const calculateFieldWidth = (fieldCount) => {
+    switch (fieldCount) {
+        case 1:
+            return 'w-full';
+        case 2:
+            return 'w-1/2';
+        case 3:
+            return 'w-1/3';
+        case 4:
+            return 'w-1/4';
+        default:
+            return 'w-full';
+    }
 }
 
 </script>
@@ -96,34 +136,82 @@ function exportCSV() {
             <div v-if="error">Произошла ошибка при загрузке данных.</div>
         </div>
 
-        <Dialog v-model:visible="itemDialog" :style="{ width: '450px' }" :header="title" :modal="true">
+
+
+        <Dialog
+            v-model:visible="itemDialog"
+            :style="{ width: '600px' }"
+            :header="title"
+            :modal="true"
+        >
             <div class="flex flex-col gap-6">
-                <div v-for="field in formFields" :key="field.name">
-                    <label :for="field.name" class="block font-bold mb-3">{{ field.label }}</label>
-                    <template v-if="field.type === 'select'">
-                        <Dropdown
-                            :id="field.name"
-                            v-model="item[field.name]"
-                            :options="fieldOptions[field.name]"
-                            optionLabel="label"
-                            optionValue="value"
-                            :invalid="submitted && !item[field.name]"
-                            class="w-full"
-                        />
-                        <small v-if="submitted && !item[field.name]" class="text-red-500">{{ field.label }} - обязательный атрибут.</small>
-                    </template>
-                    <template v-else>
-                        <InputText :id="field.name" v-model.trim="item[field.name]" required="true" autofocus :invalid="submitted && !item[field.name]" fluid />
-                        <small v-if="submitted && !item[field.name]" class="text-red-500">{{ field.label }} - обязательный атрибут.</small>
-                    </template>
+                <div v-for="row in formFields" :key="row">
+                    <div class="flex gap-6">
+                        <div
+                            v-for="field in row"
+                            :key="field.name"
+                            :class="calculateFieldWidth(row.length)"
+                        >
+                            <label :for="field.name" class="block font-bold mb-3">{{ field.label }}</label>
+                            <template v-if="field.type === 'select'">
+                                <Dropdown
+                                    :id="field.name"
+                                    v-model="item[field.name]"
+                                    :options="fieldOptions[field.name]"
+                                    optionLabel="label"
+                                    optionValue="value"
+                                    :invalid="submitted && !item[field.name]"
+                                    class="w-full"
+                                />
+                                <small v-if="submitted && !item[field.name]" class="text-red-500">{{ field.label }} - обязательный атрибут.</small>
+                            </template>
+                            <template v-else-if="field.type === 'double'">
+                                <InputNumber
+                                    :id="field.name"
+                                    v-model="item[field.name]"
+                                    :step="field.step"
+                                    :min="field.min"
+                                    :max="field.max"
+                                    :maxfractiondigits="2"
+                                    :minFractionDigits="2"
+                                    :maxFractionDigits="2"
+                                    :default-value="item[field.name] || field.default"
+                                    mode="decimal"
+                                    :invalid="submitted && !item[field.name]"
+                                    class="w-full"
+                                />
+                                <small
+                                    v-if="submitted && !item[field.name]"
+                                    class="text-red-500"
+                                >{{ field.label }} - обязательный атрибут.</small>
+                            </template>
+                            <template v-else>
+                                <InputText
+                                    :id="field.name"
+                                    v-model.trim="item[field.name]"
+                                    required="true"
+                                    autofocus
+                                    :invalid="submitted && !item[field.name]"
+                                    fluid
+                                />
+                                <small
+                                    v-if="submitted && !item[field.name]"
+                                    class="text-red-500"
+                                >{{ field.label }} - обязательный атрибут.</small
+                                >
+                            </template>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <template #footer>
                 <Button label="Отмена" icon="pi pi-times" text @click="hideDialog" />
-                <Button label="Сохранить" icon="pi pi-check" @click="saveItem" />
+                <Button label="Сохранить" icon="pi pi-check" @click="saveItem(props.formFields)" />
             </template>
         </Dialog>
+
+
         <Dialog v-model:visible="deleteItemDialog" :style="{ width: '450px' }" header="Confirm" :modal="true">
             <div class="flex items-center gap-4">
                 <i class="pi pi-exclamation-triangle !text-3xl" />

@@ -5,6 +5,7 @@ namespace Modules\SalesModels\app\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 use Modules\SalesModels\Repositories\SalesModelRepository as Repository;
 use Modules\SalesModels\Services\SalesModelService as Service;
 
@@ -89,10 +90,86 @@ class SalesModelsController extends Controller
      *     )
      * )
      */
-    public function index(Service $service, Repository $repository, int $organisation_id): JsonResponse
+    public function indexByOrganisation(Service $service, Repository $repository, int $organisation_id): JsonResponse
     {
-        return $service->getAll($repository, $organisation_id);
+        return $service->getAllByOrganisation($repository, $organisation_id);
     }
+
+
+    /**
+     * Получение списка моделей продаж
+     *
+     * @param  Service  $service  Сервис для работы со словарем
+     * @param  Repository  $repository  Репозиторий для доступа к данным
+     * @return JsonResponse JSON-ответ с данными
+     *
+     * @OA\Get(
+     *     path="/api/salesModels",
+     *     tags={"Core/Dictionary/SalesModels"},
+     *     summary="Получение списка моделей продаж.",
+     *     description="Метод для получения списка списка моделей продаж.",
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="Успешный запрос. Возвращает список  моделей продаж.",
+     *
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="current_page", type="integer"),
+     *             @OA\Property(property="data", type="array",
+     *
+     *                 @OA\Items(
+     *                     ref="#/components/schemas/SalesModel",
+     *                 )
+     *             ),
+     *
+     *             @OA\Property(property="first_page_url", type="string"),
+     *             @OA\Property(property="from", type="integer"),
+     *             @OA\Property(property="last_page", type="integer"),
+     *             @OA\Property(property="last_page_url", type="string"),
+     *             @OA\Property(property="links", type="array",
+     *
+     *                 @OA\Items(
+     *
+     *                     @OA\Property(property="url", type="string", nullable=true),
+     *                     @OA\Property(property="label", type="string"),
+     *                     @OA\Property(property="active", type="boolean"),
+     *                 )
+     *             ),
+     *             @OA\Property(property="next_page_url", type="string", nullable=true),
+     *             @OA\Property(property="path", type="string"),
+     *             @OA\Property(property="per_page", type="integer"),
+     *             @OA\Property(property="prev_page_url", type="string", nullable=true),
+     *             @OA\Property(property="to", type="integer"),
+     *             @OA\Property(property="total", type="integer"),
+     *         ),
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=404,
+     *         description="Записи не найдены",
+     *
+     *         @OA\JsonContent(
+     *             example={"message": "Записи не найдены"}
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=500,
+     *         description="Внутренняя ошибка сервера",
+     *
+     *         @OA\JsonContent(
+     *             example={"message": "Внутренняя ошибка сервера"}
+     *         )
+     *     )
+     * )
+     */
+    public function index(Service $service, Repository $repository): JsonResponse
+    {
+        return $service->getAll($repository);
+    }
+
+
 
     /**
      * Добавление модели продаж
@@ -154,7 +231,6 @@ class SalesModelsController extends Controller
         $validator = Validator::make($request, [
             'name' => 'required',
             'organisation_id' => 'required|integer|exists:organisations,id',
-            'contragent_id' => 'integer|exists:contragents,id|nullable',
             'guarantee' => 'required|numeric|min:0',
             'percent' => 'required|numeric|max:100|min:0',
         ]);
@@ -164,9 +240,9 @@ class SalesModelsController extends Controller
         }
 
         // TODO: Авторизация: Сверять с организацией текущего пользователя
-        if ($request['organisation_id'] != 1) {
-            return response()->json(['organisation_id' => 'NOT_YOUR_ORGANISATION'], 200);
-        }
+//        if ($request['organisation_id'] != 1) {
+//            return response()->json(['organisation_id' => 'NOT_YOUR_ORGANISATION'], 200);
+//        }
 
         return $service->create($request, $repository);
     }
@@ -227,9 +303,9 @@ class SalesModelsController extends Controller
     /**
      * Обновление данных модели продаж
      *
-     * @param  Service  $service  Сервис для работы со словарем
-     * @param  Repository  $repository  Репозиторий для доступа к данным
-     * @param  int  $id  Идентификатор  модели продаж
+     * @param Service $service Сервис для работы со словарем
+     * @param Repository $repository Репозиторий для доступа к данным
+     * @param int $id Идентификатор  модели продаж
      * @return JsonResponse JSON-ответ с результатом операции
      *
      * @OA\Patch(
@@ -254,7 +330,6 @@ class SalesModelsController extends Controller
      *         description="Данные для обновления записи",
      *
      *         @OA\JsonContent(
-
      *             ref="#/components/schemas/SalesModelRequest",
      *         ),
      *     ),
@@ -287,6 +362,7 @@ class SalesModelsController extends Controller
      *         ),
      *     )
      * )
+     * @throws ValidationException
      */
     public function update(Service $service, Repository $repository, int $id): JsonResponse
     {
@@ -295,7 +371,6 @@ class SalesModelsController extends Controller
         $validator = Validator::make($request, [
             'name' => 'string',
             'organisation_id' => 'integer|exists:organisations,id',
-            'contragent_id' => 'integer|exists:contragents,id|nullable',
             'guarantee' => 'numeric|min:0',
             'percent' => 'numeric|max:100|min:0',
         ]);
@@ -309,11 +384,11 @@ class SalesModelsController extends Controller
         }
 
         // TODO: Авторизация: Сверять с организацией текущего пользователя
-        if (isset($request['organisation_id']) && $request['organisation_id'] != 1) {
-            return response()->json(['organisation_id' => 'NOT_YOUR_ORGANISATION'], 200);
-        }
+//        if (isset($request['organisation_id']) && $request['organisation_id'] != 1) {
+//            return response()->json(['organisation_id' => 'NOT_YOUR_ORGANISATION'], 200);
+//        }
 
-        return $service->update($request, $repository, $id);
+        return $service->update($validator->validated(), $repository, $id);
     }
 
     /**

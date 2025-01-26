@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->uuid()->index();
             $table->integer('organisation_id')->index();
-            $table->integer('contragent_id')->index()->nullable();
+            //$table->integer('contragent_id')->index()->nullable();
             $table->string('name');
             $table->float('percent')->default(0);
             $table->float('guarantee')->default(0);

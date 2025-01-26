@@ -47,15 +47,14 @@ export function useCrudTable(service) {
     };
 
     const loadFieldOptions = async (formFields) => {
-        for (const field of formFields) {
-            if(field.optionsService) {
+        const fields = Array.isArray(formFields[0]) ? formFields.flat() : formFields;
+        for (const field of fields) {
+            if (field.type === 'select' && field.optionsService) {
                 try {
-                    const optionsService = field.optionsService;
-                    const data = await optionsService.List();
-
-                    fieldOptions.value[field.name] =  data.data.map(option => ({
+                    const optionsResponse = await field.optionsService.List();
+                    fieldOptions.value[field.name] = optionsResponse.data.map((option) => ({
                         label: option.name,
-                        value: option.id
+                        value: option.id,
                     }));
                 } catch (err) {
                     toast.add({
@@ -65,7 +64,8 @@ export function useCrudTable(service) {
                         life: 3000
                     });
                 }
-
+            } else {
+                fieldOptions.value[field.name] = [];
             }
         }
     }

@@ -10,8 +10,8 @@ const columns = [
 ];
 
 const formFields = [
-    {type: 'text', name: 'name', label: 'Название'},
-    {type: 'select', name: 'organisation_id', label: 'Организация', optionsService: OrganisationService },
+    [{type: 'text', name: 'name', label: 'Название'}],
+    [{type: 'select', name: 'organisation_id', label: 'Организация', optionsService: OrganisationService }],
 ];
 
 </script>

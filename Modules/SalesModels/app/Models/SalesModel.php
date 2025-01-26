@@ -3,6 +3,8 @@
 namespace Modules\SalesModels\app\Models;
 
 use App\Models\CatalogObject;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Modules\Organisations\app\Models\Organisation;
 
 /**
  * Класс Модели продаж
@@ -31,5 +33,10 @@ use App\Models\CatalogObject;
  */
 class SalesModel extends CatalogObject
 {
-    protected $fillable = ['name', 'organisation_id', 'contragent_id', 'percent', 'guarantee'];
+    protected $fillable = ['name', 'organisation_id', 'percent', 'guarantee'];
+
+    public function organisation(): HasOne
+    {
+        return $this->hasOne(Organisation::class, 'id', 'organisation_id');
+    }
 }

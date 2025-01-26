@@ -7,7 +7,7 @@ const columns = [
 ];
 
 const formFields = [
-    { type: 'text', name: 'name', label: 'Название' },
+    [{ type: 'text', name: 'name', label: 'Название' }],
 ];
 
 </script>
