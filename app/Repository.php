@@ -103,11 +103,10 @@ class Repository
         return $data;
     }
 
-    public function getAll(array $with = []): LengthAwarePaginator
+    public function getAll(array $with = [], array $filters = []): LengthAwarePaginator
     {
-
         $pageNumber = LengthAwarePaginator::resolveCurrentPage();
-        $cacheKey = $this->prefix.'_getAll_with_'.implode('-', $with).'_'.$this->paginationCount.'_page'.$pageNumber;
+        $cacheKey = $this->prefix.'_FLTR_'.http_build_query($filters,'','_AND_').'_getAll_with_'.implode('-', $with).'_'.$this->paginationCount.'_page'.$pageNumber;
 
         $cachedData = $this->extractListFromCache($cacheKey);
 
@@ -117,6 +116,7 @@ class Repository
 
         $data = $this->model::query()
             ->with($with)
+            ->where($filters)
             ->paginate($this->paginationCount);
 
         return $this->storeDataToCacheAndPaginator($cacheKey, $data, [$this->prefix.'_list']);

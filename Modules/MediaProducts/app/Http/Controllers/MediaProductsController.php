@@ -5,6 +5,7 @@ namespace Modules\MediaProducts\app\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 use Modules\MediaProducts\Repositories\MediaProductRepository as Repository;
 use Modules\MediaProducts\Services\MediaProductService as Service;
 
@@ -13,8 +14,8 @@ class MediaProductsController extends Controller
     /**
      * Получение списка медиапродуктов
      *
-     * @param  Service  $service  Сервис для работы со словарем
-     * @param  Repository  $repository  Репозиторий для доступа к данным
+     * @param Service $service Сервис для работы со словарем
+     * @param Repository $repository Репозиторий для доступа к данным
      * @return JsonResponse JSON-ответ с данными
      *
      * @OA\Get(
@@ -22,6 +23,19 @@ class MediaProductsController extends Controller
      *     tags={"Core/Dictionary/MediaProducts"},
      *     summary="Получение списка медиапродуктов",
      *     description="Метод для получения списка списка медиапродуктов",
+     *
+     *
+     *       @OA\Parameter(
+     *          name="channel_id",
+     *          in="query",
+     *          description="Идентификатор Канала (для фильтрации по каналам)",
+     *          required=false,
+     *
+     *          @OA\Schema(
+     *              type="integer"
+     *          )
+     *      ),
+     *
      *
      *     @OA\Response(
      *         response=200,
@@ -77,10 +91,17 @@ class MediaProductsController extends Controller
      *         )
      *     )
      * )
+     * @throws ValidationException
      */
     public function index(Service $service, Repository $repository): JsonResponse
     {
-        return $service->getAll($repository);
+        $filters = [
+            'channel_id' => 'nullable|integer|min:1',
+            // Добавьте другие правила валидации для ваших параметров.
+        ];
+        $validator = Validator::make(request()->all(), $filters);
+        $filters = $validator->validated();
+        return $service->getAll($repository, $filters);
     }
 
     /**
