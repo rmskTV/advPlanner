@@ -23,9 +23,9 @@ class MediaProductService
         return response()->json($repository->create($data), 201);
     }
 
-    public function getAll(Repository $repository, int $channel_id): JsonResponse
+    public function getAll(Repository $repository): JsonResponse
     {
-        return response()->json($repository->getAllBy('channel_id', $channel_id), 200);
+        return response()->json($repository->getAll(['channel']), 200);
     }
 
     public function delete(Repository $repository, int $id): JsonResponse

@@ -11,13 +11,10 @@ class BaseCrudService {
         this.API_URL = BASE_API_URL + endpoint;
     }
 
-    async List(page = 1, perPage = 10) {
+    async List(paramsArray = {}) {
         try {
             const response = await axios.get(this.API_URL, {
-                params: {
-                    page: page,
-                    per_page: perPage,
-                },
+                params: paramsArray,
             });
             return response.data;
         } catch (error) {

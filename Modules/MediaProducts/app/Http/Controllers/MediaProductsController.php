@@ -11,28 +11,17 @@ use Modules\MediaProducts\Services\MediaProductService as Service;
 class MediaProductsController extends Controller
 {
     /**
-     * Получение списка медиапродуктов по ID канала
+     * Получение списка медиапродуктов
      *
      * @param  Service  $service  Сервис для работы со словарем
      * @param  Repository  $repository  Репозиторий для доступа к данным
      * @return JsonResponse JSON-ответ с данными
      *
      * @OA\Get(
-     *     path="/api/mediaProducts/byChannel/{channel_id}",
+     *     path="/api/mediaProducts",
      *     tags={"Core/Dictionary/MediaProducts"},
-     *     summary="Получение списка медиапродуктов по ID канала",
-     *     description="Метод для получения списка списка медиапродуктов по ID канала.",
-     *
-     *     @OA\Parameter(
-     *          name="channel_id",
-     *          in="path",
-     *          description="Идентификатор канала",
-     *          required=true,
-     *
-     *          @OA\Schema(
-     *              type="integer"
-     *          )
-     *      ),
+     *     summary="Получение списка медиапродуктов",
+     *     description="Метод для получения списка списка медиапродуктов",
      *
      *     @OA\Response(
      *         response=200,
@@ -89,9 +78,9 @@ class MediaProductsController extends Controller
      *     )
      * )
      */
-    public function index(Service $service, Repository $repository, int $channel_id): JsonResponse
+    public function index(Service $service, Repository $repository): JsonResponse
     {
-        return $service->getAll($repository, $channel_id);
+        return $service->getAll($repository);
     }
 
     /**

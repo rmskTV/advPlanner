@@ -15,6 +15,18 @@ use Illuminate\Routing\Controller as BaseController;
  *          email="ruslanmoskvitin@gmail.com"
  *      ),
  * ),
+ * @OA\Server(
+ *         url="/",
+ *         description="localhost"
+ *    )
+ * @OA\Server(
+ *       url="https://advider.bst.bratsk.ru",
+ *       description="Product server"
+ *   )
+ * @OA\Server(
+ *        url="https://advider-test.bst.bratsk.ru",
+ *        description="Test server"
+ *   )
  */
 class Controller extends BaseController
 {

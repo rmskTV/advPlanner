@@ -3,6 +3,8 @@
 namespace Modules\MediaProducts\app\Models;
 
 use App\Models\CatalogObject;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Modules\Channels\app\Models\Channel;
 
 /**
  * Класс модели медиапродукта
@@ -31,4 +33,9 @@ use App\Models\CatalogObject;
 class MediaProduct extends CatalogObject
 {
     protected $fillable = ['name', 'channel_id', 'organisation_id', 'start_time', 'duration'];
+
+    public function channel(): HasOne
+    {
+        return $this->hasOne(Channel::class, 'id', 'channel_id');
+    }
 }

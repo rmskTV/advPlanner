@@ -4,7 +4,7 @@ import { FilterMatchMode } from '@primevue/core/api';
 import { useToast } from 'primevue/usetoast';
 
 
-export function useCrudTable(service) {
+export function useCrudTable(service, initialFilters = []) {
     const toast = useToast();
     const item = ref({});
     const submitted = ref(false);
@@ -19,16 +19,18 @@ export function useCrudTable(service) {
     const currentPage = ref(1);
     const selectedItems = ref();
     const fieldOptions = ref({}); // Ref для хранения опций для полей
-
-    const filters = ref({
-        global: { value: null, matchMode: FilterMatchMode.CONTAINS }
-    });
+    const filtersValues = ref({}); // Новое свойство для активных фильтров
 
     const loadData = async (page = 1, perPageValue = perPage.value) => {
         loading.value = true;
         error.value = null;
         try {
-            const data = await service.List(page, perPageValue, filters.value);
+            const params = {
+                page: page.v,
+                per_page: perPageValue,
+                ...filtersValues.value // Добавляем активные фильтры в запрос
+            };
+            const data = await service.List(params);
             items.value = data.data;
             totalRecords.value = data.total;
             currentPage.value = data.current_page;
@@ -52,10 +54,15 @@ export function useCrudTable(service) {
             if (field.type === 'select' && field.optionsService) {
                 try {
                     const optionsResponse = await field.optionsService.List();
-                    fieldOptions.value[field.name] = optionsResponse.data.map((option) => ({
+
+                    const options = optionsResponse.data.map((option) => ({
                         label: option.name,
                         value: option.id,
                     }));
+                    // Добавляем опцию "Не выбрано"
+                    options.unshift({label: 'Не выбрано', value: null});
+                    fieldOptions.value[field.name] = options
+
                 } catch (err) {
                     toast.add({
                         severity: 'error',
@@ -70,11 +77,12 @@ export function useCrudTable(service) {
         }
     }
 
+
     watch(perPage, () => {
         loadData(1)
     })
-    onMounted(() => {
-        loadData(1)
+    onMounted(async () => {
+        loadData(1);
     });
 
     const openNew = async (formFields) => {
@@ -210,6 +218,13 @@ export function useCrudTable(service) {
         selectedItems.value = null;
         await loadData(currentPage.value, perPage.value);
     }
+
+    const applyFilter = (filterName, value) => {
+        filtersValues[filterName] = value;
+        loadData(currentPage.value, perPage.value); // Перезагружаем данные с новыми фильтрами
+    };
+
+
     return {
         item,
         submitted,
@@ -228,10 +243,12 @@ export function useCrudTable(service) {
         error,
         perPage,
         currentPage,
-        filters,
+        filtersValues,
         loadData,
         selectedItems,
         fieldOptions,
-        deleteSelectedItems
+        deleteSelectedItems,
+        applyFilter,
+        loadFieldOptions
     };
 }

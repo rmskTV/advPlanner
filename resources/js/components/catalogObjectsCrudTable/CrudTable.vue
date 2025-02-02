@@ -8,18 +8,20 @@ const props = defineProps({
     columns: { type: Array, required: true },
     formFields: { type: Array, required: true },
     title: { type: String, default: '' },
+    filters: { type: Array, default: () => [] },
 });
 
 
-onMounted(() => {
-    document.title = props['title']
+onMounted(async () => {
+    document.title = props['title'];
+    loadFieldOptions(props['formFields']);
 });
 
 const dt = ref();
 
-const {selectedItems,  items, totalRecords, loading, error, perPage, currentPage, filters, loadData,
+const {selectedItems,  items, totalRecords, loading, error, perPage, currentPage, filtersValues, loadData,
     item, submitted, itemDialog, openNew, hideDialog, openDialog, sendDeleteRequest,
-    saveItem, deleteItemDialog, deleteItemsDialog, deleteItem, deleteSelectedItems, fieldOptions } = useCrudTable(props.service);
+    saveItem, deleteItemDialog, deleteItemsDialog, deleteItem, deleteSelectedItems, fieldOptions, applyFilter, loadFieldOptions } = useCrudTable(props.service, props.filters);
 
 
 const onPage = (event) => {
@@ -94,6 +96,8 @@ const calculateFieldWidth = (fieldCount) => {
                 </template>
             </Toolbar>
 
+
+
             <DataTable
                 ref="dt"
                 v-model:selection="selectedItems"
@@ -112,12 +116,29 @@ const calculateFieldWidth = (fieldCount) => {
                 <template #header>
                     <div class="flex flex-wrap gap-2 items-center justify-between">
                         <h1 class="m-0">{{ title }}</h1>
-                        <IconField>
-                            <InputIcon>
-                                <i class="pi pi-search" />
-                            </InputIcon>
-                            <InputText v-model="filters['global'].value" placeholder="Search..." />
-                        </IconField>
+                        <!-- Фильтры -->
+                        <div class="flex gap-4 mb-4">
+                            <div v-for="filter in props.filters" :key="filter.name">
+                                <label :for="filter.name" class="block font-bold mb-2">{{ filter.name }}</label>
+                                <Dropdown
+                                    :id="filter.name"
+                                    v-model="filtersValues[filter.queryName]"
+                                    :options="fieldOptions[filter.queryName]"
+                                    optionLabel="label"
+                                    optionValue="value"
+                                    @change="applyFilter(filter.queryName, $event.value)"
+                                    class="w-full"
+                                />
+                            </div>
+                        </div>
+
+<!--                        <IconField>-->
+<!--                            <InputIcon>-->
+<!--                                <i class="pi pi-search" />-->
+<!--                            </InputIcon>-->
+<!--                            <InputText v-model="filters['global'].value" placeholder="Search..." />-->
+<!--                        </IconField>-->
+
                     </div>
                 </template>
                 <Column selectionMode="multiple" style="width: 3rem" :exportable="false"></Column>

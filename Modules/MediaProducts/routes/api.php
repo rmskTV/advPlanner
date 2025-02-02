@@ -9,7 +9,7 @@ Route::group([
     'prefix' => 'mediaProducts',
 ], function () {
     Route::get('/{id}', [Controller::class, 'show']);
-    Route::get('/byChannel/{channel_id}', [Controller::class, 'index']);
+    Route::get('/', [Controller::class, 'index']);
     Route::put('/', [Controller::class, 'create']);
     Route::patch('/{id}', [Controller::class, 'update']);
     Route::delete('/{id}', [Controller::class, 'destroy']);

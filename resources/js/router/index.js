@@ -29,6 +29,11 @@ const router = createRouter({
                     component: () => import('@/views/pages/SalesModels/Index.vue')
                 },
                 {
+                    path: '/mediaProducts',
+                    name: 'mediaProductsList',
+                    component: () => import('@/views/pages/MediaProducts/Index.vue')
+                },
+                {
                     path: '/uikit/formlayout',
                     name: 'formlayout',
                     component: () => import('@/views/uikit/FormLayout.vue')
