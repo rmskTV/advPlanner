@@ -232,9 +232,9 @@ class MediaProductsController extends Controller
     /**
      * Обновление данных медиапродукта
      *
-     * @param  Service  $service  Сервис для работы со словарем
-     * @param  Repository  $repository  Репозиторий для доступа к данным
-     * @param  int  $id  Идентификатор медиапродукта
+     * @param Service $service Сервис для работы со словарем
+     * @param Repository $repository Репозиторий для доступа к данным
+     * @param int $id Идентификатор медиапродукта
      * @return JsonResponse JSON-ответ с результатом операции
      *
      * @OA\Patch(
@@ -259,7 +259,6 @@ class MediaProductsController extends Controller
      *         description="Данные для обновления канала",
      *
      *         @OA\JsonContent(
-
      *             ref="#/components/schemas/MediaProductRequest",
      *         ),
      *     ),
@@ -292,6 +291,7 @@ class MediaProductsController extends Controller
      *         ),
      *     )
      * )
+     * @throws ValidationException
      */
     public function update(Service $service, Repository $repository, int $id): JsonResponse
     {
@@ -309,11 +309,11 @@ class MediaProductsController extends Controller
             return response()->json($validator->errors()->toJson(), 200);
         }
 
-        if (! $request || count($request) == 0) {
+        if (count($validator->validated()) == 0) {
             return response()->json(true, 200);
         }
 
-        return $service->update($request, $repository, $id);
+        return $service->update($validator->validated(), $repository, $id);
     }
 
     /**

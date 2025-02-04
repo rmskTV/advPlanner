@@ -20,9 +20,9 @@ class ChannelService
         return response()->json($repository->create($data), 201);
     }
 
-    public function getAll(Repository $repository): JsonResponse
+    public function getAll(Repository $repository, array $filters): JsonResponse
     {
-        return response()->json($repository->getAll(['organisation']), 200);
+        return response()->json($repository->getAll(['organisation'], $filters), 200);
     }
 
     public function delete(Repository $repository, int $id): JsonResponse

@@ -14,6 +14,15 @@ const formFields = [
     [{type: 'select', name: 'organisation_id', label: 'Организация', optionsService: OrganisationService }],
 ];
 
+const filters = [
+    {
+        name: 'Организация',
+        type: 'select',
+        optionsService: OrganisationService,
+        queryName: 'organisation_id'
+    }
+];
+
 </script>
 
 <template>
@@ -22,5 +31,6 @@ const formFields = [
         :columns="columns"
         :formFields="formFields"
         title="Каналы"
+        :filters="filters"
     />
 </template>

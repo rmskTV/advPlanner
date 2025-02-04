@@ -14,8 +14,8 @@ class ChannelsController extends Controller
     /**
      * Получение списка каналов
      *
-     * @param  Service  $service  Сервис для работы со словарем
-     * @param  Repository  $repository  Репозиторий для доступа к данным
+     * @param Service $service Сервис для работы со словарем
+     * @param Repository $repository Репозиторий для доступа к данным
      * @return JsonResponse JSON-ответ с данными
      *
      * @OA\Get(
@@ -23,6 +23,17 @@ class ChannelsController extends Controller
      *     tags={"Core/Dictionary/Channels"},
      *     summary="Получение списка каналов",
      *     description="Метод для получения списка всех Каналов.",
+     *
+     *     @OA\Parameter(
+     *           name="organisation_id",
+     *           in="query",
+     *           description="Идентификатор Организации (для фильтрации по организации)",
+     *           required=false,
+     *
+     *           @OA\Schema(
+     *               type="integer"
+     *           )
+     *       ),
      *
      *     @OA\Response(
      *         response=200,
@@ -78,11 +89,18 @@ class ChannelsController extends Controller
      *         )
      *     )
      * )
+     * @throws ValidationException
      */
     public function index(Service $service, Repository $repository): JsonResponse
     {
-        // TODO Возвращать только каналы организации пользователя
-        return $service->getAll($repository);
+
+        $filters = [
+            'organisation_id' => 'nullable|integer|min:1',
+            // Добавьте другие правила валидации для ваших параметров.
+        ];
+        $validator = Validator::make(request()->all(), $filters);
+        $filters = $validator->validated();
+        return $service->getAll($repository, $filters);
     }
 
     /**
@@ -286,7 +304,7 @@ class ChannelsController extends Controller
             return response()->json($validator->errors()->toJson(), 200);
         }
 
-        if (! $request || count($request) == 0) {
+        if (count($validator->validated()) == 0) {
             return response()->json(true, 200);
         }
         return $service->update($validator->validated(), $repository, $id);
