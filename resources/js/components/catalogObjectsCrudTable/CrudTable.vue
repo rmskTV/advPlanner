@@ -80,6 +80,22 @@ const calculateFieldWidth = (fieldCount) => {
     }
 }
 
+const formatBooleanField = (value) => {
+    if (typeof value === 'boolean') {
+        return value ? 'Да' : 'Нет';
+    }
+
+    if (value === 1) {
+        return 'Да';
+    }
+
+    if (value === 0) {
+        return 'Нет';
+    }
+
+    return value;
+
+};
 </script>
 
 <template>
@@ -142,8 +158,16 @@ const calculateFieldWidth = (fieldCount) => {
                     </div>
                 </template>
                 <Column selectionMode="multiple" style="width: 3rem" :exportable="false"></Column>
-                <Column v-for="col in columns" :key="col.field" :field="col.field" :header="col.header" sortable style="min-width: 12rem"/>
-
+                <Column v-for="col in columns" :key="col.field" :field="col.field" :header="col.header" sortable style="min-width: 12rem">
+                    <template #body="slotProps">
+                        <template v-if="col.field.startsWith('is_')">
+                            {{ formatBooleanField(slotProps.data[col.field]) }}
+                        </template>
+                        <template v-else>
+                            {{ slotProps.data[col.field] }}
+                        </template>
+                    </template>
+                </Column>
                 <Column :exportable="false" style="min-width: 12rem">
                     <template #body="slotProps">
                         <Button icon="pi pi-pencil" outlined rounded class="mr-2" @click="editItem(slotProps.data)" />
@@ -174,6 +198,8 @@ const calculateFieldWidth = (fieldCount) => {
                             :class="calculateFieldWidth(row.length)"
                         >
                             <label :for="field.name" class="block font-bold mb-3">{{ field.label }}</label>
+
+                            <!-- Селект -->
                             <template v-if="field.type === 'select'">
                                 <Dropdown
                                     :id="field.name"
@@ -186,6 +212,8 @@ const calculateFieldWidth = (fieldCount) => {
                                 />
                                 <small v-if="submitted && !item[field.name]" class="text-red-500">{{ field.label }} - обязательный атрибут.</small>
                             </template>
+
+                            <!-- Дабл -->
                             <template v-else-if="field.type === 'double'">
                                 <InputNumber
                                     :id="field.name"
@@ -206,6 +234,18 @@ const calculateFieldWidth = (fieldCount) => {
                                     class="text-red-500"
                                 >{{ field.label }} - обязательный атрибут.</small>
                             </template>
+
+                            <!-- Чекбокс -->
+                            <template v-else-if="field.type === 'checkbox'">
+                                <Checkbox
+                                    :id="field.name"
+                                    v-model="item[field.name]"
+                                    :binary="true"
+                                    :trueValue="1"
+                                    :falseValue="0"
+                                />
+                            </template>
+
                             <template v-else>
                                 <InputText
                                     :id="field.name"

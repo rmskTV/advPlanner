@@ -2,7 +2,9 @@
 
 namespace Modules\AdvBlocks\app\Models;
 
+use App\Enum\AccountingUnitsEnum;
 use App\Models\CatalogObject;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 
 /**
  * Класс Модели типа рекламного блока
@@ -31,5 +33,17 @@ use App\Models\CatalogObject;
  */
 class AdvBlockType extends CatalogObject
 {
+    protected $appends = [
+        'accounting_unit_label',
+    ];
+
     protected $fillable = ['name', 'is_with_exact_time', 'accounting_unit'];
+
+    protected function accountingUnitLabel(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => AccountingUnitsEnum::tryFrom($this->accounting_unit)?->label()
+        );
+    }
+
 }

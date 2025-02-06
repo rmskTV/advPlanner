@@ -34,6 +34,11 @@ const router = createRouter({
                     component: () => import('@/views/pages/MediaProducts/Index.vue')
                 },
                 {
+                    path: '/advBlockTypes',
+                    name: 'advBlockTypesList',
+                    component: () => import('@/views/pages/AdvBlockTypes/Index.vue')
+                },
+                {
                     path: '/uikit/formlayout',
                     name: 'formlayout',
                     component: () => import('@/views/uikit/FormLayout.vue')

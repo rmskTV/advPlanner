@@ -4,15 +4,26 @@ namespace App\Enum;
 
 enum AccountingUnitsEnum: string
 {
-    const WORD = 'word';
+    case WORD = 'word';
+    case CHAR = 'char';
+    case PIECE = 'piece';
+    case SECOND = 'second';
+    case RELEASE = 'release';
 
-    const CHAR = 'char';
 
-    const PIECE = 'piece';
 
-    const SECOND = 'second';
+    public function label(): string
+    {
+        return match ($this) {
+            self::WORD => 'Слово',
+            self::CHAR => 'Символ',
+            self::SECOND => 'Секунда',
+            self::RELEASE => 'Выход',
+            default => 'Штука', // self::PIECE
+        };
+    }
 
-    const RELEASE = 'release';
+
 
     /**
      * Функция возвращает массив всех возможных значений для перечисления.
@@ -21,12 +32,9 @@ enum AccountingUnitsEnum: string
      */
     public static function getValuesArray(): array
     {
-        return [
-            self::WORD,
-            self::PIECE,
-            self::SECOND,
-            self::CHAR,
-            self::RELEASE,
-        ];
+        return array_map(fn (self $case) => $case->value, self::cases());
+
     }
+
+
 }

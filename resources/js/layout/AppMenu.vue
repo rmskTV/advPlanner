@@ -134,7 +134,9 @@ const model = ref([
                             { label: 'Организации', icon: 'pi pi-fw pi-sitemap', to: '/organisations' },
                             { label: 'Каналы', icon: 'pi pi-fw pi-sitemap', to: '/channels' },
                             { label: 'Медиа-продукты', icon: 'pi pi-fw pi-sitemap', to: '/mediaProducts' },
-                            { label: 'Модели продаж', icon: 'pi pi-fw pi-sitemap', to: '/salesModels' }
+                            { label: 'Модели продаж', icon: 'pi pi-fw pi-sitemap', to: '/salesModels' },
+                            { label: 'Типы рекламных блоков', icon: 'pi pi-fw pi-sitemap', to: '/advBlockTypes' },
+                            { label: 'Рекламные блоки', icon: 'pi pi-fw pi-sitemap', to: '/advBlocks' }
                         ]
                     },
                     {
