@@ -1,5 +1,6 @@
 <?php
 
+use App\Enum\AccountingUnitsEnum;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -11,14 +12,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('sales_models', function (Blueprint $table) {
+        Schema::create('adv_block_types', function (Blueprint $table) {
             $table->id();
             $table->uuid()->index();
-            $table->integer('organisation_id')->index();
-            // $table->integer('contragent_id')->index()->nullable();
-            $table->string('name');
-            $table->float('percent')->default(0);
-            $table->float('guarantee')->default(0);
+            $table->string('name')->default('');
+            $table->boolean('is_with_exact_time')->default(false);
+            $table->enum('accounting_unit', AccountingUnitsEnum::getValuesArray())->default(AccountingUnitsEnum::PIECE);
             $table->timestamps();
             $table->softDeletes();
         });
@@ -29,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('sales_models');
+        Schema::dropIfExists('advBlockTypes');
     }
 };

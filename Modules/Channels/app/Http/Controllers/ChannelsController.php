@@ -14,8 +14,8 @@ class ChannelsController extends Controller
     /**
      * Получение списка каналов
      *
-     * @param Service $service Сервис для работы со словарем
-     * @param Repository $repository Репозиторий для доступа к данным
+     * @param  Service  $service  Сервис для работы со словарем
+     * @param  Repository  $repository  Репозиторий для доступа к данным
      * @return JsonResponse JSON-ответ с данными
      *
      * @OA\Get(
@@ -89,6 +89,7 @@ class ChannelsController extends Controller
      *         )
      *     )
      * )
+     *
      * @throws ValidationException
      */
     public function index(Service $service, Repository $repository): JsonResponse
@@ -100,14 +101,15 @@ class ChannelsController extends Controller
         ];
         $validator = Validator::make(request()->all(), $filters);
         $filters = $validator->validated();
+
         return $service->getAll($repository, $filters);
     }
 
     /**
      * Создание новой организации
      *
-     * @param Service $service Сервис для работы со словарем
-     * @param Repository $repository Репозиторий для доступа к данным
+     * @param  Service  $service  Сервис для работы со словарем
+     * @param  Repository  $repository  Репозиторий для доступа к данным
      * @return JsonResponse JSON-ответ с результатом операции
      *
      * @OA\Put(
@@ -155,6 +157,7 @@ class ChannelsController extends Controller
      *         ),
      *     )
      * )
+     *
      * @throws ValidationException
      */
     public function create(Service $service, Repository $repository): JsonResponse
@@ -229,9 +232,9 @@ class ChannelsController extends Controller
     /**
      * Обновление данных канала
      *
-     * @param Service $service Сервис для работы со словарем
-     * @param Repository $repository Репозиторий для доступа к данным
-     * @param int $id Идентификатор канала
+     * @param  Service  $service  Сервис для работы со словарем
+     * @param  Repository  $repository  Репозиторий для доступа к данным
+     * @param  int  $id  Идентификатор канала
      * @return JsonResponse JSON-ответ с результатом операции
      *
      * @OA\Patch(
@@ -288,6 +291,7 @@ class ChannelsController extends Controller
      *         ),
      *     )
      * )
+     *
      * @throws ValidationException
      */
     public function update(Service $service, Repository $repository, int $id): JsonResponse
@@ -307,6 +311,7 @@ class ChannelsController extends Controller
         if (count($validator->validated()) == 0) {
             return response()->json(true, 200);
         }
+
         return $service->update($validator->validated(), $repository, $id);
     }
 

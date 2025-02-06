@@ -1,32 +1,35 @@
 <?php
 
-namespace Modules\Organisations\app\Http\Controllers;
+namespace Modules\AdvBlocks\app\Http\Controllers;
 
+use App\Enum\AccountingUnitsEnum;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use Modules\Organisations\Repositories\OrganisationRepository as Repository;
-use Modules\Organisations\Services\OrganisationService as Service;
+use Modules\AdvBlocks\Repositories\AdvBlockTypeRepository as Repository;
+use Modules\AdvBlocks\Services\AdvBlockTypeService as Service;
 
-class OrganisationsController extends Controller
+class AdvBlockTypesController extends Controller
 {
     /**
-     * Получение списка организаций
+     * Получение типов рекламных блоков
      *
-     * @param  Service  $service  Сервис для работы со словарем организаций
-     * @param  Repository  $repository  Репозиторий для доступа к данным об организациях
-     * @return JsonResponse JSON-ответ с данными о ВебКреативах
+     * @param  Service  $service  Сервис для работы со словарем
+     * @param  Repository  $repository  Репозиторий для доступа к данным
+     * @return JsonResponse JSON-ответ с данными
      *
      * @OA\Get(
-     *     path="/api/organisations",
-     *     tags={"Core/Dictionary/Organisations"},
-     *     summary="Получение списка Организаций",
-     *     description="Метод для получения списка всех Организаций.",
+     *     path="/api/advBlockTypes",
+     *     tags={"Core/Dictionary/AdvBlocks"},
+     *     summary="Получение списка типов рекламного блока.",
+     *     description="Метод для получения списка типов рекламного блока.",
      *
      *     @OA\Response(
      *         response=200,
-     *         description="Успешный запрос. Возвращает список ВебКреативов.",
+     *         description="Успешный запрос. Возвращает список типов рекламного блока.",
      *
      *         @OA\JsonContent(
      *
@@ -34,7 +37,7 @@ class OrganisationsController extends Controller
      *             @OA\Property(property="data", type="array",
      *
      *                 @OA\Items(
-     *                     ref="#/components/schemas/Organisation",
+     *                     ref="#/components/schemas/AdvBlockType",
      *                 )
      *             ),
      *
@@ -84,33 +87,35 @@ class OrganisationsController extends Controller
         return $service->getAll($repository);
     }
 
+
+
     /**
-     * Создание новой организации
+     * Добавление типа рекламного блока
      *
-     * @param  Service  $service  Сервис для работы со словарем организаций
-     * @param  Repository  $repository  Репозиторий для доступа к данным об организациях
+     * @param Service $service  Сервис для работы со словарем
+     * @param Repository $repository  Репозиторий для доступа к данным
      * @return JsonResponse JSON-ответ с результатом операции
      *
      * @OA\Put(
-     *     path="/api/organisations",
-     *     tags={"Core/Dictionary/Organisations"},
-     *     summary="Создание новой организации",
-     *     description="Метод для создания новой организации.",
+     *     path="/api/advBlockTypes",
+     *     tags={"Core/Dictionary/AdvBlocks"},
+     *     summary="Создание нового типа рекламного блока",
+     *     description="Метод для создания нового типа рекламного блока.",
      *
      *     @OA\RequestBody(
      *         required=true,
-     *         description="Данные для создания новой организации",
+     *         description="Данные для создания новой записи",
      *
      *         @OA\JsonContent(
-     *             required={"name"},
+     *             required={"name", "accounting_unit", "is_with_exact_time"},
      *
-     *             ref="#/components/schemas/OrganisationRequest",
+     *             ref="#/components/schemas/AdvBlockTypeRequest",
      *         ),
      *     ),
      *
      *     @OA\Response(
      *         response=200,
-     *         description="Успешное создание организации",
+     *         description="Успешное создание",
      *
      *         @OA\JsonContent(
      *             type="boolean",
@@ -136,37 +141,39 @@ class OrganisationsController extends Controller
      *         ),
      *     )
      * )
-     *
-     * @throws ValidationException
      */
     public function create(Service $service, Repository $repository): JsonResponse
     {
+        // TODO: Авторизация: Добавлять могут только администраторы
         $request = request()->post();
 
         $validator = Validator::make($request, [
-            'name' => 'required|string|max:255',
+            'is_with_exact_time' => 'required|boolean',
+            'accounting_unit' => [Rule::in(AccountingUnitsEnum::getValuesArray())],
+            'name' => 'required'
         ]);
 
         if ($validator->fails()) {
             return response()->json($validator->errors()->toJson(), 200);
         }
 
-        return $service->create($validator->validated(), $repository);
+        return $service->create($request, $repository);
     }
 
+
     /**
-     * Получение городского портала по идентификатору
+     * Получение типа рекламного блока по идентификатору
      *
      * @OA\Get (
-     *     path="/api/organisations/{id}",
-     *     tags={"Core/Dictionary/Organisations"},
-     *     summary="Получение информации об организации",
-     *     description="Метод для получения информации об организации по его идентификатору",
+     *     path="/api/advBlockTypes/{id}",
+     *     tags={"Core/Dictionary/AdvBlocks"},
+     *     summary="Получение информации о типе рекламного блока",
+     *     description="Метод для получения информации о типе рекламного блока по его идентификатору",
      *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
-     *         description="Идентификатор организации",
+     *         description="Идентификатор записи",
      *         required=true,
      *
      *         @OA\Schema(
@@ -176,10 +183,10 @@ class OrganisationsController extends Controller
      *
      *     @OA\Response(
      *         response=200,
-     *         description="Успешный запрос. Возвращает информацию об организации.",
+     *         description="Успешный запрос. Возвращает информацию о медиапродукте.",
      *
      *         @OA\JsonContent(
-     *                 ref="#/components/schemas/Organisation",
+     *                 ref="#/components/schemas/AdvBlockType",
      *         ),
      *     ),
      *
@@ -207,24 +214,25 @@ class OrganisationsController extends Controller
         return $service->getById($repository, $id);
     }
 
+
     /**
-     * Обновление данных городского портала
+     * Обновление данных типа рекламного блока
      *
-     * @param  Service  $service  Сервис для работы со словарем Организаций
-     * @param  Repository  $repository  Репозиторий для доступа к данным об организациях
-     * @param  int  $id  Идентификатор городского портала
+     * @param Service $service  Сервис для работы со словарем
+     * @param Repository $repository  Репозиторий для доступа к данным
+     * @param  int  $id  Идентификатор типа рекламного блока
      * @return JsonResponse JSON-ответ с результатом операции
      *
      * @OA\Patch(
-     *     path="/api/organisations/{id}",
-     *     tags={"Core/Dictionary/Organisations"},
-     *     summary="Обновление данных организации",
-     *     description="Метод для обновления данных организации.",
+     *     path="/api/advBlockTypes/{id}",
+     *     tags={"Core/Dictionary/AdvBlocks"},
+     *     summary="Обновление данных типа рекламного блока",
+     *     description="Метод для обновления данных типа рекламного блока.",
      *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
-     *         description="Идентификатор организации",
+     *         description="Идентификатор обновляемой записи",
      *         required=true,
      *
      *         @OA\Schema(
@@ -234,16 +242,16 @@ class OrganisationsController extends Controller
      *
      *     @OA\RequestBody(
      *         required=false,
-     *         description="Данные для обновления организации",
+     *         description="Данные для обновления канала",
      *
      *         @OA\JsonContent(
-     *             ref="#/components/schemas/OrganisationRequest",
+     *             ref="#/components/schemas/AdvBlockTypeRequest",
      *         ),
      *     ),
      *
      *     @OA\Response(
      *         response=200,
-     *         description="Успешное обновление данных организации",
+     *         description="Успешное обновление данных",
      *
      *         @OA\JsonContent(
      *             type="boolean",
@@ -274,42 +282,45 @@ class OrganisationsController extends Controller
      */
     public function update(Service $service, Repository $repository, int $id): JsonResponse
     {
-        // TODO: Только администраторы
+        // TODO: Авторизация: Обновлять могут только администраторы
         $request = request()->post();
 
         $validator = Validator::make($request, [
-            'name' => 'required|string|max:255',
+            'is_with_exact_time' => 'required|boolean',
+            'accounting_unit' => [Rule::in(AccountingUnitsEnum::getValuesArray())],
+            'name' => 'required'
         ]);
 
         if ($validator->fails()) {
             return response()->json($validator->errors()->toJson(), 200);
         }
 
-        if (! $request || count($request) == 0) {
+        if (count($validator->validated()) == 0) {
             return response()->json(true, 200);
         }
 
         return $service->update($validator->validated(), $repository, $id);
     }
 
+
     /**
-     * Удаление городского портала
+     * Удаление типа рекламного блока
      *
-     * @param  Service  $service  Сервис для работы со словарем организаций
-     * @param  Repository  $repository  Репозиторий для доступа к данным об организациях
-     * @param  int  $id  Идентификатор городского портала
+     * @param Service $service  Сервис для работы со словарем
+     * @param Repository $repository  Репозиторий для доступа к данным
+     * @param  int  $id  Идентификатор канала
      * @return JsonResponse JSON-ответ с результатом операции
      *
      * @OA\Delete(
-     *     path="/api/organisations/{id}",
-     *     tags={"Core/Dictionary/Organisations"},
-     *     summary="Удаление организации",
-     *     description="Метод для удаления организации.",
+     *     path="/api/advBlockTypes/{id}",
+     *     tags={"Core/Dictionary/AdvBlocks"},
+     *     summary="Удаление типа реклмного блока",
+     *     description="Метод для удаления типа рекламного блока.",
      *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
-     *         description="Идентификатор организации",
+     *         description="Идентификатор типа рекламного блока",
      *         required=true,
      *
      *         @OA\Schema(
@@ -319,7 +330,7 @@ class OrganisationsController extends Controller
      *
      *     @OA\Response(
      *         response=200,
-     *         description="Успешное удаление городского портала",
+     *         description="Успешное удаление канала",
      *
      *         @OA\JsonContent(
      *             type="boolean",

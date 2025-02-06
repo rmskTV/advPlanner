@@ -1,0 +1,11 @@
+{
+    "name": "AdvBlocks",
+    "alias": "advblocks",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\AdvBlocks\\Providers\\AdvBlocksServiceProvider"
+    ],
+    "files": []
+}

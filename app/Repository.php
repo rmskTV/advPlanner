@@ -106,7 +106,7 @@ class Repository
     public function getAll(array $with = [], array $filters = []): LengthAwarePaginator
     {
         $pageNumber = LengthAwarePaginator::resolveCurrentPage();
-        $cacheKey = $this->prefix.'_getAll_flt-'.http_build_query($filters,'','_AND_').'_with-'.implode('-', $with).'_'.$this->paginationCount.'_page'.$pageNumber;
+        $cacheKey = $this->prefix.'_getAll_flt-'.http_build_query($filters, '', '_AND_').'_with-'.implode('-', $with).'_'.$this->paginationCount.'_page'.$pageNumber;
 
         $cachedData = $this->extractListFromCache($cacheKey);
 

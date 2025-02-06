@@ -15,6 +15,7 @@ use Illuminate\Routing\Controller as BaseController;
  *          email="ruslanmoskvitin@gmail.com"
  *      ),
  * ),
+ *
  * @OA\Server(
  *         url="/",
  *         description="localhost"

@@ -8,7 +8,6 @@ Route::group([
     'prefix' => 'salesModels',
 ], function () {
     Route::get('/{id}', [Controller::class, 'show']);
-    Route::get('/byOrganisations/{organisation_id}', [Controller::class, 'indexByOrganisation']);
     Route::get('/', [Controller::class, 'index']);
     Route::put('/', [Controller::class, 'create']);
     Route::patch('/{id}', [Controller::class, 'update']);

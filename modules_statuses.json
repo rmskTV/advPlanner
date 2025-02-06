@@ -3,5 +3,7 @@
     "Channels": true,
     "MediaProduct": true,
     "MediaProducts": true,
-    "SalesModels": true
+    "SalesModels": true,
+    "AdvBlockTypes": false,
+    "AdvBlocks": true
 }

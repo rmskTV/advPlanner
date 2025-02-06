@@ -11,7 +11,6 @@ use Modules\SalesModels\Services\SalesModelService as Service;
 
 class SalesModelsController extends Controller
 {
-
     /**
      * Получение списка моделей продаж
      *
@@ -85,8 +84,6 @@ class SalesModelsController extends Controller
         return $service->getAll($repository);
     }
 
-
-
     /**
      * Добавление модели продаж
      *
@@ -156,9 +153,9 @@ class SalesModelsController extends Controller
         }
 
         // TODO: Авторизация: Сверять с организацией текущего пользователя
-//        if ($request['organisation_id'] != 1) {
-//            return response()->json(['organisation_id' => 'NOT_YOUR_ORGANISATION'], 200);
-//        }
+        //        if ($request['organisation_id'] != 1) {
+        //            return response()->json(['organisation_id' => 'NOT_YOUR_ORGANISATION'], 200);
+        //        }
 
         return $service->create($request, $repository);
     }
@@ -219,9 +216,9 @@ class SalesModelsController extends Controller
     /**
      * Обновление данных модели продаж
      *
-     * @param Service $service Сервис для работы со словарем
-     * @param Repository $repository Репозиторий для доступа к данным
-     * @param int $id Идентификатор  модели продаж
+     * @param  Service  $service  Сервис для работы со словарем
+     * @param  Repository  $repository  Репозиторий для доступа к данным
+     * @param  int  $id  Идентификатор  модели продаж
      * @return JsonResponse JSON-ответ с результатом операции
      *
      * @OA\Patch(
@@ -278,6 +275,7 @@ class SalesModelsController extends Controller
      *         ),
      *     )
      * )
+     *
      * @throws ValidationException
      */
     public function update(Service $service, Repository $repository, int $id): JsonResponse
@@ -300,9 +298,9 @@ class SalesModelsController extends Controller
         }
 
         // TODO: Авторизация: Сверять с организацией текущего пользователя
-//        if (isset($request['organisation_id']) && $request['organisation_id'] != 1) {
-//            return response()->json(['organisation_id' => 'NOT_YOUR_ORGANISATION'], 200);
-//        }
+        //        if (isset($request['organisation_id']) && $request['organisation_id'] != 1) {
+        //            return response()->json(['organisation_id' => 'NOT_YOUR_ORGANISATION'], 200);
+        //        }
 
         return $service->update($validator->validated(), $repository, $id);
     }

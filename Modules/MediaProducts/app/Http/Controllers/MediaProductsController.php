@@ -14,8 +14,8 @@ class MediaProductsController extends Controller
     /**
      * Получение списка медиапродуктов
      *
-     * @param Service $service Сервис для работы со словарем
-     * @param Repository $repository Репозиторий для доступа к данным
+     * @param  Service  $service  Сервис для работы со словарем
+     * @param  Repository  $repository  Репозиторий для доступа к данным
      * @return JsonResponse JSON-ответ с данными
      *
      * @OA\Get(
@@ -23,7 +23,6 @@ class MediaProductsController extends Controller
      *     tags={"Core/Dictionary/MediaProducts"},
      *     summary="Получение списка медиапродуктов",
      *     description="Метод для получения списка списка медиапродуктов",
-     *
      *
      *       @OA\Parameter(
      *          name="channel_id",
@@ -35,7 +34,6 @@ class MediaProductsController extends Controller
      *              type="integer"
      *          )
      *      ),
-     *
      *
      *     @OA\Response(
      *         response=200,
@@ -91,6 +89,7 @@ class MediaProductsController extends Controller
      *         )
      *     )
      * )
+     *
      * @throws ValidationException
      */
     public function index(Service $service, Repository $repository): JsonResponse
@@ -101,6 +100,7 @@ class MediaProductsController extends Controller
         ];
         $validator = Validator::make(request()->all(), $filters);
         $filters = $validator->validated();
+
         return $service->getAll($repository, $filters);
     }
 
@@ -232,9 +232,9 @@ class MediaProductsController extends Controller
     /**
      * Обновление данных медиапродукта
      *
-     * @param Service $service Сервис для работы со словарем
-     * @param Repository $repository Репозиторий для доступа к данным
-     * @param int $id Идентификатор медиапродукта
+     * @param  Service  $service  Сервис для работы со словарем
+     * @param  Repository  $repository  Репозиторий для доступа к данным
+     * @param  int  $id  Идентификатор медиапродукта
      * @return JsonResponse JSON-ответ с результатом операции
      *
      * @OA\Patch(
@@ -291,6 +291,7 @@ class MediaProductsController extends Controller
      *         ),
      *     )
      * )
+     *
      * @throws ValidationException
      */
     public function update(Service $service, Repository $repository, int $id): JsonResponse
