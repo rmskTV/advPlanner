@@ -5,7 +5,6 @@ namespace Modules\AdvBlocks\app\Http\Controllers;
 use App\Enum\AccountingUnitsEnum;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -87,13 +86,11 @@ class AdvBlockTypesController extends Controller
         return $service->getAll($repository);
     }
 
-
-
     /**
      * Добавление типа рекламного блока
      *
-     * @param Service $service  Сервис для работы со словарем
-     * @param Repository $repository  Репозиторий для доступа к данным
+     * @param  Service  $service  Сервис для работы со словарем
+     * @param  Repository  $repository  Репозиторий для доступа к данным
      * @return JsonResponse JSON-ответ с результатом операции
      *
      * @OA\Put(
@@ -150,7 +147,7 @@ class AdvBlockTypesController extends Controller
         $validator = Validator::make($request, [
             'is_with_exact_time' => 'required|boolean',
             'accounting_unit' => [Rule::in(AccountingUnitsEnum::getValuesArray())],
-            'name' => 'required'
+            'name' => 'required',
         ]);
 
         if ($validator->fails()) {
@@ -159,7 +156,6 @@ class AdvBlockTypesController extends Controller
 
         return $service->create($request, $repository);
     }
-
 
     /**
      * Получение типа рекламного блока по идентификатору
@@ -214,12 +210,11 @@ class AdvBlockTypesController extends Controller
         return $service->getById($repository, $id);
     }
 
-
     /**
      * Обновление данных типа рекламного блока
      *
-     * @param Service $service  Сервис для работы со словарем
-     * @param Repository $repository  Репозиторий для доступа к данным
+     * @param  Service  $service  Сервис для работы со словарем
+     * @param  Repository  $repository  Репозиторий для доступа к данным
      * @param  int  $id  Идентификатор типа рекламного блока
      * @return JsonResponse JSON-ответ с результатом операции
      *
@@ -288,7 +283,7 @@ class AdvBlockTypesController extends Controller
         $validator = Validator::make($request, [
             'is_with_exact_time' => 'required|boolean',
             'accounting_unit' => [Rule::in(AccountingUnitsEnum::getValuesArray())],
-            'name' => 'required'
+            'name' => 'required',
         ]);
 
         if ($validator->fails()) {
@@ -302,12 +297,11 @@ class AdvBlockTypesController extends Controller
         return $service->update($validator->validated(), $repository, $id);
     }
 
-
     /**
      * Удаление типа рекламного блока
      *
-     * @param Service $service  Сервис для работы со словарем
-     * @param Repository $repository  Репозиторий для доступа к данным
+     * @param  Service  $service  Сервис для работы со словарем
+     * @param  Repository  $repository  Репозиторий для доступа к данным
      * @param  int  $id  Идентификатор канала
      * @return JsonResponse JSON-ответ с результатом операции
      *

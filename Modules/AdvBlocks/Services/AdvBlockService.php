@@ -3,35 +3,34 @@
 namespace Modules\AdvBlocks\Services;
 
 use Illuminate\Http\JsonResponse;
-use Modules\AdvBlocks\Repositories\AdvBlockTypeRepository as Repository;
+use Modules\AdvBlocks\Repositories\AdvBlockRepository as Repository;
+use Modules\MediaProducts\app\Models\MediaProduct;
 
-class AdvBlockTypeService
+class AdvBlockService
 {
     public function create(array $request, Repository $repository): JsonResponse
     {
-        $params = ['name', 'is_with_exact_time', 'accounting_unit'];
+        $params = ['name', 'comment', 'adv_block_type_id', 'media_product_id', 'is_only_for_package', 'size'];
         $data = [];
         foreach ($params as $param) {
             if (isset($request[$param])) {
                 $data[$param] = $request[$param];
             }
         }
+        if (isset($data['media_product_id'])) {
+            $data['channel_id'] = MediaProduct::query()->find($data['media_product_id'])->channel_id;
+        }
 
         return response()->json($repository->create($data), 201);
     }
 
-    public function getAll(Repository $repository): JsonResponse
+    public function getAll(Repository $repository, array $filters): JsonResponse
     {
-        return response()->json($repository->getAll(), 200);
+        return response()->json($repository->getAll(['advBlockType', 'mediaProduct', 'channel'], $filters), 200);
     }
 
     public function delete(Repository $repository, int $id): JsonResponse
     {
-        // Предустановленные типы удалить нельзя
-        if ($id <= 3) {
-            return response()->json(-1, 404);
-        }
-
         return response()->json($repository->delete($id), 200);
     }
 
@@ -54,6 +53,9 @@ class AdvBlockTypeService
             if (isset($resource->$key)) {
                 $data[$key] = $value;
             }
+        }
+        if (isset($data['media_product_id'])) {
+            $data['channel_id'] = MediaProduct::query()->find($data['media_product_id'])->channel_id;
         }
 
         $updated = $repository->update($id, $data);

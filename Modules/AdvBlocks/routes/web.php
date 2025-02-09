@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Modules\AdvBlocks\Http\Controllers\AdvBlocksController;
+use Modules\AdvBlocks\app\Http\Controllers\AdvBlocksController;
 
 /*
 |--------------------------------------------------------------------------

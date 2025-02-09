@@ -16,8 +16,8 @@ const formFields = [
     [{type: 'text', name: 'name', label: 'Название' }],
     [{type: 'select', name: 'channel_id', label: 'Канал', optionsService: ChannelService }],
     [
-        {type: 'double', name: 'start_time', label: 'Начало трансляции', step: '0.01', min: "0", max: "100", default: '0'},
-        {type: 'double', name: 'duration', label: 'Длительность трансляции', step: '0.01', min: '0', default: '0'}
+        {type: 'time', name: 'start_time', label: 'Начало трансляции', default: '12:00:00'},
+        {type: 'double', name: 'duration', label: 'Длительность трансляции (минут)', step: '0.01', min: '0', default: '0'}
     ],
 
 ];

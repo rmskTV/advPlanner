@@ -19,6 +19,12 @@ use Modules\Channels\app\Models\Channel;
  *      @OA\Property(property="channel_id", type="integer", example="12", description="ID канала размещения мeдиапродукта"),
  *      @OA\Property(property="start_time", type="timestamp", example="12:00:00", description="Время начала трансляции мeдиапродукта"),
  *      @OA\Property(property="duration", type="integer", example="15", description="Длительность (в минутах) мeдиапродукта"),
+ *       @OA\Property(property="channel", type="object", description="Подробное описание канала",
+ *                    ref="#/components/schemas/Channel",
+ *       ),
+ *       @OA\Property(property="organisation", type="object", description="Подробное описание канала",
+ *                    ref="#/components/schemas/Organisation",
+ *       ),
  * )
  *
  * @OA\Schema(

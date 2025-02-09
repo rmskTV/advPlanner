@@ -16,6 +16,9 @@ use Modules\Organisations\app\Models\Organisation;
  *      @OA\Property(property="uuid", type="string", example="14", description="UUID канала"),
  *      @OA\Property(property="name", type="string", example="site.ru", description="Название канала"),
  *      @OA\Property(property="organisation_id", type="integer", example="12", description="ID организации, которой принадлежит канал"),
+ *       @OA\Property(property="organisation", type="object", description="Подробное описание организации",
+ *                    ref="#/components/schemas/Organisation",
+ *       ),
  * )
  *
  * @OA\Schema(

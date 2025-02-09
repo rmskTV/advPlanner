@@ -15,13 +15,14 @@ const props = defineProps({
 onMounted(async () => {
     document.title = props['title'];
     loadFieldOptions(props['formFields']);
+    setupCascadeWatchers(props['formFields'])
 });
 
 const dt = ref();
 
 const {selectedItems,  items, totalRecords, loading, error, perPage, currentPage, filtersValues, loadData,
     item, submitted, itemDialog, openNew, hideDialog, openDialog, sendDeleteRequest,
-    saveItem, deleteItemDialog, deleteItemsDialog, deleteItem, deleteSelectedItems, fieldOptions, applyFilter, loadFieldOptions } = useCrudTable(props.service, props.filters);
+    saveItem, deleteItemDialog, deleteItemsDialog, deleteItem, deleteSelectedItems, fieldOptions, applyFilter, loadFieldOptions, setupCascadeWatchers } = useCrudTable(props.service, props.filters);
 
 
 const onPage = (event) => {
@@ -35,6 +36,9 @@ const setInitialValues = () => {
         fields.forEach(field => {
             if (field.type === 'double' && (item.value[field.name] === null || item.value[field.name] === undefined)) {
                 item.value[field.name] = field.default || 0;
+            }
+            if (field.type === 'time' && (item.value[field.name] === null || item.value[field.name] === undefined)) {
+                item.value[field.name] = field.default || '12:00:00';
             }
         })
 
@@ -96,6 +100,24 @@ const formatBooleanField = (value) => {
     return value;
 
 };
+
+const getValueByPath = (obj, path) => {
+    if (!path) return null;
+
+    const parts = path.split('.');
+    let result = obj;
+
+    for (const part of parts) {
+        if (result && typeof result === 'object' && part in result) {
+            result = result[part];
+        } else {
+            return null;
+        }
+    }
+
+    return result;
+};
+
 </script>
 
 <template>
@@ -164,7 +186,8 @@ const formatBooleanField = (value) => {
                             {{ formatBooleanField(slotProps.data[col.field]) }}
                         </template>
                         <template v-else>
-                            {{ slotProps.data[col.field] }}
+                            {{ getValueByPath(slotProps.data, col.field) }}
+
                         </template>
                     </template>
                 </Column>
@@ -199,8 +222,21 @@ const formatBooleanField = (value) => {
                         >
                             <label :for="field.name" class="block font-bold mb-3">{{ field.label }}</label>
 
+                            <!-- Поле для времени -->
+                            <template v-if="field.type === 'time'">
+                                <InputMask
+                                    :id="field.name"
+                                    v-model="item[field.name]"
+                                    mask="99:99:99"
+                                    placeholder="HH:MM:SS"
+                                    slotChar="0"
+                                    :defaultValue="item[field.name] || field.default"
+                                    class="w-full"
+                                />
+                            </template>
+
                             <!-- Селект -->
-                            <template v-if="field.type === 'select'">
+                            <template v-else-if="field.type === 'select'">
                                 <Dropdown
                                     :id="field.name"
                                     v-model="item[field.name]"

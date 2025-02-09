@@ -10,8 +10,6 @@ enum AccountingUnitsEnum: string
     case SECOND = 'second';
     case RELEASE = 'release';
 
-
-
     public function label(): string
     {
         return match ($this) {
@@ -23,8 +21,6 @@ enum AccountingUnitsEnum: string
         };
     }
 
-
-
     /**
      * Функция возвращает массив всех возможных значений для перечисления.
      *
@@ -35,6 +31,4 @@ enum AccountingUnitsEnum: string
         return array_map(fn (self $case) => $case->value, self::cases());
 
     }
-
-
 }

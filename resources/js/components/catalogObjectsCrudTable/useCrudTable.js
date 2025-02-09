@@ -53,7 +53,20 @@ export function useCrudTable(service, initialFilters = []) {
         for (const field of fields) {
             if (field.type === 'select' && field.optionsService) {
                 try {
-                    const optionsResponse = await field.optionsService.List();
+                    let optionsResponse;
+                    if (field.cascadeDependency) {
+                        // Если селект зависит от другого поля, загружаем опции только если выбрано зависимое поле
+                        const dependencyValue = item.value[field.cascadeDependency];
+                        if (dependencyValue) {
+                            optionsResponse = await field.optionsService.List({ [field.cascadeDependency]: dependencyValue });
+                        } else {
+                            optionsResponse = await field.optionsService.List();
+                        }
+                    } else {
+                        // Обычная загрузка опций
+                        optionsResponse = await field.optionsService.List();
+                    }
+
 
                     const options = optionsResponse.data.map((option) => ({
                         label: option.name,
@@ -66,7 +79,7 @@ export function useCrudTable(service, initialFilters = []) {
                 } catch (err) {
                     toast.add({
                         severity: 'error',
-                        summary: `Ошибка загрузки опций для поля: ${field.label}`,
+                        summary: `Ошибка загрузки опций для поля: ${field.label || field.name}`,
                         detail: 'Не удалось загрузить список опций',
                         life: 3000
                     });
@@ -78,12 +91,34 @@ export function useCrudTable(service, initialFilters = []) {
     }
 
 
+
     watch(perPage, () => {
         loadData(1)
     })
     onMounted(async () => {
         loadData(1);
     });
+
+    const setupCascadeWatchers = (formFields, filters) => {
+        const fields = Array.isArray(formFields[0]) ? formFields.flat() : formFields;
+
+        fields.forEach(field => {
+            if (field.type === 'select' && field.cascade) {
+                // Находим зависимое поле
+                const dependentField = fields.find(f => f.cascadeDependency === field.name);
+
+                if (dependentField) {
+                    watch(
+                        () => item.value[field.name], // Отслеживаем изменение значения поля с cascade
+                        async (newValue) => {
+                            // Когда значение изменяется, перезагружаем опции только для зависимого поля
+                            await loadFieldOptions([dependentField]); // Передаем массив с одним зависимым полем
+                        }
+                    );
+                }
+            }
+        });
+    };
 
     const openNew = async (formFields) => {
         item.value = {};
@@ -249,6 +284,7 @@ export function useCrudTable(service, initialFilters = []) {
         fieldOptions,
         deleteSelectedItems,
         applyFilter,
-        loadFieldOptions
+        loadFieldOptions,
+        setupCascadeWatchers
     };
 }

@@ -42,8 +42,8 @@ class AdvBlockType extends CatalogObject
     protected function accountingUnitLabel(): Attribute
     {
         return Attribute::make(
+            // @phpstan-ignore-next-line
             get: fn () => AccountingUnitsEnum::tryFrom($this->accounting_unit)?->label()
         );
     }
-
 }

@@ -1,7 +1,7 @@
 <?php
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AccountingUnitsController;
 
+use App\Http\Controllers\AccountingUnitsController;
+use Illuminate\Support\Facades\Route;
 
 Route::group([
     'middleware' => ['api'],

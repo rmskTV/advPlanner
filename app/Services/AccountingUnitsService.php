@@ -25,5 +25,4 @@ class AccountingUnitsService
     {
         return response()->json([], 200);
     }
-
 }

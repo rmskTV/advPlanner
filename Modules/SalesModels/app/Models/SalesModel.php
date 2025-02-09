@@ -19,6 +19,9 @@ use Modules\Organisations\app\Models\Organisation;
  *      @OA\Property(property="contragent_id", type="integer", example="12", description="ID контрагента, владельца канала, с которым заключен агентский договор"),
  *      @OA\Property(property="percent", type="float", example="12.00", description="Процент вознаграждения (с продаж) организации"),
  *      @OA\Property(property="guarantee", type="float", example="10000.00", description="Гарантированный платеж владельцу канала"),
+ *      @OA\Property(property="organisation", type="object", description="Подробное описание организации",
+ *                    ref="#/components/schemas/Organisation",
+ *       ),
  * )
  *
  * @OA\Schema(

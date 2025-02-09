@@ -2,9 +2,8 @@
 
 namespace App\Http\Controllers;
 
-
-use Illuminate\Http\JsonResponse;
 use App\Services\AccountingUnitsService as Service;
+use Illuminate\Http\JsonResponse;
 
 class AccountingUnitsController extends Controller
 {
@@ -15,7 +14,7 @@ class AccountingUnitsController extends Controller
      *
      * @OA\Get(
      *     path="/api/accountingUnits",
-     *     tags={"Core/Dictionary/AccountingUnits"},
+     *     tags={"Core/Enum/AccountingUnits"},
      *     summary="Получение списка единиц учета",
      *     description="Метод для получения списка единиц учета.",
      *
@@ -85,5 +84,4 @@ class AccountingUnitsController extends Controller
     {
         return $service->getAll();
     }
-
 }
