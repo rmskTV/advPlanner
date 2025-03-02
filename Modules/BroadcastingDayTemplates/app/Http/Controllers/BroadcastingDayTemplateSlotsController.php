@@ -10,6 +10,7 @@ use Illuminate\Validation\ValidationException;
 use Modules\BroadcastingDayTemplates\Repositories\BroadcastingDayTemplateSlotRepository as Repository;
 use Modules\BroadcastingDayTemplates\Services\BroadcastingDayTemplateSlotService as Service;
 
+//TODO: Добавить бизнесовую валидацию (что start < end и что нет пересекающихся слотов)
 class BroadcastingDayTemplateSlotsController extends Controller
 {
 
