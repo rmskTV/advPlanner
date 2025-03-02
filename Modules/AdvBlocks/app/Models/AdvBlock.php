@@ -4,8 +4,8 @@ namespace Modules\AdvBlocks\app\Models;
 
 use App\Models\CatalogObject;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Modules\Channels\app\Models\Channel;
 use Modules\MediaProducts\app\Models\MediaProduct;
+use Modules\Channels\app\Models\Channel;
 
 /**
  * Класс Модели типа рекламного блока

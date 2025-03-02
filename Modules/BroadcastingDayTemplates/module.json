@@ -1,0 +1,11 @@
+{
+    "name": "BroadcastingDayTemplates",
+    "alias": "broadcastingdaytemplates",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\BroadcastingDayTemplates\\Providers\\BroadcastingDayTemplatesServiceProvider"
+    ],
+    "files": []
+}

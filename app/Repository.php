@@ -85,16 +85,18 @@ class Repository
      * @param  int  $id  Идентификатор записи.
      * @return Model|null Возвращает модель или null, если запись не найдена.
      */
-    public function getById(int $id): ?Model
+    public function getById(int $id, array $with = []): ?Model
     {
-        $cacheKey = $this->prefix.$id;
+        $cacheKey = $this->prefix.$id.'_with-'.implode('-', $with);
         $cachedData = $this->cacheService->get($cacheKey);
 
         if ($cachedData !== null) {
             return $this->model->newFromBuilder(json_decode($cachedData, true));
         }
 
-        $data = $this->model::query()->find($id);
+        $data = $this->model::query()
+            ->with($with)
+            ->find($id);
 
         if ($data !== null) {
             $this->cacheService->set($cacheKey, json_encode($data));

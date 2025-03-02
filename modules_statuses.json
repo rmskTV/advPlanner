@@ -5,5 +5,6 @@
     "MediaProducts": true,
     "SalesModels": true,
     "AdvBlockTypes": false,
-    "AdvBlocks": true
+    "AdvBlocks": true,
+    "BroadcastingDayTemplates": true
 }
