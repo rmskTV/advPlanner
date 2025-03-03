@@ -230,67 +230,60 @@ class BroadcastingDayTemplateSlotsController extends Controller
 
 
     /**
-     * Получение списка слотов по ID шаблона
+     * Получение шаблонов вещания
      *
-     * @OA\Get (
-     *     path="/api/broadcastingDayTemplates/{id}/slots",
+     * @param Service $service Сервис для работы со словарем
+     * @param Repository $repository Репозиторий для доступа к данным
+     * @return JsonResponse JSON-ответ с данными
+     *
+     * @OA\Get(
+     *     path="/api/broadcastingDayTemplateSlots",
      *     tags={"Core/Broadcasting/DayTemplates"},
-     *     summary="Получение списка слотов шаблона вещания",
-     *     description="Метод для получения списка слотов шаблона вещания",
+     *     summary="Получение списка слотов шаблона вещнания.",
+     *     description="Метод для получения списка слота шаблона вещнания.",
      *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         description="Идентификатор записи",
-     *         required=true,
+     *     @OA\Response(
+     *         response=200,
+     *         description="Успешный запрос. Возвращает список.",
      *
-     *         @OA\Schema(
-     *             type="integer"
-     *         )
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="current_page", type="integer"),
+     *             @OA\Property(property="data", type="array",
+     *
+     *                 @OA\Items(
+     *                     ref="#/components/schemas/BroadcastingDayTemplateSlot",
+     *                 )
+     *             ),
+     *
+     *             @OA\Property(property="first_page_url", type="string"),
+     *             @OA\Property(property="from", type="integer"),
+     *             @OA\Property(property="last_page", type="integer"),
+     *             @OA\Property(property="last_page_url", type="string"),
+     *             @OA\Property(property="links", type="array",
+     *
+     *                 @OA\Items(
+     *
+     *                     @OA\Property(property="url", type="string", nullable=true),
+     *                     @OA\Property(property="label", type="string"),
+     *                     @OA\Property(property="active", type="boolean"),
+     *                 )
+     *             ),
+     *             @OA\Property(property="next_page_url", type="string", nullable=true),
+     *             @OA\Property(property="path", type="string"),
+     *             @OA\Property(property="per_page", type="integer"),
+     *             @OA\Property(property="prev_page_url", type="string", nullable=true),
+     *             @OA\Property(property="to", type="integer"),
+     *             @OA\Property(property="total", type="integer"),
+     *         ),
      *     ),
      *
      *     @OA\Response(
-     *          response=200,
-     *          description="Успешный запрос. Возвращает список слотов.",
-     *
-     *          @OA\JsonContent(
-     *
-     *              @OA\Property(property="current_page", type="integer"),
-     *              @OA\Property(property="data", type="array",
-     *
-     *                  @OA\Items(
-     *                      ref="#/components/schemas/BroadcastingDayTemplateSlot",
-     *                  )
-     *              ),
-     *
-     *              @OA\Property(property="first_page_url", type="string"),
-     *              @OA\Property(property="from", type="integer"),
-     *              @OA\Property(property="last_page", type="integer"),
-     *              @OA\Property(property="last_page_url", type="string"),
-     *              @OA\Property(property="links", type="array",
-     *
-     *                  @OA\Items(
-     *
-     *                      @OA\Property(property="url", type="string", nullable=true),
-     *                      @OA\Property(property="label", type="string"),
-     *                      @OA\Property(property="active", type="boolean"),
-     *                  )
-     *              ),
-     *              @OA\Property(property="next_page_url", type="string", nullable=true),
-     *              @OA\Property(property="path", type="string"),
-     *              @OA\Property(property="per_page", type="integer"),
-     *              @OA\Property(property="prev_page_url", type="string", nullable=true),
-     *              @OA\Property(property="to", type="integer"),
-     *              @OA\Property(property="total", type="integer"),
-     *          ),
-     *      ),
-     *
-     *     @OA\Response(
      *         response=404,
-     *         description="Запись не найдена",
+     *         description="Записи не найдены",
      *
      *         @OA\JsonContent(
-     *             example={"message": "Запись не найдена"}
+     *             example={"message": "Записи не найдены"}
      *         )
      *     ),
      *
@@ -303,10 +296,18 @@ class BroadcastingDayTemplateSlotsController extends Controller
      *         )
      *     )
      * )
+     * @throws ValidationException
      */
-    public function index(Service $service, Repository $repository, int $id): JsonResponse
+    public function index(Service $service, Repository $repository): JsonResponse
     {
-        return $service->getSlots($repository, $id);
+
+        $filters = [
+            'broadcasting_day_template_id' => 'nullable|integer|min:1',
+        ];
+        $validator = Validator::make(request()->all(), $filters);
+        $filters = $validator->validated();
+
+        return $service->getAll($repository, $filters);
     }
 
 

@@ -26,7 +26,6 @@ Route::group([
     Route::put('/', [BroadcastingDayTemplatesController::class, 'create']);
     Route::patch('/{id}', [BroadcastingDayTemplatesController::class, 'update']);
     Route::delete('/{id}', [BroadcastingDayTemplatesController::class, 'destroy']);
-    Route::get('/{id}/slots', [BroadcastingDayTemplateSlotsController::class, 'index']);
 });
 
 /** BroadcastingDayTemplateSlots */
@@ -34,6 +33,7 @@ Route::group([
     'middleware' => ['api'],
     'prefix' => 'broadcastingDayTemplateSlots',
 ], function () {
+    Route::get('/', [BroadcastingDayTemplateSlotsController::class, 'index']);
     Route::put('/', [BroadcastingDayTemplateSlotsController::class, 'create']);
     Route::patch('/{id}', [BroadcastingDayTemplateSlotsController::class, 'update']);
     Route::delete('/{id}', [BroadcastingDayTemplateSlotsController::class, 'destroy']);

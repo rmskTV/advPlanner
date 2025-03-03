@@ -4,7 +4,7 @@ import { FilterMatchMode } from '@primevue/core/api';
 import { useToast } from 'primevue/usetoast';
 
 
-export function useCrudTable(service, initialFilters = []) {
+export function useCrudTable(service, initialFilters = [], parentFilter = { name: null, value: null })  {
     const toast = useToast();
     const item = ref({});
     const submitted = ref(false);
@@ -22,13 +22,15 @@ export function useCrudTable(service, initialFilters = []) {
     const filtersValues = ref({}); // Новое свойство для активных фильтров
 
     const loadData = async (page = 1, perPageValue = perPage.value) => {
+        console.log(parentFilter);
         loading.value = true;
         error.value = null;
         try {
             const params = {
                 page: page.v,
                 per_page: perPageValue,
-                ...filtersValues.value // Добавляем активные фильтры в запрос
+                ...filtersValues.value,
+                [parentFilter.name]: parentFilter.value, // Добавляем parentFilter// Добавляем активные фильтры в запрос
             };
             const data = await service.List(params);
             items.value = data.data;
@@ -89,7 +91,6 @@ export function useCrudTable(service, initialFilters = []) {
             }
         }
     }
-
 
 
     watch(perPage, () => {

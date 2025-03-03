@@ -140,10 +140,10 @@ const model = ref([
                         ]
                     },
                     {
-                        label: 'Module 2',
+                        label: 'Вещание',
                         icon: 'pi pi-fw pi-sitemap',
                         items: [
-                            { label: 'Submenu 1.2.1', icon: 'pi pi-fw pi-bookmark' }
+                            { label: 'Суточные шаблоны', icon: 'pi pi-fw pi-sitemap', to: '/broadcastingDayTemplates' },
                         ]
                     }
                 ]

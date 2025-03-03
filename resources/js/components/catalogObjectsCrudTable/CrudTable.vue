@@ -2,6 +2,13 @@
 <script setup>
 import { useCrudTable } from './useCrudTable.js';
 import {onMounted, ref, watch} from 'vue';
+import GenericCrudTable from './CrudTable.vue';
+import { computed } from 'vue';
+
+
+const dialogWidth = computed(() => {
+    return props.hasManyRelations.length > 0 ? '900px' : '600px';
+});
 
 const props = defineProps({
     service: { type: Object, required: true },
@@ -9,6 +16,14 @@ const props = defineProps({
     formFields: { type: Array, required: true },
     title: { type: String, default: '' },
     filters: { type: Array, default: () => [] },
+    hasManyRelations: {
+        type: Array,
+        default: () => [],
+    },
+    parentFilter: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 
@@ -22,7 +37,7 @@ const dt = ref();
 
 const {selectedItems,  items, totalRecords, loading, error, perPage, currentPage, filtersValues, loadData,
     item, submitted, itemDialog, openNew, hideDialog, openDialog, sendDeleteRequest,
-    saveItem, deleteItemDialog, deleteItemsDialog, deleteItem, deleteSelectedItems, fieldOptions, applyFilter, loadFieldOptions, setupCascadeWatchers } = useCrudTable(props.service, props.filters);
+    saveItem, deleteItemDialog, deleteItemsDialog, deleteItem, deleteSelectedItems, fieldOptions, applyFilter, loadFieldOptions, setupCascadeWatchers } = useCrudTable(props.service, props.filters, props.parentFilter);
 
 
 const onPage = (event) => {
@@ -208,7 +223,7 @@ const getValueByPath = (obj, path) => {
 
         <Dialog
             v-model:visible="itemDialog"
-            :style="{ width: '600px' }"
+            :style="{ width: dialogWidth }"
             :header="title"
             :modal="true"
         >
@@ -271,6 +286,26 @@ const getValueByPath = (obj, path) => {
                                 >{{ field.label }} - обязательный атрибут.</small>
                             </template>
 
+                            <!-- Дабл -->
+                            <template v-else-if="field.type === 'integer'">
+                                <InputNumber
+                                    :id="field.name"
+                                    v-model="item[field.name]"
+                                    :step="field.step"
+                                    :min="field.min"
+                                    :max="field.max"
+                                    :maxfractiondigits="0"
+                                    :default-value="item[field.name] || field.default"
+                                    mode="decimal"
+                                    :invalid="submitted && !item[field.name]"
+                                    class="w-full"
+                                />
+                                <small
+                                    v-if="submitted && !item[field.name]"
+                                    class="text-red-500"
+                                >{{ field.label }} - обязательный атрибут.</small>
+                            </template>
+
                             <!-- Чекбокс -->
                             <template v-else-if="field.type === 'checkbox'">
                                 <Checkbox
@@ -301,6 +336,27 @@ const getValueByPath = (obj, path) => {
                     </div>
                 </div>
             </div>
+
+            <!-- Вкладки для has many связей -->
+            <TabView v-if="item.id">
+                <TabPanel
+                    v-for="relation in hasManyRelations"
+                    :key="relation.name"
+                    :header="relation.label"
+                >
+                    <GenericCrudTable
+                        :service="relation.service"
+                        :columns="relation.columns"
+                        :formFields="relation.formFields"
+                        :title="relation.label"
+                        :filters="relation.filters"
+                        :parentFilter="{
+                            name: relation.parentFilterName,
+                            value: item.id,
+                        }"
+                    />
+                </TabPanel>
+            </TabView>
 
             <template #footer>
                 <Button label="Отмена" icon="pi pi-times" text @click="hideDialog" />

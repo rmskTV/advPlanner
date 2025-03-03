@@ -8,9 +8,9 @@ use Modules\BroadcastingDayTemplates\Repositories\BroadcastingDayTemplateSlotRep
 class BroadcastingDayTemplateSlotService
 {
 
-    public function getSlots(Repository $repository, int $id): JsonResponse
+    public function getAll(Repository $repository, array $filters): JsonResponse
     {
-        return response()->json($repository->getAll([],['broadcasting_day_template_id' => $id]), 200);
+        return response()->json($repository->getAll([], $filters), 200);
     }
     public function create(array $request, Repository $repository): JsonResponse
     {
