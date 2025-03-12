@@ -12,8 +12,8 @@ const columns = [
 
 const formFields = [
     [{type: 'text', name: 'name', label: 'Название'}],
-    [{type: 'integer', name: 'start_hour', label: 'Начальный час', min: 0, max: 23, default: 6}],
-    [{type: 'select', name: 'channel_id', label: 'Канал', optionsService: ChannelService }],
+    [{type: 'integer', name: 'start_hour', label: 'Начальный час', min: 0, max: 23, default: 6},
+    {type: 'select', name: 'channel_id', label: 'Канал', optionsService: ChannelService }],
 ];
 
 const filters = [
@@ -37,8 +37,8 @@ const hasManyRelations = [
         ],
         formFields: [
             [{ type: "text", name: "name", label: "Название" }],
-            [{ type: "time", name: "start", label: "Начало" }],
-            [{ type: "time", name: "end", label: "Окончание" }],
+            [{ type: "integer", name: "start", label: "Начало (минут с начала шаблона)" }],
+            [{ type: "integer", name: "end", label: "Окончание (минут с начала шаблона)" }],
         ],
         filters: [],
         parentFilterName: "broadcasting_day_template_id", // Имя фильтра для parentId

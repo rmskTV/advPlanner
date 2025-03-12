@@ -7,7 +7,7 @@ import { computed } from 'vue';
 
 
 const dialogWidth = computed(() => {
-    return props.hasManyRelations.length > 0 ? '900px' : '600px';
+    return props.hasManyRelations.length > 0 ? '1000px' : '600px';
 });
 
 const props = defineProps({
