@@ -1,7 +1,7 @@
 import {BaseCrudService} from './BaseCrudService.js';
-class SalesModelsService extends BaseCrudService {
+class AdvBlocksService extends BaseCrudService {
     constructor() {
         super('advBlocks');
     }
 }
-export default new SalesModelsService();
+export default new AdvBlocksService();
