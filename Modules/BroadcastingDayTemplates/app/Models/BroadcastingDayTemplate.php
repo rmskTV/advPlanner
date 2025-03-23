@@ -3,11 +3,9 @@
 namespace Modules\BroadcastingDayTemplates\app\Models;
 
 use App\Models\CatalogObject;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Modules\AdvBlocks\app\Models\AdvBlockType;
 use Modules\Channels\app\Models\Channel;
 
 /**
@@ -41,7 +39,6 @@ class BroadcastingDayTemplate extends CatalogObject
      * The attributes that are mass assignable.
      */
     protected $fillable = ['name', 'comment', 'channel_id', 'start_hour'];
-
 
     public function channel(): HasOne
     {

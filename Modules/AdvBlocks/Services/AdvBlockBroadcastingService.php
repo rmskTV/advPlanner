@@ -1,32 +1,35 @@
 <?php
 
-namespace Modules\BroadcastingDayTemplates\Services;
+namespace Modules\AdvBlocks\Services;
 
 use Illuminate\Http\JsonResponse;
-use Modules\BroadcastingDayTemplates\Repositories\BroadcastingDayTemplateRepository as Repository;
+use Modules\AdvBlocks\app\Models\AdvBlock;
+use Modules\AdvBlocks\Repositories\AdvBlockBroadcastingRepository as Repository;
 
-class BroadcastingDayTemplateService
+class AdvBlockBroadcastingService
 {
     public function create(array $request, Repository $repository): JsonResponse
     {
-        $params = ['name', 'comment', 'channel_id', 'start_hour'];
+        $params = ['broadcast_at', 'adv_block_id'];
         $data = [];
         foreach ($params as $param) {
             if (isset($request[$param])) {
                 $data[$param] = $request[$param];
             }
         }
+        $data['channel_id'] = AdvBlock::query()->find($data['adv_block_id'])->channel_id;
 
         return response()->json($repository->create($data), 201);
     }
 
     public function getAll(Repository $repository, array $filters): JsonResponse
     {
-        return response()->json($repository->getAll(['channel'], $filters), 200);
+        return response()->json($repository->getAll(['channel', 'advBlock'], $filters), 200);
     }
 
     public function delete(Repository $repository, int $id): JsonResponse
     {
+
         return response()->json($repository->delete($id), 200);
     }
 
@@ -50,6 +53,11 @@ class BroadcastingDayTemplateService
                 $data[$key] = $value;
             }
         }
+
+        if (isset($data['adv_block_id'])) {
+            $data['channel_id'] = AdvBlock::query()->find($data['adv_block_id'])->channel_id;
+        }
+
         $updated = $repository->update($id, $data);
 
         return response()->json($updated, ($updated) ? 200 : 201);

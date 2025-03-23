@@ -4,21 +4,19 @@ namespace Modules\BroadcastingDayTemplates\app\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Modules\BroadcastingDayTemplates\Repositories\BroadcastingDayTemplateSlotRepository as Repository;
 use Modules\BroadcastingDayTemplates\Services\BroadcastingDayTemplateSlotService as Service;
 
-//TODO: Добавить бизнесовую валидацию (что start < end и что нет пересекающихся слотов)
+// TODO: Добавить бизнесовую валидацию (что start < end и что нет пересекающихся слотов)
 class BroadcastingDayTemplateSlotsController extends Controller
 {
-
     /**
      * Добавление слота в шаблон вещания
      *
-     * @param Service $service  Сервис для работы со словарем
-     * @param Repository $repository  Репозиторий для доступа к данным
+     * @param  Service  $service  Сервис для работы со словарем
+     * @param  Repository  $repository  Репозиторий для доступа к данным
      * @return JsonResponse JSON-ответ с результатом операции
      *
      * @OA\Put(
@@ -87,13 +85,11 @@ class BroadcastingDayTemplateSlotsController extends Controller
         return $service->create($request, $repository);
     }
 
-
-
     /**
      * Обновление данных шаблона вещания
      *
-     * @param Service $service  Сервис для работы со словарем
-     * @param Repository $repository  Репозиторий для доступа к данным
+     * @param  Service  $service  Сервис для работы со словарем
+     * @param  Repository  $repository  Репозиторий для доступа к данным
      * @param  int  $id  Идентификатор рекламного блока
      * @return JsonResponse JSON-ответ с результатом операции
      *
@@ -181,8 +177,8 @@ class BroadcastingDayTemplateSlotsController extends Controller
     /**
      * Удаление слота шаблона вещания
      *
-     * @param Service $service  Сервис для работы со словарем
-     * @param Repository $repository  Репозиторий для доступа к данным
+     * @param  Service  $service  Сервис для работы со словарем
+     * @param  Repository  $repository  Репозиторий для доступа к данным
      * @param  int  $id  Идентификатор шаблона
      * @return JsonResponse JSON-ответ с результатом операции
      *
@@ -228,12 +224,11 @@ class BroadcastingDayTemplateSlotsController extends Controller
         return $service->delete($repository, $id);
     }
 
-
     /**
      * Получение шаблонов вещания
      *
-     * @param Service $service Сервис для работы со словарем
-     * @param Repository $repository Репозиторий для доступа к данным
+     * @param  Service  $service  Сервис для работы со словарем
+     * @param  Repository  $repository  Репозиторий для доступа к данным
      * @return JsonResponse JSON-ответ с данными
      *
      * @OA\Get(
@@ -296,6 +291,7 @@ class BroadcastingDayTemplateSlotsController extends Controller
      *         )
      *     )
      * )
+     *
      * @throws ValidationException
      */
     public function index(Service $service, Repository $repository): JsonResponse
@@ -309,6 +305,4 @@ class BroadcastingDayTemplateSlotsController extends Controller
 
         return $service->getAll($repository, $filters);
     }
-
-
 }

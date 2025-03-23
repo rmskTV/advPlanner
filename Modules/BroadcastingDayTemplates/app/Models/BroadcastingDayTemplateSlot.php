@@ -5,7 +5,6 @@ namespace Modules\BroadcastingDayTemplates\app\Models;
 use App\Models\CatalogObject;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-
 /**
  * Класс Модели слота суточного шаблона вещания
  *
@@ -39,5 +38,4 @@ class BroadcastingDayTemplateSlot extends CatalogObject
      * The attributes that are mass assignable.
      */
     protected $fillable = ['name', 'comment', 'broadcasting_day_template_id', 'start', 'end'];
-
 }

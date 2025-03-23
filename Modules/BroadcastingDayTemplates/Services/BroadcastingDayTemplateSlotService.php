@@ -7,11 +7,11 @@ use Modules\BroadcastingDayTemplates\Repositories\BroadcastingDayTemplateSlotRep
 
 class BroadcastingDayTemplateSlotService
 {
-
     public function getAll(Repository $repository, array $filters): JsonResponse
     {
         return response()->json($repository->getAll([], $filters), 200);
     }
+
     public function create(array $request, Repository $repository): JsonResponse
     {
         $params = ['name', 'comment', 'broadcasting_day_template_id', 'start', 'end'];
@@ -25,7 +25,6 @@ class BroadcastingDayTemplateSlotService
         return response()->json($repository->create($data), 201);
     }
 
-
     public function update(array $request, Repository $repository, int $id): JsonResponse
     {
         $data = [];
@@ -37,6 +36,7 @@ class BroadcastingDayTemplateSlotService
             }
         }
         $updated = $repository->update($id, $data);
+
         return response()->json($updated, ($updated) ? 200 : 201);
     }
 

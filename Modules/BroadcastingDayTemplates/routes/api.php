@@ -15,7 +15,6 @@ use Modules\BroadcastingDayTemplates\app\Http\Controllers\BroadcastingDayTemplat
  *
 */
 
-
 /** BroadcastingDayTemplates */
 Route::group([
     'middleware' => ['api'],

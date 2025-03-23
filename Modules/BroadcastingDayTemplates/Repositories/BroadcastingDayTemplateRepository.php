@@ -12,5 +12,4 @@ class BroadcastingDayTemplateRepository extends Repository
     {
         parent::__construct($model, 'broadcastingDayTemplate', $cacheService, 10);
     }
-
 }

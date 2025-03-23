@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Modules\AdvBlocks\app\Http\Controllers\AdvBlockBroadcastingController;
 use Modules\AdvBlocks\app\Http\Controllers\AdvBlocksController;
 use Modules\AdvBlocks\app\Http\Controllers\AdvBlockTypesController;
 
@@ -37,4 +38,16 @@ Route::group([
     Route::put('/', [AdvBlocksController::class, 'create']);
     Route::patch('/{id}', [AdvBlocksController::class, 'update']);
     Route::delete('/{id}', [AdvBlocksController::class, 'destroy']);
+});
+
+/** AdvBlocksBroadcasting */
+Route::group([
+    'middleware' => ['api'],
+    'prefix' => 'advBlocksBroadcasting',
+], function () {
+    Route::get('/{id}', [AdvBlockBroadcastingController::class, 'show']);
+    Route::get('/', [AdvBlockBroadcastingController::class, 'index']);
+    Route::put('/', [AdvBlockBroadcastingController::class, 'create']);
+    Route::patch('/{id}', [AdvBlockBroadcastingController::class, 'update']);
+    Route::delete('/{id}', [AdvBlockBroadcastingController::class, 'destroy']);
 });

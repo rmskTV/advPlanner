@@ -14,6 +14,11 @@ const router = createRouter({
                     component: () => import('@/views/Dashboard.vue')
                 },
                 {
+                    path: '/advBlocksGrid',
+                    name: 'advBlocksGrid',
+                    component: () => import('@/views/pages/AdvBlocksGrid/Index.vue')
+                },
+                {
                     path: '/organisations',
                     name: 'organisationsList',
                     component: () => import('@/views/pages/Organisations/Index.vue')

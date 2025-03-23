@@ -1,32 +1,32 @@
 <?php
 
-namespace Modules\BroadcastingDayTemplates\app\Http\Controllers;
+namespace Modules\AdvBlocks\app\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
-use Modules\BroadcastingDayTemplates\Repositories\BroadcastingDayTemplateRepository as Repository;
-use Modules\BroadcastingDayTemplates\Services\BroadcastingDayTemplateService as Service;
+use Modules\AdvBlocks\Repositories\AdvBlockBroadcastingRepository as Repository;
+use Modules\AdvBlocks\Services\AdvBlockBroadcastingService as Service;
 
-class BroadcastingDayTemplatesController extends Controller
+class AdvBlockBroadcastingController extends Controller
 {
     /**
-     * Получение шаблонов вещания
+     * Получение списка выходов рекламных блоков
      *
      * @param  Service  $service  Сервис для работы со словарем
      * @param  Repository  $repository  Репозиторий для доступа к данным
      * @return JsonResponse JSON-ответ с данными
      *
      * @OA\Get(
-     *     path="/api/broadcastingDayTemplates",
-     *     tags={"Core/Broadcasting/DayTemplates"},
-     *     summary="Получение списка шаблонов вещнания.",
-     *     description="Метод для получения списка шаблонов вещнания.",
+     *     path="/api/advBlocksBroadcasting",
+     *     tags={"Core/Broadcasting/AdvBlocksBroadcasting"},
+     *     summary="Получение списка выходов рекламных блоков.",
+     *     description="Метод для получения списка типов рекламного блока.",
      *
      *     @OA\Response(
      *         response=200,
-     *         description="Успешный запрос. Возвращает список.",
+     *         description="Успешный запрос. Возвращает список типов рекламного блока.",
      *
      *         @OA\JsonContent(
      *
@@ -34,7 +34,7 @@ class BroadcastingDayTemplatesController extends Controller
      *             @OA\Property(property="data", type="array",
      *
      *                 @OA\Items(
-     *                     ref="#/components/schemas/BroadcastingDayTemplate",
+     *                     ref="#/components/schemas/AdvBlockBroadcasting",
      *                 )
      *             ),
      *
@@ -85,6 +85,10 @@ class BroadcastingDayTemplatesController extends Controller
     {
         $filters = [
             'channel_id' => 'nullable|integer|min:1',
+            'adv_block_id' => 'nullable|integer|min:1',
+            'broadcast_at_from' => 'nullable|date', // Фильтр "от"
+            'broadcast_at_to' => 'nullable|date',   // Фильтр "до"
+
         ];
         $validator = Validator::make(request()->all(), $filters);
         $filters = $validator->validated();
@@ -93,26 +97,26 @@ class BroadcastingDayTemplatesController extends Controller
     }
 
     /**
-     * Добавление шаблона вещания
+     * Добавление типа рекламного блока
      *
      * @param  Service  $service  Сервис для работы со словарем
      * @param  Repository  $repository  Репозиторий для доступа к данным
      * @return JsonResponse JSON-ответ с результатом операции
      *
      * @OA\Put(
-     *     path="/api/broadcastingDayTemplates",
-     *     tags={"Core/Broadcasting/DayTemplates"},
-     *     summary="Создание нового шаблолна вещания",
-     *     description="Метод для создания нового шаблона вещания.",
+     *     path="/api/advBlocksBroadcasting",
+     *     tags={"Core/Broadcasting/AdvBlocksBroadcasting"},
+     *     summary="Создание нового выхода рекламного блока",
+     *     description="Метод для создания выхода рекламного блока.",
      *
      *     @OA\RequestBody(
      *         required=true,
      *         description="Данные для создания новой записи",
      *
      *         @OA\JsonContent(
-     *             required={"name", "channel_id", "start_hour", "comment"},
+     *             required={"adv_block_id", "broadcast_at"},
      *
-     *             ref="#/components/schemas/BroadcastingDayTemplateRequest",
+     *             ref="#/components/schemas/AdvBlockBroadcastingRequest",
      *         ),
      *     ),
      *
@@ -151,10 +155,9 @@ class BroadcastingDayTemplatesController extends Controller
         $request = request()->post();
 
         $validator = Validator::make($request, [
-            'name' => 'required|string|max:255',
-            'comment' => 'string|nullable|max:255',
-            'channel_id' => 'required|integer|exists:channels,id',
-            'start_hour' => 'required|integer|min:0|max:23',
+            'broadcast_at' => 'required|date_format:Y-m-d H:i:s',
+            'adv_block_id' => 'required|exists:adv_blocks,id',
+            'size' => 'required|numeric|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -168,10 +171,10 @@ class BroadcastingDayTemplatesController extends Controller
      * Получение типа рекламного блока по идентификатору
      *
      * @OA\Get (
-     *     path="/api/broadcastingDayTemplates/{id}",
-     *     tags={"Core/Broadcasting/DayTemplates"},
-     *     summary="Получение информации о шаблоне вещания",
-     *     description="Метод для получения информации о шаблоне вещания",
+     *     path="/api/advBlocksBroadcasting/{id}",
+     *     tags={"Core/Broadcasting/AdvBlocksBroadcasting"},
+     *     summary="Получение информации о выходе  рекламного блока",
+     *     description="Метод для получения информации о выходе рекламного блока по его идентификатору",
      *
      *     @OA\Parameter(
      *         name="id",
@@ -189,7 +192,7 @@ class BroadcastingDayTemplatesController extends Controller
      *         description="Успешный запрос. Возвращает информацию о медиапродукте.",
      *
      *         @OA\JsonContent(
-     *                 ref="#/components/schemas/BroadcastingDayTemplate",
+     *                 ref="#/components/schemas/AdvBlockBroadcasting",
      *         ),
      *     ),
      *
@@ -218,18 +221,18 @@ class BroadcastingDayTemplatesController extends Controller
     }
 
     /**
-     * Обновление данных шаблона вещания
+     * Обновление данных типа рекламного блока
      *
      * @param  Service  $service  Сервис для работы со словарем
      * @param  Repository  $repository  Репозиторий для доступа к данным
-     * @param  int  $id  Идентификатор рекламного блока
+     * @param  int  $id  Идентификатор типа рекламного блока
      * @return JsonResponse JSON-ответ с результатом операции
      *
      * @OA\Patch(
-     *     path="/api/broadcastingDayTemplates/{id}",
-     *     tags={"Core/Broadcasting/DayTemplates"},
-     *     summary="Обновление данных шаблона вещания",
-     *     description="Метод для обновления данных шаблона вещания.",
+     *     path="/api/advBlocksBroadcasting/{id}",
+     *     tags={"Core/Broadcasting/AdvBlocksBroadcasting"},
+     *     summary="Обновление данных типа рекламного блока",
+     *     description="Метод для обновления данных типа рекламного блока.",
      *
      *     @OA\Parameter(
      *         name="id",
@@ -247,7 +250,7 @@ class BroadcastingDayTemplatesController extends Controller
      *         description="Данные для обновления канала",
      *
      *         @OA\JsonContent(
-     *             ref="#/components/schemas/BroadcastingDayTemplateRequest",
+     *             ref="#/components/schemas/AdvBlockBroadcastingRequest",
      *         ),
      *     ),
      *
@@ -284,14 +287,13 @@ class BroadcastingDayTemplatesController extends Controller
      */
     public function update(Service $service, Repository $repository, int $id): JsonResponse
     {
-
+        // TODO: Авторизация: Обновлять могут только администраторы
         $request = request()->post();
 
         $validator = Validator::make($request, [
-            'name' => 'required|string|max:255',
-            'comment' => 'string|nullable|max:255',
-            'channel_id' => 'required|integer|exists:channels,id',
-            'start_hour' => 'required|integer|min:0|max:23',
+            'broadcast_at' => 'required|date_format:Y-m-d H:i:s',
+            'adv_block_id' => 'required|exists:adv_blocks,id',
+            'size' => 'required|numeric|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -306,23 +308,23 @@ class BroadcastingDayTemplatesController extends Controller
     }
 
     /**
-     * Удаление рекламного блока
+     * Удаление типа рекламного блока
      *
      * @param  Service  $service  Сервис для работы со словарем
      * @param  Repository  $repository  Репозиторий для доступа к данным
-     * @param  int  $id  Идентификатор шаблона
+     * @param  int  $id  Идентификатор канала
      * @return JsonResponse JSON-ответ с результатом операции
      *
      * @OA\Delete(
-     *     path="/api/broadcastingDayTemplates/{id}",
-     *     tags={"Core/Broadcasting/DayTemplates"},
-     *     summary="Удаление шаблона вещания",
-     *     description="Метод для удаления шаблона вещания.",
+     *     path="/api/advBlocksBroadcasting/{id}",
+     *     tags={"Core/Broadcasting/AdvBlocksBroadcasting"},
+     *     summary="Удаление выхода реклмного блока",
+     *     description="Метод для удаления выхода рекламного блока.",
      *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
-     *         description="Идентификатор записи",
+     *         description="Идентификатор типа рекламного блока",
      *         required=true,
      *
      *         @OA\Schema(
@@ -352,6 +354,7 @@ class BroadcastingDayTemplatesController extends Controller
      */
     public function destroy(Service $service, Repository $repository, int $id): JsonResponse
     {
+        // TODO: Авторизация: Удалять могут только администраторы
         return $service->delete($repository, $id);
     }
 }

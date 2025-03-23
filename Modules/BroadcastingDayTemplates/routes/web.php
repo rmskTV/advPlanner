@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Modules\BroadcastingDayTemplates\Http\Controllers\BroadcastingDayTemplatesController;
+use Modules\BroadcastingDayTemplates\app\Http\Controllers\BroadcastingDayTemplatesController;
 
 /*
 |--------------------------------------------------------------------------
