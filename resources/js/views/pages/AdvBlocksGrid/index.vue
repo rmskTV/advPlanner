@@ -252,7 +252,88 @@ const loadChannels = async () => {
         loadingChannels.value = false;
     }
 };
+const handleAdd = async () => {
+    try {
+        // Проверка заполнения обязательных полей
+        if (!selectedAdvBlock.value || !startDate.value || !endDate.value || !time.value || !size.value || selectedDays.value.length === 0) {
+            throw new Error('Заполните все обязательные поля');
+        }
 
+        // Проверка формата времени
+        const timeParts = time.value.split(':');
+        if (timeParts.length !== 3) {
+            throw new Error('Неверный формат времени. Используйте hh:mm:ss');
+        }
+
+        const [hours, minutes, seconds] = timeParts.map(part => parseInt(part));
+        if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) {
+            throw new Error('Неверный формат времени');
+        }
+
+        // Получаем даты с учетом исправленного маппинга дней
+        const dates = getDatesInRange(startDate.value, endDate.value, selectedDays.value);
+
+        // Создаем и выполняем все запросы параллельно
+        const requests = dates.map(date => {
+            const broadcastAt = new Date(date);
+            broadcastAt.setHours(hours, minutes, seconds);
+
+            return axios.put('/api/advBlocksBroadcasting', {
+                broadcast_at: formatDateTime(broadcastAt),
+                adv_block_id: selectedAdvBlock.value.id,
+                size: size.value
+            });
+        });
+
+        await Promise.all(requests);
+        // Закрываем модалку
+        isModalVisible.value = false;
+        // Обновляем данные таблицы используя СУЩЕСТВУЮЩИЙ метод
+        await fetchData();
+
+        console.log('Все выходы успешно добавлены');
+
+    } catch (error) {
+        console.error('Ошибка при добавлении выходов:', error);
+        // Здесь можно добавить отображение ошибки пользователю
+    }
+};
+
+// Функция для форматирования даты в Y-m-d H:i:s
+const formatDateTime = (date) => {
+    const pad = num => num.toString().padStart(2, '0');
+
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ` +
+        `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+};
+
+// Функция для получения всех дат в диапазоне с учетом дней недели
+const getDatesInRange = (startDate, endDate, selectedDays) => {
+    const daysMap = {
+        'mon': 1,
+        'tue': 2,
+        'wed': 3,
+        'thu': 4,
+        'fri': 5,
+        'sat': 6,
+        'sun': 0
+    };
+
+    const selectedDayNumbers = selectedDays.map(day => daysMap[day]);
+    const dates = [];
+    const currentDate = new Date(startDate);
+    const end = new Date(endDate);
+
+    while (currentDate <= end) {
+        const dayOfWeek = currentDate.getDay();
+        if (selectedDayNumbers.includes(dayOfWeek)) {
+            dates.push(new Date(currentDate));
+        }
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return dates;
+};
 const formatTime = (time) => {
     return time.slice(0, 5); // Оставляем только часы и минуты (HH:MM)
 };
@@ -288,16 +369,51 @@ const fetchData = async () => {
 
     loading.value = true;
     error.value = null;
+    gridData.value = []; // Очищаем предыдущие данные
 
     try {
-        const params = {
+        const baseParams = {
             channel_id: selectedChannel.value.id,
             broadcast_at_from: startDate.value.toISOString().split('T')[0],
             broadcast_at_to: endDate.value.toISOString().split('T')[0],
         };
 
-        const response = await axios.get('/api/advBlocksBroadcasting', { params });
-        gridData.value = transformData(response.data.data);
+        // Сначала загружаем первую страницу
+        const firstPageResponse = await axios.get('/api/advBlocksBroadcasting', {
+            params: baseParams
+        });
+
+        const { data: firstPageData, last_page: lastPage } = firstPageResponse.data;
+
+        // Добавляем данные первой страницы
+        gridData.value = transformData(firstPageData);
+
+        // Если есть еще страницы - загружаем их все
+        if (lastPage > 1) {
+            const pagePromises = [];
+
+            // Создаем промисы для всех оставшихся страниц
+            for (let page = 2; page <= lastPage; page++) {
+                pagePromises.push(
+                    axios.get('/api/advBlocksBroadcasting', {
+                        params: {
+                            ...baseParams,
+                            page
+                        }
+                    })
+                );
+            }
+
+            // Ожидаем загрузку всех страниц
+            const responses = await Promise.all(pagePromises);
+
+            // Обрабатываем данные со всех страниц
+            responses.forEach(response => {
+                const transformed = transformData(response.data.data);
+                gridData.value.push(...transformed);
+            });
+        }
+
     } catch (err) {
         error.value = 'Не удалось загрузить данные';
         console.error('Ошибка загрузки данных:', err);
@@ -393,21 +509,6 @@ const deselectAllDays = () => {
     selectedDays.value = [];
 };
 
-// Обработчик добавления
-const handleAdd = () => {
-    // Логика отправки данных на бэк
-    console.log({
-        advBlock: selectedAdvBlock.value,
-        startDate: startDateForm.value,
-        endDate: endDateForm.value,
-        size: size.value,
-        time: time.value,
-        days: selectedDays.value,
-    });
-
-    // Закрываем модальное окно
-    isModalVisible.value = false;
-};
 </script>
 
 

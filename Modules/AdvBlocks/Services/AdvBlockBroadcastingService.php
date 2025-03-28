@@ -10,7 +10,7 @@ class AdvBlockBroadcastingService
 {
     public function create(array $request, Repository $repository): JsonResponse
     {
-        $params = ['broadcast_at', 'adv_block_id'];
+        $params = ['broadcast_at', 'adv_block_id', 'size'];
         $data = [];
         foreach ($params as $param) {
             if (isset($request[$param])) {
