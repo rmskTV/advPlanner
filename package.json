@@ -17,6 +17,7 @@
         "vite": "^6.0"
     },
     "dependencies": {
+        "@vueuse/core": "^13.0.0",
         "@primevue/core": "^4.2.5",
         "@primevue/themes": "^4.2.5",
         "@vitejs/plugin-vue": "^5.2.1",
