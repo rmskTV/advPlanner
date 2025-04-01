@@ -72,8 +72,8 @@
                 <Column
                     field="channel"
                     :header="selectedChannel?.name || 'Канал'"
-                    class="sticky-col"
-                    headerClass="sticky-col-header"
+                    class="sticky-col first-column"
+                    headerClass="sticky-col-header first-column-header"
                 >
                     <template #body="{ data }">
                         <div>
@@ -1053,5 +1053,6 @@ const executeDayCopy = async () => {
 .context-menu-target:hover {
     background-color: #f0f0f0;
 }
+
 
 </style>

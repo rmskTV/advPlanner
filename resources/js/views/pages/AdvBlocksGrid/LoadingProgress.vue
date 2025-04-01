@@ -30,7 +30,7 @@ const calculateProgress = () => {
 
 const progressColor = computed(() => {
     const progress = calculateProgress();
-    return progress > 70 ? '#4CAF50' : progress > 30 ? '#FFC107' : '#F44336';
+    return progress > 70 ? '#4CAF50' : progress > 30 ? '#FFC107' : '#e84b2f';
 });
 </script>
 

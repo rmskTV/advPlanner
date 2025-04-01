@@ -444,10 +444,12 @@ onMounted(() => {
     today.setUTCHours(0, 0, 0, 0);
     const twoWeeksLater = new Date(today);
     twoWeeksLater.setUTCDate(today.getUTCDate() + 14);
+    twoWeeksLater.setUTCHours(23, 59, 59, 999);
 
     startDate.value = today;
     endDate.value = twoWeeksLater;
     loadChannels();
+    document.title = "Сетка выхода рекламных блоков";
 });
 
 // Вотчеры
@@ -483,4 +485,5 @@ watch(isModalVisible, async (newValue) => {
 .p-contextmenu .p-menuitem-link:hover {
     background-color: #f8f9fa;
 }
+
 </style>

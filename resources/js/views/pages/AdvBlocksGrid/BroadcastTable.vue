@@ -18,8 +18,8 @@
             <Column
                 field="channel"
                 :header="selectedChannel?.name || 'Канал'"
-                class="sticky-col"
-                headerClass="sticky-col-header"
+                class="sticky-col first-column"
+                headerClass="sticky-col-header first-column-header"
             >
                 <template #body="{ data }">
                     <div>
@@ -62,6 +62,7 @@
 <script setup>
 import LoadingProgress from "./LoadingProgress.vue";
 import { defineProps, defineEmits } from 'vue';
+import Column from "primevue/column";
 
 const props = defineProps({
     gridData: Array,
@@ -119,5 +120,38 @@ const onCellContextMenu = (event, cellData) => {
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.first-column {
+    min-width: 200px !important;
+    width: 200px !important;
+    max-width: 200px !important;
+}
+
+.first-column-header {
+    min-width: 200px !important;
+    width: 200px !important;
+    max-width: 200px !important;
+}
+
+/* Обновляем стили для sticky колонки */
+.sticky-table ::v-deep(.sticky-col) {
+    min-width: 200px !important;
+    width: 200px !important;
+    max-width: 200px !important;
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 2 !important;
+    background: white !important;
+    box-shadow: 2px 0 5px -2px rgba(0, 0, 0, 0.1);
+}
+
+.sticky-table ::v-deep(.sticky-col-header) {
+    min-width: 200px !important;
+    width: 200px !important;
+    max-width: 200px !important;
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 3 !important;
 }
 </style>
