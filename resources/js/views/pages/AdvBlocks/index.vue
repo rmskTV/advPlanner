@@ -4,12 +4,14 @@ import AdvBlockTypeService from "../../../services/AdvBlockTypeService.js";
 import ChannelService from "../../../services/ChannelService.js";
 import MediaProductsService from "../../../services/MediaProductsService.js";
 import AdvBlockService from "../../../services/AdvBlockService.js";
+import SalesModelsService from "../../../services/SalesModelsService.js";
 
 const columns = [
     {field: 'id', header: 'ID' },
     {field: 'name', header: 'Название' },
     {field: 'adv_block_type.name', header: 'Тип блока'},
     {field: 'media_product.name', header: 'Медиапродукт'},
+    {field: 'sales_model.name', header: 'Модель продаж'},
     {field: 'channel.name', header: 'Канал'},
 ];
 
@@ -23,7 +25,10 @@ const formFields = [
         {type: 'select', name: 'adv_block_type_id', label: 'Тип блока', optionsService: AdvBlockTypeService},
         {type: 'checkbox', name: 'is_only_for_package', label: 'Блок только для пакетных размещений', default: '0'}
     ],
-    [{type: 'double', name: 'size', label: 'Размер' }],
+    [
+        {type: 'double', name: 'size', label: 'Размер' },
+        {type: 'select', name: 'sales_model_id', label: 'Модель продаж', optionsService: SalesModelsService}
+    ],
     [{type: 'text', name: 'comment', label: 'Комментарий' }],
 
 ];
@@ -46,6 +51,11 @@ const filters = [
         optionsService: MediaProductsService,
         queryName: 'media_product_id',
         cascadeDependency: 'channel_id'
+    },{
+        name: 'Модель продаж',
+        type: 'select',
+        optionsService: SalesModelsService,
+        queryName: 'sales_model_id'
     }
 ];
 </script>

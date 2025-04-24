@@ -22,16 +22,16 @@ export function useCrudTable(service, initialFilters = [], parentFilter = { name
     const filtersValues = ref({}); // Новое свойство для активных фильтров
 
     const loadData = async (page = 1, perPageValue = perPage.value) => {
-        console.log(parentFilter);
         loading.value = true;
         error.value = null;
         try {
             const params = {
-                page: page.v,
+                page: page.valueOf(),
                 per_page: perPageValue,
                 ...filtersValues.value,
                 [parentFilter.name]: parentFilter.value, // Добавляем parentFilter// Добавляем активные фильтры в запрос
             };
+            console.log(params);
             const data = await service.List(params);
             items.value = data.data;
             totalRecords.value = data.total;

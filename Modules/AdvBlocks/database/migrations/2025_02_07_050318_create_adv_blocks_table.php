@@ -21,6 +21,7 @@ return new class extends Migration
             $table->integer('adv_block_type_id')->index();
             $table->integer('media_product_id')->index();
             $table->integer('channel_id')->index();
+            $table->integer('sales_model_id')->index();
 
             $table->boolean('is_only_for_package')->default(false);
             $table->float('size')->default(0);

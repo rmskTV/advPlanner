@@ -10,7 +10,7 @@ class AdvBlockService
 {
     public function create(array $request, Repository $repository): JsonResponse
     {
-        $params = ['name', 'comment', 'adv_block_type_id', 'media_product_id', 'is_only_for_package', 'size'];
+        $params = ['name', 'comment', 'adv_block_type_id', 'media_product_id', 'is_only_for_package', 'size', 'sales_model_id'];
         $data = [];
         foreach ($params as $param) {
             if (isset($request[$param])) {
@@ -26,7 +26,7 @@ class AdvBlockService
 
     public function getAll(Repository $repository, array $filters): JsonResponse
     {
-        return response()->json($repository->getAll(['advBlockType', 'mediaProduct', 'channel'], $filters), 200);
+        return response()->json($repository->getAll(['advBlockType', 'mediaProduct', 'channel', 'salesModel'], $filters), 200);
     }
 
     public function delete(Repository $repository, int $id): JsonResponse

@@ -85,6 +85,7 @@ class AdvBlocksController extends Controller
             'channel_id' => 'nullable|integer|min:1',
             'adv_block_type_id' => 'nullable|integer|min:1',
             'media_product_id' => 'nullable|integer|min:1',
+            'sales_model_id' => 'nullable|integer|min:1',
         ];
         $validator = Validator::make(request()->all(), $filters);
         $filters = $validator->validated();
@@ -155,6 +156,7 @@ class AdvBlocksController extends Controller
             'comment' => 'string|nullable|max:255',
             'adv_block_type_id' => 'required|integer|exists:adv_block_types,id',
             'media_product_id' => 'required|integer|exists:media_products,id',
+            'sales_model_id' => 'required|integer|exists:sales_models,id',
             'is_only_for_package' => 'boolean',
             'size' => 'required|numeric|min:0',
         ]);
@@ -294,6 +296,7 @@ class AdvBlocksController extends Controller
             'comment' => 'nullable|string|max:255',
             'adv_block_type_id' => 'required|integer|exists:adv_block_types,id',
             'media_product_id' => 'required|integer|exists:media_products,id',
+            'sales_model_id' => 'required|integer|exists:sales_models,id',
             'is_only_for_package' => 'boolean',
             'size' => 'required|numeric|min:0',
         ]);

@@ -261,7 +261,7 @@ const getValueByPath = (obj, path) => {
                                     :invalid="submitted && !item[field.name]"
                                     class="w-full"
                                 />
-                                <small v-if="submitted && !item[field.name]" class="text-red-500">{{ field.label }} - обязательный атрибут.</small>
+                                <small v-if="submitted && !item[field.name] && field.required" class="text-red-500">{{ field.label }} - обязательный атрибут.</small>
                             </template>
 
                             <!-- Дабл -->
@@ -281,7 +281,7 @@ const getValueByPath = (obj, path) => {
                                     class="w-full"
                                 />
                                 <small
-                                    v-if="submitted && !item[field.name]"
+                                    v-if="submitted && !item[field.name] && field.required"
                                     class="text-red-500"
                                 >{{ field.label }} - обязательный атрибут.</small>
                             </template>
@@ -301,7 +301,7 @@ const getValueByPath = (obj, path) => {
                                     class="w-full"
                                 />
                                 <small
-                                    v-if="submitted && !item[field.name]"
+                                    v-if="submitted && !item[field.name] && field.required"
                                     class="text-red-500"
                                 >{{ field.label }} - обязательный атрибут.</small>
                             </template>
@@ -327,7 +327,7 @@ const getValueByPath = (obj, path) => {
                                     fluid
                                 />
                                 <small
-                                    v-if="submitted && !item[field.name]"
+                                    v-if="submitted && !item[field.name] && field.required"
                                     class="text-red-500"
                                 >{{ field.label }} - обязательный атрибут.</small
                                 >
