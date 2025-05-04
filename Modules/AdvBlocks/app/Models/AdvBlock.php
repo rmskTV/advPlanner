@@ -51,7 +51,7 @@ use Modules\SalesModels\app\Models\SalesModel;
  */
 class AdvBlock extends CatalogObject
 {
-    protected $fillable = ['name', 'comment', 'adv_block_type_id', 'channel_id', 'media_product_id', 'is_only_for_package', 'size'];
+    protected $fillable = ['name', 'comment', 'adv_block_type_id', 'channel_id', 'media_product_id', 'is_only_for_package', 'size', 'sales_model_id'];
 
     public function channel(): HasOne
     {

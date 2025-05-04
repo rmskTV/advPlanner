@@ -50,7 +50,7 @@ class AdvBlockService
         $resource = $repository->getById($id);
 
         foreach ($request as $key => $value) {
-            if (isset($resource->$key)) {
+            if ($resource->isFillable($key)) {
                 $data[$key] = $value;
             }
         }

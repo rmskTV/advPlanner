@@ -167,7 +167,7 @@ const fetchAllPages = async (baseParams) => {
 
     try {
         const firstPage = await axios.get('/api/advBlocksBroadcasting', {
-            params: { ...baseParams, page: currentPage }
+            params: { ...baseParams, page: currentPage, per_page: 100 }
         });
 
         allData = [...firstPage.data.data];
@@ -182,7 +182,7 @@ const fetchAllPages = async (baseParams) => {
         while (currentPage < totalPages) {
             currentPage++;
             const response = await axios.get('/api/advBlocksBroadcasting', {
-                params: { ...baseParams, page: currentPage }
+                params: { ...baseParams, page: currentPage, per_page: 100 }
             });
 
             allData = [...allData, ...response.data.data];
@@ -228,9 +228,9 @@ const transformData = (data) => {
 };
 
 const formatDateForAPI = (date) => {
-    const year = date.getUTCFullYear();
-    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(date.getUTCDate()).padStart(2, '0');
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
 };
 
@@ -407,7 +407,6 @@ const dateColumns = computed(() => {
 
         current.setDate(current.getDate() + 1);
     }
-
     return columns;
 });
 
@@ -457,8 +456,43 @@ watch([selectedChannel, startDate, endDate], fetchData, { immediate: true });
 watch(isModalVisible, async (newValue) => {
     if (newValue && selectedChannel.value) {
         try {
-            const response = await AdvBlocksService.List({ channel_id: selectedChannel.value.id });
-            advBlocks.value = response.data.map(block => ({ id: block.id, name: block.name }));
+            // Сначала загружаем первую страницу
+            const firstPage = await AdvBlocksService.List({
+                channel_id: selectedChannel.value.id,
+                per_page: 100 // увеличиваем количество элементов на странице
+            });
+
+            // Если есть другие страницы, загружаем их
+            if (firstPage.last_page > 1) {
+                const requests = [];
+                for (let page = 2; page <= firstPage.last_page; page++) {
+                    requests.push(
+                        AdvBlocksService.List({
+                            channel_id: selectedChannel.value.id,
+                            per_page: 100,
+                            page: page
+                        })
+                    );
+                }
+
+                const otherPages = await Promise.all(requests);
+                const allBlocks = [
+                    ...firstPage.data,
+                    ...otherPages.flatMap(page => page.data)
+                ];
+
+                advBlocks.value = allBlocks.map(block => ({
+                    id: block.id,
+                    name: block.name,
+                    size: block.size
+                }));
+            } else {
+                advBlocks.value = firstPage.data.map(block => ({
+                    id: block.id,
+                    name: block.name,
+                    size: block.size
+                }));
+            }
         } catch (error) {
             console.error('Ошибка загрузки рекламных блоков:', error);
         }

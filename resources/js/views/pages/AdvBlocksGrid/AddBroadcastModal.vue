@@ -157,4 +157,11 @@ watch(() => props.modelValue, (newVal) => {
         selectedDays.value = [];
     }
 });
+
+watch(selectedAdvBlock, (newBlock) => {
+    if (newBlock && newBlock.size !== undefined) {
+        size.value = newBlock.size;
+    }
+});
+
 </script>

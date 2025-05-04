@@ -231,9 +231,9 @@ export function useCrudTable(service, initialFilters = [], parentFilter = { name
         submitted.value = true;
         if (item?.value.name?.trim()) {
             if (item.value.id == null) {
-                await sendCreateRequest(loadData);
+                await sendCreateRequest();
             } else {
-                await sendUpdateRequest(loadData);
+                await sendUpdateRequest();
             }
             await loadData(currentPage.value, perPage.value);
             itemDialog.value = false;
