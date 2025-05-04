@@ -16,6 +16,13 @@ use Illuminate\Routing\Controller as BaseController;
  *      ),
  * ),
  *
+ *  @OA\SecurityScheme(
+ *       type="http",
+ *       scheme="bearer",
+ *       securityScheme="bearerAuth",
+ *       bearerFormat="JWT",
+ *       description="Authenticate using JWT token obtained from /api/auth/login endpoint"
+ *   )
  * @OA\Server(
  *         url="/",
  *         description="localhost"
