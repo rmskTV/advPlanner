@@ -1,6 +1,13 @@
 <script setup>
 import { useLayout } from './composables/layout';
 import AppConfigurator from './AppConfigurator.vue';
+import { useAuthStore } from '@/stores/auth';
+
+const authStore = useAuthStore();
+
+const logout = () => {
+    authStore.logout();
+};
 
 const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
 </script>
@@ -60,7 +67,7 @@ const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
 
             <div class="layout-topbar-menu hidden lg:block">
                 <div class="layout-topbar-menu-content">
-                    <button type="button" class="layout-topbar-action">
+                    <!--<button type="button" class="layout-topbar-action">
                         <i class="pi pi-calendar"></i>
                         <span>Calendar</span>
                     </button>
@@ -71,6 +78,11 @@ const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
                     <button type="button" class="layout-topbar-action">
                         <i class="pi pi-user"></i>
                         <span>Profile</span>
+                    </button>-->
+                    <!-- Другие элементы навигации -->
+                    <button @click="logout" v-if="authStore.token" type="button" class="layout-topbar-action">
+                        <i class="pi pi-user"></i>
+                        <span>Выйти</span>
                     </button>
                 </div>
             </div>

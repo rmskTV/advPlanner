@@ -158,19 +158,19 @@ const router = createRouter({
         },
 
         {
-            path: '/auth/login',
+            path: '/login',
             name: 'login',
-            component: () => import('@/views/pages/auth/Login.vue')
+            component: () => import('@/views/pages/Auth/Login.vue')
         },
         {
-            path: '/auth/access',
+            path: '/access',
             name: 'accessDenied',
-            component: () => import('@/views/pages/auth/Access.vue')
+            component: () => import('@/views/pages/Auth/Access.vue')
         },
         {
-            path: '/auth/error',
+            path: '/error',
             name: 'error',
-            component: () => import('@/views/pages/auth/Error.vue')
+            component: () => import('@/views/pages/Auth/Error.vue')
         },
         {
             path: '/:catchAll(.*)',

@@ -107,13 +107,13 @@ class User extends Authenticatable implements JWTSubject
         // Здесь можно реализовать логику получения прав пользователя
         // Например, из базы данных или конфига
         $permissions = [
-            'organisations' => ['create', 'read', 'update', 'delete'],
-            'channels' => ['create', 'read', 'update', 'delete'],
-            'mediaProducts' => ['create', 'read', 'update', 'delete'],
-            'salesModels' => ['create', 'read', 'update', 'delete'],
-            'advBlocks' => ['create', 'read', 'update', 'delete'],
-            'advBlockTypes' => ['create', 'read', 'update', 'delete'],
-            'advBlocksBroadcasting' => ['create', 'read', 'update', 'delete'],
+            'organisations' => 3,
+            'channels' => 3,
+            'mediaProducts' => 3,
+            'salesModels' => 3,
+            'advBlocks' => 3,
+            'advBlockTypes' => 3,
+            'advBlocksBroadcasting' => 3,
         ];
 
         return $permissions;

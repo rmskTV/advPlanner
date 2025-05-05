@@ -166,7 +166,7 @@ const fetchAllPages = async (baseParams) => {
     let totalPages = 1;
 
     try {
-        const firstPage = await axios.get('/api/advBlocksBroadcasting', {
+        const firstPage = await axios.get('/advBlocksBroadcasting', {
             params: { ...baseParams, page: currentPage, per_page: 100 }
         });
 
