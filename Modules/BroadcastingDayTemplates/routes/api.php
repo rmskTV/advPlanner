@@ -17,7 +17,7 @@ use Modules\BroadcastingDayTemplates\app\Http\Controllers\BroadcastingDayTemplat
 
 /** BroadcastingDayTemplates */
 Route::group([
-    'middleware' => ['api'],
+    'middleware' => ['api', 'auth:api'],
     'prefix' => 'broadcastingDayTemplates',
 ], function () {
     Route::get('/{id}', [BroadcastingDayTemplatesController::class, 'show']);

@@ -16,7 +16,7 @@ use Modules\Channels\app\Http\Controllers\ChannelsController as Controller;
 
 /** Organisations */
 Route::group([
-    'middleware' => ['api'],
+    'middleware' => ['api', 'auth:api'],
     'prefix' => 'channels',
 ], function () {
     Route::get('/{id}', [Controller::class, 'show']);

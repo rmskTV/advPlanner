@@ -18,7 +18,7 @@ use Modules\AdvBlocks\app\Http\Controllers\AdvBlockTypesController;
 
 /** AdvBlockTypes */
 Route::group([
-    'middleware' => ['api'],
+    'middleware' => ['api', 'auth:api'],
     'prefix' => 'advBlockTypes',
 ], function () {
     Route::get('/{id}', [AdvBlockTypesController::class, 'show']);
@@ -30,7 +30,7 @@ Route::group([
 
 /** AdvBlocks */
 Route::group([
-    'middleware' => ['api'],
+    'middleware' => ['api', 'auth:api'],
     'prefix' => 'advBlocks',
 ], function () {
     Route::get('/{id}', [AdvBlocksController::class, 'show']);
@@ -42,7 +42,7 @@ Route::group([
 
 /** AdvBlocksBroadcasting */
 Route::group([
-    'middleware' => ['api'],
+    'middleware' => ['api', 'auth:api'],
     'prefix' => 'advBlocksBroadcasting',
 ], function () {
     Route::get('/{id}', [AdvBlockBroadcastingController::class, 'show']);

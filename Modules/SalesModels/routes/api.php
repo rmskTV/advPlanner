@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\SalesModels\app\Http\Controllers\SalesModelsController as Controller;
 
 Route::group([
-    'middleware' => ['api'],
+    'middleware' => ['api', 'auth:api'],
     'prefix' => 'salesModels',
 ], function () {
     Route::get('/{id}', [Controller::class, 'show']);

@@ -5,7 +5,7 @@ use Modules\Organisations\app\Http\Controllers\OrganisationsController as Contro
 
 /** Organisations */
 Route::group([
-    'middleware' => ['api'],
+    'middleware' => ['api', 'auth:api'],
     'prefix' => 'organisations',
 ], function () {
     Route::get('/{id}', [Controller::class, 'show']);

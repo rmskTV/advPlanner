@@ -5,7 +5,7 @@ use Modules\MediaProducts\app\Http\Controllers\MediaProductsController as Contro
 
 /** MediaProducts */
 Route::group([
-    'middleware' => ['api'],
+    'middleware' => ['api', 'auth:api'],
     'prefix' => 'mediaProducts',
 ], function () {
     Route::get('/{id}', [Controller::class, 'show']);
