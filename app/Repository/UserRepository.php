@@ -22,4 +22,3 @@ class UserRepository
         return DB::table('users')->update([$data]);
     }
 }
-

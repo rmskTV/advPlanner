@@ -16,6 +16,32 @@
                 <small v-if="errorChannels" class="text-red-500">{{ errorChannels }}</small>
             </div>
 
+            <div class="w-1/3">
+                <label class="block mb-2 font-bold">Медиапродукт:</label>
+                <Dropdown
+                    :modelValue="selectedMediaProduct"
+                    :options="mediaProducts"
+                    optionLabel="name"
+                    placeholder="Выберите медиапродукт"
+                    class="w-full"
+                    :loading="mediaProductsLoading.isLoading"
+                    :disabled="mediaProductsLoading.isLoading"
+                    @update:modelValue="$emit('update:selectedMediaProduct', $event)"
+                >
+                    <template #option="slotProps">
+                        <div v-if="slotProps.option.id === null" class="font-semibold">
+                            {{ slotProps.option.name }}
+                        </div>
+                        <div v-else>
+                            {{ slotProps.option.name }}
+                            <span v-if="mediaProductsLoading.isLoading" class="text-xs opacity-50 ml-2">
+                        Загрузка... ({{ mediaProductsLoading.loaded }}/{{ mediaProductsLoading.total }})
+                    </span>
+                        </div>
+                    </template>
+                </Dropdown>
+            </div>
+
             <div class="w-1/2">
                 <label class="block mb-2 font-bold">Период:</label>
                 <div class="flex gap-2">
@@ -43,19 +69,31 @@
         />
     </div>
 </template>
-
 <script setup>
 defineProps({
     channels: Array,
     selectedChannel: Object,
+    mediaProducts: Array,
+    selectedMediaProduct: Object,
     startDate: [Date, String],
     endDate: [Date, String],
     loadingChannels: Boolean,
-    errorChannels: String
+    errorChannels: String,
+    mediaProductsLoading: {  // Добавляем новый prop
+        type: Object,
+        default: () => ({
+            isLoading: false,
+            currentPage: 0,
+            totalPages: 1,
+            loaded: 0,
+            total: 0
+        })
+    }
 });
 
 defineEmits([
     'update:selectedChannel',
+    'update:selectedMediaProduct',
     'update:startDate',
     'update:endDate',
     'openAddModal'

@@ -2,11 +2,10 @@
 
 use App\Http\Controllers\AccountingUnitsController;
 use App\Http\Controllers\Auth\CurrentUserController;
+use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\Auth\RefreshTokenController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Auth\LoginController;
-
 
 Route::group([
     'middleware' => 'api',

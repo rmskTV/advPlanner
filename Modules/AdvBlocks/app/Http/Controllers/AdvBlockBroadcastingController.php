@@ -86,6 +86,7 @@ class AdvBlockBroadcastingController extends Controller
         $filters = [
             'channel_id' => 'nullable|integer|min:1',
             'adv_block_id' => 'nullable|integer|min:1',
+            'media_product_id' => 'nullable|integer|min:1',
             'broadcast_at_from' => 'nullable|date', // Фильтр "от"
             'broadcast_at_to' => 'nullable|date',   // Фильтр "до"
 

@@ -27,12 +27,12 @@ class AdvBlockBroadcastingRepository extends Repository
 
         // Фильтрация по broadcast_at_from (greater than or equal)
         if (isset($filters['broadcast_at_from']) && $filters['broadcast_at_from'] !== null) {
-            $query->where('broadcast_at', '>=', $filters['broadcast_at_from'] . " 00:00:00");
+            $query->where('broadcast_at', '>=', $filters['broadcast_at_from'].' 00:00:00');
         }
 
         // Фильтрация по broadcast_at_to (less than or equal)
         if (isset($filters['broadcast_at_to']) && $filters['broadcast_at_to'] !== null) {
-            $query->where('broadcast_at', '<=', $filters['broadcast_at_to'] . " 23:59:59");
+            $query->where('broadcast_at', '<=', $filters['broadcast_at_to'].' 23:59:59');
         }
 
         return $query->paginate($this->paginationCount);

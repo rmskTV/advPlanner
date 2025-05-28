@@ -9,6 +9,7 @@ import Aura from '@primevue/themes/aura';
 import PrimeVue from 'primevue/config';
 import ConfirmationService from 'primevue/confirmationservice';
 import ToastService from 'primevue/toastservice';
+import ConfirmDialog from 'primevue/confirmdialog';
 
 import '../sass/styles.scss';
 import '../sass/app.scss';
@@ -64,7 +65,7 @@ authStore.initializeAuth().finally(() => {
     });
     app.use(ToastService);
     app.use(ConfirmationService);
-
+    app.component('ConfirmDialog', ConfirmDialog);
     // 7. Монтируем приложение только после полной инициализации
     app.mount('#app');
 });

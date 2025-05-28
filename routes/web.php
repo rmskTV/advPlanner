@@ -1,6 +1,5 @@
 <?php
 
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -14,4 +13,3 @@ Route::get('/{pathMatch}', function () {
 Route::get('/uikit/{pathMatch}', function () {
     return view('app');
 });
-

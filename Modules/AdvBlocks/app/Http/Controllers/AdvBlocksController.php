@@ -308,6 +308,7 @@ class AdvBlocksController extends Controller
         if (count($validator->validated()) == 0) {
             return response()->json(true, 200);
         }
+
         return $service->update($validator->validated(), $repository, $id);
     }
 

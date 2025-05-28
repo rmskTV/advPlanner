@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Services\AuthService;
 use Illuminate\Http\JsonResponse;
 
-
 /**
  * Logout
  *
@@ -14,6 +13,7 @@ use Illuminate\Http\JsonResponse;
  *     path="/api/auth/logout",
  *     tags={"Core/Auth"},
  *     security={{"bearerAuth": {}}},
+ *
  *      @OA\Response(
  *          response=200,
  *          description="Success",
@@ -25,11 +25,12 @@ use Illuminate\Http\JsonResponse;
  *          )
  *      ),
  *
- *
  *      @OA\Response(
  *          response=401,
  *          description="Invalid credentials",
+ *
  *          @OA\JsonContent(
+ *
  *              @OA\Property(property="error", type="string", example="Unauthorized")
  *          )
  *      ),

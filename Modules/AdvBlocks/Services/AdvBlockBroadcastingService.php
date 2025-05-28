@@ -17,7 +17,9 @@ class AdvBlockBroadcastingService
                 $data[$param] = $request[$param];
             }
         }
-        $data['channel_id'] = AdvBlock::query()->find($data['adv_block_id'])->channel_id;
+        $advBlock = AdvBlock::query()->find($data['adv_block_id']);
+        $data['channel_id'] = $advBlock->channel_id;
+        $data['media_product_id'] = $advBlock->media_product_id;
 
         return response()->json($repository->create($data), 201);
     }

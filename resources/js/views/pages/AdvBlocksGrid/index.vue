@@ -3,10 +3,14 @@
         <ControlsPanel
             :channels="channels"
             :selected-channel="selectedChannel"
+            :media-products="mediaProducts"
+            :selected-media-product="selectedMediaProduct"
             :start-date="startDate"
             :end-date="endDate"
             :loading-channels="loadingChannels"
             :error-channels="errorChannels"
+            :media-products-loading="mediaProductsLoading"
+            @update:selectedMediaProduct="selectedMediaProduct = $event"
             @update:selectedChannel="selectedChannel = $event"
             @update:startDate="startDate = $event"
             @update:endDate="endDate = $event"
@@ -54,6 +58,7 @@
             :model="headerContextMenuItems"
             @hide="onHeaderContextMenuHide"
         />
+        <ConfirmDialog></ConfirmDialog>
     </div>
 </template>
 
@@ -62,15 +67,24 @@
 import {computed, onMounted, ref, watch} from 'vue';
 import axios from 'axios';
 import ChannelService from '@/services/ChannelService';
+import MediaProductsService from '@/services/MediaProductsService';
 import AdvBlocksService from '@/services/AdvBlockService';
 import ControlsPanel from './ControlsPanel.vue';
 import BroadcastTable from './BroadcastTable.vue';
 import AddBroadcastModal from './AddBroadcastModal.vue';
 import CopyDayModal from './CopyDayModal.vue';
 
+//Конфирмы
+import ConfirmDialog from 'primevue/confirmdialog';
+import { useConfirm } from "primevue/useconfirm";
+const confirm = useConfirm();
+
 // Реактивные данные
 const channels = ref([]);
+const mediaProducts = ref([]);
 const selectedChannel = ref(null);
+const selectedMediaProduct = ref(null);
+const loadingMediaProducts = ref(false);
 const startDate = ref(null);
 const endDate = ref(null);
 const loadingChannels = ref(false);
@@ -86,6 +100,13 @@ const loadingProgress = ref({
     total: 0
 });
 
+const mediaProductsLoading = ref({
+    isLoading: false,
+    currentPage: 0,
+    totalPages: 1,
+    loaded: 0,
+    total: 0
+});
 // Контекстные меню
 const contextMenu = ref();
 const contextMenuTarget = ref(null);
@@ -113,6 +134,7 @@ const daysOfWeek = ref([
     { label: 'Вс', value: 'sun' },
 ]);
 
+
 // Методы
 const loadChannels = async () => {
     loadingChannels.value = true;
@@ -125,6 +147,64 @@ const loadChannels = async () => {
         console.error('Ошибка загрузки каналов:', err);
     } finally {
         loadingChannels.value = false;
+    }
+};
+
+const loadMediaProducts = async () => {
+    if (!selectedChannel.value) return;
+
+    mediaProductsLoading.value = {
+        isLoading: true,
+        currentPage: 0,
+        totalPages: 1,
+        loaded: 0,
+        total: 0
+    };
+
+    try {
+        // Загружаем первую страницу
+        const firstPage = await MediaProductsService.List({
+            channel_id: selectedChannel.value.id,
+            per_page: 100
+        });
+
+        // Инициализируем массив с пустым вариантом
+        let allProducts = [{ id: null, name: 'Все медиапродукты' }];
+        allProducts = [...allProducts, ...firstPage.data];
+
+        mediaProductsLoading.value = {
+            ...mediaProductsLoading.value,
+            totalPages: firstPage.last_page,
+            currentPage: 1,
+            total: firstPage.total
+        };
+
+        // Если есть еще страницы - загружаем их
+        if (firstPage.last_page > 1) {
+            const requests = [];
+            for (let page = 2; page <= firstPage.last_page; page++) {
+                requests.push(
+                    MediaProductsService.List({
+                        channel_id: selectedChannel.value.id,
+                        page: page,
+                        per_page: 100
+                    })
+                );
+            }
+
+            const responses = await Promise.all(requests);
+            responses.forEach(response => {
+                allProducts = [...allProducts, ...response.data];
+                mediaProductsLoading.value.currentPage++;
+                mediaProductsLoading.value.loaded = allProducts.length - 1; // -1 учитываем пустой вариант
+            });
+        }
+
+        mediaProducts.value = allProducts;
+    } catch (err) {
+        console.error('Ошибка загрузки медиапродуктов:', err);
+    } finally {
+        mediaProductsLoading.value.isLoading = false;
     }
 };
 
@@ -145,6 +225,11 @@ const fetchData = async () => {
             sort: 'broadcast_at',
             order: 'asc'
         };
+
+        // Добавляем фильтр по медиапродукту только если выбран конкретный продукт
+        if (selectedMediaProduct.value && selectedMediaProduct.value.id) {
+            baseParams.media_product_id = selectedMediaProduct.value.id;
+        }
 
         const allData = await fetchAllPages(baseParams);
         gridData.value = transformData(allData);
@@ -167,7 +252,7 @@ const fetchAllPages = async (baseParams) => {
 
     try {
         const firstPage = await axios.get('/advBlocksBroadcasting', {
-            params: { ...baseParams, page: currentPage, per_page: 100 }
+            params: { ...baseParams, page: currentPage, per_page: 200 }
         });
 
         allData = [...firstPage.data.data];
@@ -181,8 +266,8 @@ const fetchAllPages = async (baseParams) => {
 
         while (currentPage < totalPages) {
             currentPage++;
-            const response = await axios.get('/api/advBlocksBroadcasting', {
-                params: { ...baseParams, page: currentPage, per_page: 100 }
+            const response = await axios.get('/advBlocksBroadcasting', {
+                params: { ...baseParams, page: currentPage, per_page: 200 }
             });
 
             allData = [...allData, ...response.data.data];
@@ -270,7 +355,7 @@ const handleAdd = async ({ advBlock, size, time, startDate, endDate, days }) => 
             const broadcastAt = new Date(date);
             broadcastAt.setHours(hours, minutes, seconds);
 
-            return axios.put('/api/advBlocksBroadcasting', {
+            return axios.put('/advBlocksBroadcasting', {
                 broadcast_at: formatDateTime(broadcastAt),
                 adv_block_id: advBlock.id,
                 size: size
@@ -288,40 +373,62 @@ const handleAdd = async ({ advBlock, size, time, startDate, endDate, days }) => 
 const deleteSelectedBroadcast = async () => {
     if (!contextMenuTarget.value) return;
 
-    try {
-        await axios.delete(`/api/advBlocksBroadcasting/${contextMenuTarget.value.id}`);
-        await fetchData();
-    } catch (error) {
-        console.error('Ошибка при удалении выхода:', error);
-    }
+    confirm.require({
+        message: 'Вы действительно хотите удалить этот выход?',
+        header: 'Подтверждение удаления',
+        icon: 'pi pi-exclamation-triangle',
+        acceptLabel: 'Удалить',
+        rejectLabel: 'Отмена',
+        rejectClass: 'p-button-text', // Используем встроенный класс PrimeVue для текстовой кнопки
+        acceptClass: 'p-button-danger', // Красный цвет для кнопки удаления
+        accept: async () => {
+            try {
+                await axios.delete(`/advBlocksBroadcasting/${contextMenuTarget.value.id}`);
+                await fetchData();
+            } catch (error) {
+                console.error('Ошибка при удалении выхода:', error);
+            }
+        }
+    });
 };
 
 const deleteAllBroadcastsForDay = async () => {
     if (!headerContextMenuTarget.value || !selectedChannel.value) return;
 
-    try {
-        const date = headerContextMenuTarget.value.date;
-        const response = await axios.get('/api/advBlocksBroadcasting', {
-            params: {
-                broadcast_at_from: date,
-                broadcast_at_to: date,
-                channel_id: selectedChannel.value.id,
-                per_page: 1000
+    confirm.require({
+        message: 'Вы действительно хотите удалить все выходы за выбранный день?',
+        header: 'Подтверждение удаления',
+        icon: 'pi pi-exclamation-triangle',
+        acceptLabel: 'Удалить',
+        rejectLabel: 'Отмена',
+        rejectClass: 'p-button-text', // Используем встроенный класс PrimeVue для текстовой кнопки
+        acceptClass: 'p-button-danger', // Красный цвет для кнопки удаления
+        accept: async () => {
+            try {
+                const date = headerContextMenuTarget.value.date;
+                const response = await axios.get('/advBlocksBroadcasting', {
+                    params: {
+                        broadcast_at_from: date,
+                        broadcast_at_to: date,
+                        channel_id: selectedChannel.value.id,
+                        per_page: 1000
+                    }
+                });
+
+                const broadcasts = response.data.data;
+                if (broadcasts.length === 0) return;
+
+                const deleteRequests = broadcasts.map(broadcast =>
+                    axios.delete(`/advBlocksBroadcasting/${broadcast.id}`)
+                );
+
+                await Promise.all(deleteRequests);
+                await fetchData();
+            } catch (error) {
+                console.error('Ошибка при удалении выходов:', error);
             }
-        });
-
-        const broadcasts = response.data.data;
-        if (broadcasts.length === 0) return;
-
-        const deleteRequests = broadcasts.map(broadcast =>
-            axios.delete(`/api/advBlocksBroadcasting/${broadcast.id}`)
-        );
-
-        await Promise.all(deleteRequests);
-        await fetchData();
-    } catch (error) {
-        console.error('Ошибка при удалении выходов:', error);
-    }
+        }
+    });
 };
 
 const copyDayBroadcasts = async () => {
@@ -331,7 +438,7 @@ const copyDayBroadcasts = async () => {
         const date = headerContextMenuTarget.value.date;
         copySourceDate.value = date;
 
-        const response = await axios.get('/api/advBlocksBroadcasting', {
+        const response = await axios.get('/advBlocksBroadcasting', {
             params: {
                 broadcast_at_from: date,
                 broadcast_at_to: date,
@@ -368,7 +475,7 @@ const executeDayCopy = async ({ startDate, endDate, days }) => {
                 const broadcastAt = new Date(date);
                 broadcastAt.setHours(hours, minutes, seconds);
 
-                return axios.put('/api/advBlocksBroadcasting', {
+                return axios.put('/advBlocksBroadcasting', {
                     broadcast_at: formatDateTime(broadcastAt),
                     adv_block_id: broadcast.adv_block_id,
                     size: broadcast.size
@@ -448,11 +555,16 @@ onMounted(() => {
     startDate.value = today;
     endDate.value = twoWeeksLater;
     loadChannels();
+    loadMediaProducts();
+
+    // Устанавливаем начальное значение "Все медиапродукты"
+    selectedMediaProduct.value = { id: null, name: 'Все медиапродукты' };
+
     document.title = "Сетка выхода рекламных блоков";
 });
 
 // Вотчеры
-watch([selectedChannel, startDate, endDate], fetchData, { immediate: true });
+watch([selectedChannel, selectedMediaProduct, startDate, endDate], fetchData, { immediate: true });
 watch(isModalVisible, async (newValue) => {
     if (newValue && selectedChannel.value) {
         try {
@@ -498,6 +610,12 @@ watch(isModalVisible, async (newValue) => {
         }
     }
 });
+watch(selectedChannel, (newVal) => {
+    if (newVal) {
+        mediaProducts.value = [{ id: null, name: 'Все медиапродукты' }]; // Сброс списка
+        loadMediaProducts();
+    }
+}, { immediate: true });
 </script>
 
 <style scoped>

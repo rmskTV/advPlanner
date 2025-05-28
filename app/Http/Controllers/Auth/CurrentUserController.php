@@ -29,7 +29,9 @@ class CurrentUserController extends Controller
      *     @OA\Response(
      *          response=401,
      *          description="Unauthorized",
+     *
      *          @OA\JsonContent(
+     *
      *              @OA\Examples(
      *                  example="unauthorized",
      *                  value={

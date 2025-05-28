@@ -13,6 +13,7 @@ use Illuminate\Http\JsonResponse;
  *     path="/api/auth/refresh-token",
  *     tags={"Core/Auth"},
  *     security={{"bearerAuth": {}}},
+ *
  *      @OA\Response(
  *          response=200,
  *          description="Success",
@@ -27,11 +28,12 @@ use Illuminate\Http\JsonResponse;
  *          )
  *      ),
  *
- *
  *      @OA\Response(
  *          response=401,
  *          description="Invalid credentials",
+ *
  *          @OA\JsonContent(
+ *
  *              @OA\Property(property="error", type="string", example="Unauthorized")
  *          )
  *      ),

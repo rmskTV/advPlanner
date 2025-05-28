@@ -66,8 +66,7 @@ class AuthService
             'access_token' => $token,
             'token_type' => 'bearer',
             'expires_in' => env('SESSION_LIFETIME', auth()->factory()->getTTL()) * 60,
-            'user' => auth()->user()
+            'user' => auth()->user(),
         ]);
     }
-
 }

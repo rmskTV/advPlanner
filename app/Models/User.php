@@ -10,13 +10,11 @@ use Illuminate\Notifications\Notifiable;
 use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
 use Ramsey\Uuid\Uuid;
 
-
 /**
  * Класс ВебКреатива
  *
  * @OA\Schema(
  *      schema="User",
- *
  *
  *              @OA\Property(property="id", type="integer", example="3"),
  *              @OA\Property(property="role_id", type="integer", example="3"),
@@ -33,12 +31,14 @@ use Ramsey\Uuid\Uuid;
  *                   @OA\Items()
  *               ),
  *              ),
+ *
  *              @OA\Property(property="created_at", type="string", format="date-time", example="2024-05-06T18:23:37.000000Z"),
  *              @OA\Property(property="updated_at", type="string", format="date-time", example="2024-05-06T18:23:37.000000Z")
  * )
  *
  * @OA\Schema(
  *      schema="UserRequest",
+ *
  *     @OA\Property(property="role_id", type="integer", example="3"),
  *               @OA\Property(property="name", type="string", example="Anton"),
  *               @OA\Property(property="email", type="string", example="test@test.com"),
@@ -49,7 +49,7 @@ class User extends Authenticatable implements JWTSubject
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
-    protected $appends = array('permissions');
+    protected $appends = ['permissions'];
 
     /**
      * The attributes that are mass assignable.
@@ -136,5 +136,4 @@ class User extends Authenticatable implements JWTSubject
     {
         return [];
     }
-
 }
