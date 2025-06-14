@@ -2,8 +2,24 @@
 
 namespace App\Models;
 
+use Illuminate\Support\Carbon;
+
 /**
  * Класс ВидеоФайла
+ *
+ * @property int $id
+ * @property string $original_name
+ * @property string $hash
+ * @property string $status
+ * @property string $original_file_location
+ * @property string|null $preview_file_location
+ * @property array $media_info
+ * @property int|null $width
+ * @property int|null $height
+ * @property float|null $duration
+ * @property int|null $size
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  *
  * @OA\Schema(
  *      schema="VideoFile",
@@ -47,6 +63,6 @@ class VideoFile extends CatalogObject
         'height',
         'width',
         'duration',
-        'size'
+        'size',
     ];
 }

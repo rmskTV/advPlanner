@@ -33,7 +33,6 @@ class AnalyzeVideo implements ShouldQueue
         try {
             $this->videoFile->update(['status' => 'analyzing']);
 
-
             $filePath = Storage::disk('public')->path($this->videoFile->original_file_location);
             $analysis = $this->analyzeWithFfprobe($filePath);
 
@@ -46,7 +45,6 @@ class AnalyzeVideo implements ShouldQueue
                 'size' => $analysis['format']['size'] ?? null,
             ]);
 
-
             // Генерация превью-версии в VP9 720p
             $convertedPath = $this->convertToVp9($filePath);
 
@@ -55,19 +53,15 @@ class AnalyzeVideo implements ShouldQueue
                 'preview_file_location' => $convertedPath,
             ]);
 
-
-            //Storage::disk('local')->delete($this->videoFile->tmp_file_location);
-
         } catch (\Exception $e) {
             logger()->error('Video analysis failed', [
                 'error' => $e->getMessage(),
-                'file' => $this->videoFile->id
+                'file' => $this->videoFile->id,
             ]);
             $this->videoFile->update(['status' => 'fail_analyzing']);
             throw $e;
         }
     }
-
 
     protected function analyzeWithFfprobe(string $filePath): array
     {
@@ -77,12 +71,12 @@ class AnalyzeVideo implements ShouldQueue
             '-show_streams',
             '-show_format',
             '-of', 'json',
-            $filePath
+            $filePath,
         ]);
 
         $process->run();
 
-        if (!$process->isSuccessful()) {
+        if (! $process->isSuccessful()) {
             throw new ProcessFailedException($process);
         }
 
@@ -98,7 +92,7 @@ class AnalyzeVideo implements ShouldQueue
     protected function convertToVp9(string $sourcePath): string
     {
         $convertedName = 'preview_'.Str::random(16).'.webm';
-        $convertedPath = "videos/previews/".Carbon::now()->format('Y/m/').$convertedName;
+        $convertedPath = 'videos/previews/'.Carbon::now()->format('Y/m/').$convertedName;
         $outputPath = Storage::disk('public')->path($convertedPath);
 
         // Создаем директорию, если ее нет
@@ -118,13 +112,13 @@ class AnalyzeVideo implements ShouldQueue
             '-speed', '2',
             '-row-mt', '1',
             '-y',
-            $outputPath
+            $outputPath,
         ]);
 
         $process->setTimeout(3600);
         $process->run();
 
-        if (!$process->isSuccessful()) {
+        if (! $process->isSuccessful()) {
             throw new ProcessFailedException($process);
         }
 

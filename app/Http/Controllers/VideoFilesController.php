@@ -67,7 +67,7 @@ class VideoFilesController extends Controller
     public function upload(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'video' => 'required|file|mimetypes:video/*,application/mxf|mimes:mp4,mov,avi,mkv,mxf'
+            'video' => 'required|file|mimetypes:video/*,application/mxf|mimes:mp4,mov,avi,mkv,mxf',
         ]);
 
         try {
@@ -86,22 +86,22 @@ class VideoFilesController extends Controller
             $video->fill([
                 'original_name' => $safeName,
                 'status' => 'analyzing',
-                'original_file_location' => $originalFilePath
+                'original_file_location' => $originalFilePath,
             ])->save();
 
             AnalyzeVideo::dispatch($video);
 
             return response()->json([
                 'id' => $video->id,
-                'status' => $video->status
+                'status' => $video->status,
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Video upload failed: '.$e->getMessage());
+            logger()->error('Video upload failed: '.$e->getMessage());
+
             return response()->json(['error' => 'Upload failed'], 500);
         }
     }
-
 
     /**
      * Получение информации о видеофайле по его ID
@@ -156,7 +156,6 @@ class VideoFilesController extends Controller
     {
         $video = VideoFile::findOrFail($id);
 
-
         return $this->videoResponse($video);
     }
 
@@ -171,7 +170,7 @@ class VideoFilesController extends Controller
             'original_file' => $video->original_file_location,
             'preview_url' => $video->status === 'done'
                 ? Storage::disk('public')->url($video->preview_file_location)
-                : null
+                : null,
         ]);
     }
 
