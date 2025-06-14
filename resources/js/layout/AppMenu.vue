@@ -5,6 +5,12 @@ import AppMenuItem from './AppMenuItem.vue';
 
 const model = ref([
     {
+        label: 'Временные решения',
+        items: [
+            { label: 'Размещения в ВК', icon: 'pi pi-fw pi-share-alt', to: '/vkAdsShortPoster' },
+        ]
+    },
+    {
         label: 'Home',
         items: [
             { label: 'Сетка выхода рекламных блоков', icon: 'pi pi-fw pi-table', to: '/advBlocksGrid' },

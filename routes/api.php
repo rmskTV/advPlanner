@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\CurrentUserController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\Auth\RefreshTokenController;
+use App\Http\Controllers\VideoFilesController;
 use Illuminate\Support\Facades\Route;
 
 Route::group([
@@ -24,4 +25,12 @@ Route::group([
 ], function () {
     Route::get('/{id}', [AccountingUnitsController::class, 'show']);
     Route::get('/', [AccountingUnitsController::class, 'index']);
+});
+
+Route::group([
+    'middleware' => ['api', 'auth:api'],
+    'prefix' => 'video',
+], function () {
+    Route::post('/', [VideoFilesController::class, 'upload']);
+    Route::get('/{id}', [VideoFilesController::class, 'getVideoInfo']);
 });

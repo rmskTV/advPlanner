@@ -19,6 +19,11 @@ const router = createRouter({
                     component: () => import('@/views/pages/AdvBlocksGrid/Index.vue')
                 },
                 {
+                    path: '/vkAdsShortPoster',
+                    name: 'vkAdsShortPoster',
+                    component: () => import('@/views/pages/VkAdsShortPoster/Index.vue')
+                },
+                {
                     path: '/organisations',
                     name: 'organisationsList',
                     component: () => import('@/views/pages/Organisations/Index.vue')
