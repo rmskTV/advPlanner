@@ -45,7 +45,7 @@ class AnalyzeVideo implements ShouldQueue
                 'size' => $analysis['format']['size'] ?? null,
             ]);
 
-            // Генерация превью-версии в VP9 720p
+            // Генерация превью-версии в VP9
             $convertedPath = $this->convertToVp9($filePath);
 
             $this->videoFile->update([
@@ -104,7 +104,7 @@ class AnalyzeVideo implements ShouldQueue
             '-c:v', 'libvpx-vp9',
             '-b:v', '1M',
             '-crf', '31',
-            '-vf', 'scale=-1:720',
+            '-vf', 'scale=-1:1080',
             '-c:a', 'libopus',
             '-b:a', '128k',
             '-f', 'webm',
