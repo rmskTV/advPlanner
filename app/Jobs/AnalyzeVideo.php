@@ -104,7 +104,7 @@ class AnalyzeVideo implements ShouldQueue
             '-c:v', 'libvpx-vp9',
             '-b:v', '1M',
             '-crf', '31',
-            '-vf', 'scale=-1:1080',
+            '-vf', 'scale=-1:720',
             '-c:a', 'libopus',
             '-b:a', '128k',
             '-f', 'webm',
