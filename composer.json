@@ -12,8 +12,11 @@
         "laravel/sanctum": "^4.1",
         "laravel/tinker": "^2.9",
         "laravel/ui": "^4.6",
+        "league/flysystem-sftp-v3": "^3.29",
         "nwidart/laravel-modules": "^11.1",
-        "php-open-source-saver/jwt-auth": "^2.2"
+        "php-open-source-saver/jwt-auth": "^2.2",
+        "ext-simplexml": "*",
+        "ext-libxml": "*"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

@@ -6,5 +6,6 @@
     "SalesModels": true,
     "AdvBlockTypes": false,
     "AdvBlocks": true,
-    "BroadcastingDayTemplates": true
+    "BroadcastingDayTemplates": true,
+    "EnterpriseData": true
 }

@@ -60,6 +60,13 @@ const setInitialValues = () => {
     }
 }
 
+const handleFileUpload = (fieldName, event) => {
+    const file = event.target.files[0];
+    if (file) {
+        item.value[fieldName] = file;
+    }
+};
+
 watch(itemDialog, (newValue) => {
     if(newValue){
         setInitialValues()
@@ -286,7 +293,7 @@ const getValueByPath = (obj, path) => {
                                 >{{ field.label }} - обязательный атрибут.</small>
                             </template>
 
-                            <!-- Дабл -->
+                            <!-- Интегер -->
                             <template v-else-if="field.type === 'integer'">
                                 <InputNumber
                                     :id="field.name"
@@ -317,6 +324,21 @@ const getValueByPath = (obj, path) => {
                                 />
                             </template>
 
+                            <!-- Файловый инпут -->
+                            <template v-else-if="field.type === 'file'">
+                                <input
+                                    type="file"
+                                    @change="handleFileUpload(field.name, $event)"
+                                    :id="field.name"
+                                    class="w-full"
+                                />
+                                <small v-if="submitted && !item[field.name] && field.required" class="text-red-500">
+                                    {{ field.label }} - обязательный атрибут.
+                                </small>
+                                <div v-if="item[field.name]">
+                                    Файл выбран: {{ item[field.name].name }}
+                                </div>
+                            </template>
                             <template v-else>
                                 <InputText
                                     :id="field.name"

@@ -52,6 +52,34 @@ class BaseCrudService {
             throw error;
         }
     }
+
+    async CreateWithFiles(formData) {
+        try {
+            const response = await axios.post(this.API_URL, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+            return response.data;
+        } catch (error) {
+            console.error("Error creating item with files:", error);
+            throw error;
+        }
+    }
+
+    async UpdateWithFiles(id, formData) {
+        try {
+            const response = await axios.post(`${this.API_URL}/${id}`, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+            return response.data;
+        } catch (error) {
+            console.error("Error updating item with files:", error);
+            throw error;
+        }
+    }
 }
 
 export {BaseCrudService};

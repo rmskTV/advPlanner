@@ -1,0 +1,11 @@
+{
+    "name": "EnterpriseData",
+    "alias": "enterprisedata",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\EnterpriseData\\Providers\\EnterpriseDataServiceProvider"
+    ],
+    "files": []
+}

@@ -158,24 +158,14 @@ const model = ref([
                 ]
             },
             {
-                label: 'Submenu 2',
-                icon: 'pi pi-fw pi-bookmark',
+                label: 'Синхронизация',
+                icon: 'pi pi-fw pi-sync',
                 items: [
-                    {
-                        label: 'Submenu 2.1',
-                        icon: 'pi pi-fw pi-bookmark',
-                        items: [
-                            { label: 'Submenu 2.1.1', icon: 'pi pi-fw pi-bookmark' },
-                            { label: 'Submenu 2.1.2', icon: 'pi pi-fw pi-bookmark' }
-                        ]
-                    },
-                    {
-                        label: 'Submenu 2.2',
-                        icon: 'pi pi-fw pi-bookmark',
-                        items: [{ label: 'Submenu 2.2.1', icon: 'pi pi-fw pi-bookmark' }]
-                    }
+                    { label: 'Коннекторы обмена', icon: 'pi pi-fw pi-link', to: '/exchangeConnectors' },
+                    { label: 'Сеансы обмена', icon: 'pi pi-fw pi-sitemap', to: '#' },
                 ]
-            }
+            },
+
         ]
     },
     {

@@ -54,6 +54,11 @@ const router = createRouter({
                     component: () => import('@/views/pages/AdvBlocks/Index.vue')
                 },
                 {
+                    path: '/exchangeConnectors',
+                    name: 'exchangeConnectorsList',
+                    component: () => import('@/views/pages/ExchangeConnectors/Index.vue')
+                },
+                {
                     path: '/broadcastingDayTemplates',
                     name: 'broadcastingDayTemplatesList',
                     component: () => import('@/views/pages/BroadcastingDayTemplates/Index.vue')

@@ -1,10 +1,8 @@
-// useCrudTable.js
 import {onMounted, ref, watch} from 'vue';
 import { FilterMatchMode } from '@primevue/core/api';
 import { useToast } from 'primevue/usetoast';
 
-
-export function useCrudTable(service, initialFilters = [], parentFilter = { name: null, value: null })  {
+export function useCrudTable(service, initialFilters = [], parentFilter = { name: null, value: null }) {
     const toast = useToast();
     const item = ref({});
     const submitted = ref(false);
@@ -18,8 +16,8 @@ export function useCrudTable(service, initialFilters = [], parentFilter = { name
     const perPage = ref(10);
     const currentPage = ref(1);
     const selectedItems = ref();
-    const fieldOptions = ref({}); // Ref для хранения опций для полей
-    const filtersValues = ref({}); // Новое свойство для активных фильтров
+    const fieldOptions = ref({});
+    const filtersValues = ref({});
 
     const loadData = async (page = 1, perPageValue = perPage.value) => {
         loading.value = true;
@@ -29,9 +27,8 @@ export function useCrudTable(service, initialFilters = [], parentFilter = { name
                 page: page.valueOf(),
                 per_page: perPageValue,
                 ...filtersValues.value,
-                [parentFilter.name]: parentFilter.value, // Добавляем parentFilter// Добавляем активные фильтры в запрос
+                [parentFilter.name]: parentFilter.value,
             };
-            console.log(params);
             const data = await service.List(params);
             items.value = data.data;
             totalRecords.value = data.total;
@@ -69,15 +66,13 @@ export function useCrudTable(service, initialFilters = [], parentFilter = { name
                         optionsResponse = await field.optionsService.List();
                     }
 
-
                     const options = optionsResponse.data.map((option) => ({
                         label: option.name,
                         value: option.id,
                     }));
                     // Добавляем опцию "Не выбрано"
                     options.unshift({label: 'Не выбрано', value: null});
-                    fieldOptions.value[field.name] = options
-
+                    fieldOptions.value[field.name] = options;
                 } catch (err) {
                     toast.add({
                         severity: 'error',
@@ -90,56 +85,99 @@ export function useCrudTable(service, initialFilters = [], parentFilter = { name
                 fieldOptions.value[field.name] = [];
             }
         }
-    }
+    };
 
-
-    watch(perPage, () => {
-        loadData(1)
-    })
-    onMounted(async () => {
-        loadData(1);
-    });
-
-    const setupCascadeWatchers = (formFields, filters) => {
+    const hasFileFields = (formFields) => {
         const fields = Array.isArray(formFields[0]) ? formFields.flat() : formFields;
+        return fields.some(field => field.type === 'file');
+    };
 
-        fields.forEach(field => {
-            if (field.type === 'select' && field.cascade) {
-                // Находим зависимое поле
-                const dependentField = fields.find(f => f.cascadeDependency === field.name);
-
-                if (dependentField) {
-                    watch(
-                        () => item.value[field.name], // Отслеживаем изменение значения поля с cascade
-                        async (newValue) => {
-                            // Когда значение изменяется, перезагружаем опции только для зависимого поля
-                            await loadFieldOptions([dependentField]); // Передаем массив с одним зависимым полем
-                        }
-                    );
-                }
+    const prepareFormData = (data) => {
+        const formData = new FormData();
+        for (const key in data) {
+            if (data[key] instanceof File) {
+                formData.append(key, data[key]);
+            } else if (data[key] !== null && data[key] !== undefined) {
+                formData.append(key, data[key]);
             }
-        });
+        }
+        return formData;
     };
 
-    const openNew = async (formFields) => {
-        item.value = {};
-        submitted.value = false;
-        await loadFieldOptions(formFields);
-        itemDialog.value = true;
-    }
-    const hideDialog = () => {
-        itemDialog.value = false;
-        submitted.value = false;
-    };
-    const openDialog = async (itemSlot = null, formFields) => {
-        if (itemSlot != null) {
-            item.value = {...itemSlot};
-        } else {
-            item.value = {};
+    const sendCreateRequest = async (formFields) => {
+        try {
+            let data;
+            if (hasFileFields(formFields)) {
+                const formData = prepareFormData(item.value);
+                data = await service.CreateWithFiles(formData);
+            } else {
+                data = await service.Create(item.value);
+            }
+
+            if (data.id) {
+                toast.add({
+                    severity: 'success',
+                    summary: 'Добавлено',
+                    detail: 'Успешно добавлена запись',
+                    life: 3000
+                });
+                return true;
+            } else {
+                toast.add({
+                    severity: 'error',
+                    summary: 'Неизвестный ответ API',
+                    detail: data.data,
+                    life: 3000
+                });
+                return false;
+            }
+        } catch (err) {
+            toast.add({
+                severity: 'error',
+                summary: 'Ошибка запроса к API',
+                detail: err.message || 'Запрос не выполнен',
+                life: 3000
+            });
+            return false;
         }
-        submitted.value = false;
-        await loadFieldOptions(formFields);
-        itemDialog.value = true;
+    };
+
+    const sendUpdateRequest = async (formFields) => {
+        try {
+            let data;
+            if (hasFileFields(formFields)) {
+                const formData = prepareFormData(item.value);
+                data = await service.UpdateWithFiles(item.value.id, formData);
+            } else {
+                data = await service.Update(item.value);
+            }
+
+            if (data.id) {
+                toast.add({
+                    severity: 'success',
+                    summary: 'Обновлено',
+                    detail: 'Успешно обновлена запись',
+                    life: 3000
+                });
+                return true;
+            } else {
+                toast.add({
+                    severity: 'error',
+                    summary: 'Неизвестный ответ API',
+                    detail: data.data,
+                    life: 3000
+                });
+                return false;
+            }
+        } catch (err) {
+            toast.add({
+                severity: 'error',
+                summary: 'Ошибка запроса к API',
+                detail: err.message || 'Запрос не выполнен',
+                life: 3000
+            });
+            return false;
+        }
     };
 
     const sendDeleteRequest = async () => {
@@ -152,6 +190,7 @@ export function useCrudTable(service, initialFilters = [], parentFilter = { name
                     detail: 'Успешно удалена запись',
                     life: 3000
                 });
+                return true;
             } else {
                 toast.add({
                     severity: 'error',
@@ -159,107 +198,132 @@ export function useCrudTable(service, initialFilters = [], parentFilter = { name
                     detail: data.data,
                     life: 3000
                 });
+                return false;
             }
         } catch (err) {
             toast.add({
                 severity: 'error',
                 summary: 'Ошибка запроса к API',
-                detail: 'Запрос не выполнен',
+                detail: err.message || 'Запрос не выполнен',
                 life: 3000
             });
-        }
-        item.value = {};
-    }
-    const sendUpdateRequest = async () => {
-        try {
-            const data = await service.Update(item.value);
-            if (data.id === item.value.id) {
-                toast.add({
-                    severity: 'success',
-                    summary: 'Обновлено',
-                    detail: 'Успешно обновлена запись ',
-                    life: 3000
-                });
-            } else {
-                toast.add({
-                    severity: 'error',
-                    summary: 'Неизвестный ответ API',
-                    detail: data.data,
-                    life: 3000
-                });
-            }
-            item.value = {};
-        } catch (err) {
-            toast.add({
-                severity: 'error',
-                summary: 'Ошибка запроса к API',
-                detail: 'Запрос не выполнен',
-                life: 3000
-            });
-        }
-    }
-    const sendCreateRequest = async () => {
-        try {
-            const data = await service.Create(item.value);
-            if (data.id !== null) {
-                toast.add({
-                    severity: 'success',
-                    summary: 'Добавлено',
-                    detail: 'Успешно добавлена запись',
-                    life: 3000
-                });
-            } else {
-                toast.add({
-                    severity: 'error',
-                    summary: 'Неизвестный ответ API',
-                    detail: data.data,
-                    life: 3000
-                });
-            }
-            item.value = {};
-        } catch (err) {
-            toast.add({
-                severity: 'error',
-                summary: 'Ошибка запроса к API',
-                detail: 'Запрос не выполнен',
-                life: 3000
-            });
+            return false;
         }
     };
 
-    const saveItem = async () => {
+    const saveItem = async (formFields) => {
         submitted.value = true;
-        if (item?.value.name?.trim()) {
-            if (item.value.id == null) {
-                await sendCreateRequest();
-            } else {
-                await sendUpdateRequest();
-            }
+
+        // Проверка обязательных полей
+        const fields = Array.isArray(formFields[0]) ? formFields.flat() : formFields;
+        const hasEmptyRequiredFields = fields.some(field =>
+            field.required &&
+            (item.value[field.name] === null ||
+                item.value[field.name] === undefined ||
+                item.value[field.name] === '')
+        );
+
+        if (hasEmptyRequiredFields) {
+            toast.add({
+                severity: 'error',
+                summary: 'Ошибка валидации',
+                detail: 'Заполните все обязательные поля',
+                life: 3000
+            });
+            return;
+        }
+
+        let success;
+        if (item.value.id == null) {
+            success = await sendCreateRequest(formFields);
+        } else {
+            success = await sendUpdateRequest(formFields);
+        }
+
+        if (success) {
             await loadData(currentPage.value, perPage.value);
             itemDialog.value = false;
+            item.value = {};
         }
     };
+
     const deleteItem = async () => {
-        await sendDeleteRequest();
-        deleteItemDialog.value = false;
-        await loadData(currentPage.value, perPage.value);
-    }
+        const success = await sendDeleteRequest();
+        if (success) {
+            deleteItemDialog.value = false;
+            await loadData(currentPage.value, perPage.value);
+            item.value = {};
+        }
+    };
 
     const deleteSelectedItems = async () => {
+        let allSuccess = true;
         for (const element of selectedItems.value) {
             item.value = element;
-            await sendDeleteRequest();
+            const success = await sendDeleteRequest();
+            if (!success) allSuccess = false;
         }
-        deleteItemsDialog.value = false;
-        selectedItems.value = null;
-        await loadData(currentPage.value, perPage.value);
-    }
 
-    const applyFilter = (filterName, value) => {
-        filtersValues[filterName] = value;
-        loadData(currentPage.value, perPage.value); // Перезагружаем данные с новыми фильтрами
+        if (allSuccess) {
+            deleteItemsDialog.value = false;
+            selectedItems.value = null;
+            await loadData(currentPage.value, perPage.value);
+        }
     };
 
+    watch(perPage, () => {
+        loadData(1);
+    });
+
+    onMounted(async () => {
+        loadData(1);
+    });
+
+    const setupCascadeWatchers = (formFields) => {
+        const fields = Array.isArray(formFields[0]) ? formFields.flat() : formFields;
+
+        fields.forEach(field => {
+            if (field.type === 'select' && field.cascade) {
+                const dependentField = fields.find(f => f.cascadeDependency === field.name);
+                if (dependentField) {
+                    watch(
+                        () => item.value[field.name],
+                        async (newValue) => {
+                            await loadFieldOptions([dependentField]);
+                        }
+                    );
+                }
+            }
+        });
+    };
+
+    const openNew = async (formFields) => {
+        item.value = {};
+        submitted.value = false;
+        await loadFieldOptions(formFields);
+        itemDialog.value = true;
+    };
+
+    const hideDialog = () => {
+        itemDialog.value = false;
+        submitted.value = false;
+    };
+
+    const openDialog = async (itemSlot = null, formFields) => {
+        if (itemSlot != null) {
+            item.value = {...itemSlot};
+        } else {
+            item.value = {};
+        }
+        submitted.value = false;
+        await loadFieldOptions(formFields);
+        itemDialog.value = true;
+    };
+
+    const applyFilter = (filterName, value) => {
+        filtersValues.value[filterName] = value;
+        loadData(currentPage.value, perPage.value);
+    };
 
     return {
         item,
