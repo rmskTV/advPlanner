@@ -3,7 +3,28 @@
 namespace Modules\EnterpriseData\Providers;
 
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
+use Modules\EnterpriseData\app\Console\Commands\AnalyzeObjectStructureCommand;
+use Modules\EnterpriseData\app\Console\Commands\CleanupExchangeLogsCommand;
+use Modules\EnterpriseData\app\Console\Commands\ExchangeStatusCommand;
+use Modules\EnterpriseData\app\Console\Commands\InspectFileCommand;
+use Modules\EnterpriseData\app\Console\Commands\ProcessExchangeCommand;
+use Modules\EnterpriseData\app\Console\Commands\ShowMappingsCommand;
+use Modules\EnterpriseData\app\Console\Commands\ShowUnmappedObjectsCommand;
+use Modules\EnterpriseData\app\Console\Commands\TestFtpConnectionCommand;
+use Modules\EnterpriseData\app\Mappings\ContractMapping;
+use Modules\EnterpriseData\app\Mappings\OrganizationMapping;
+use Modules\EnterpriseData\app\Registry\ObjectMappingRegistry;
+use Modules\EnterpriseData\app\Services\ExchangeConfigValidator;
+use Modules\EnterpriseData\app\Services\ExchangeDataMapper;
+use Modules\EnterpriseData\app\Services\ExchangeDataSanitizer;
+use Modules\EnterpriseData\app\Services\ExchangeFileManager;
+use Modules\EnterpriseData\app\Services\ExchangeFtpConnectorService;
+use Modules\EnterpriseData\app\Services\ExchangeLogger;
+use Modules\EnterpriseData\app\Services\ExchangeMessageProcessor;
+use Modules\EnterpriseData\app\Services\ExchangeOrchestrator;
+use Modules\EnterpriseData\app\Services\ExchangeTransactionManager;
 use Nwidart\Modules\Traits\PathNamespace;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -23,6 +44,7 @@ class EnterpriseDataServiceProvider extends ServiceProvider
     {
         $this->registerCommands();
         $this->registerCommandSchedules();
+        $this->registerObjectMappings();
         $this->registerTranslations();
         $this->registerConfig();
         $this->registerViews();
@@ -34,16 +56,66 @@ class EnterpriseDataServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->register(EventServiceProvider::class);
         $this->app->register(RouteServiceProvider::class);
+
+        // Регистрация основных сервисов
+        $this->registerServices();
     }
 
-    /**
-     * Register commands in the format of Command::class
-     */
     protected function registerCommands(): void
     {
-        // $this->commands([]);
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                ProcessExchangeCommand::class,
+                ExchangeStatusCommand::class,
+                CleanupExchangeLogsCommand::class,
+                TestFtpConnectionCommand::class,
+                InspectFileCommand::class,
+                ShowMappingsCommand::class,
+                AnalyzeObjectStructureCommand::class,
+                ShowUnmappedObjectsCommand::class,
+            ]);
+        }
+    }
+
+    protected function registerServices(): void
+    {
+        // Регистрация реестра маппингов как синглтона
+        $this->app->singleton(ObjectMappingRegistry::class, function ($app) {
+            return new ObjectMappingRegistry;
+        });
+
+        // Регистрация других сервисов
+        $this->app->bind(ExchangeDataSanitizer::class);
+        $this->app->bind(ExchangeMessageProcessor::class);
+        $this->app->bind(ExchangeFileManager::class);
+        $this->app->bind(ExchangeDataMapper::class);
+        $this->app->bind(ExchangeTransactionManager::class);
+        $this->app->bind(ExchangeConfigValidator::class);
+        $this->app->bind(ExchangeLogger::class);
+        $this->app->bind(ExchangeOrchestrator::class);
+        $this->app->bind(ExchangeFtpConnectorService::class);
+    }
+
+    protected function registerObjectMappings(): void
+    {
+        try {
+            $registry = $this->app->make(ObjectMappingRegistry::class);
+
+            // Регистрация маппинга для организаций
+            $registry->registerMapping('Справочник.Организации', new OrganizationMapping);
+            $registry->registerMapping('Справочник.Договоры', new ContractMapping);
+
+            Log::info('Registered object mappings', [
+                'mappings_count' => count($registry->getAllMappings()),
+                'registered_types' => $registry->getSupportedObjectTypes(),
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to register object mappings', [
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

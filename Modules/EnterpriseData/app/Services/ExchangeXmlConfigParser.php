@@ -2,7 +2,7 @@
 
 namespace Modules\EnterpriseData\app\Services;
 
-use Modules\EnterpriseData\app\Exeptions\ExchangeConfigException;
+use Modules\EnterpriseData\app\Exceptions\ExchangeConfigException;
 use SimpleXMLElement;
 
 class ExchangeXmlConfigParser
