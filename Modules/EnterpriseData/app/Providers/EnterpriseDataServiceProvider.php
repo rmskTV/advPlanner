@@ -18,7 +18,10 @@ use Modules\EnterpriseData\app\Mappings\CounterpartyGroupMapping;
 use Modules\EnterpriseData\app\Mappings\CounterpartyMapping;
 use Modules\EnterpriseData\app\Mappings\CurrencyMapping;
 use Modules\EnterpriseData\app\Mappings\OrganizationMapping;
+use Modules\EnterpriseData\app\Mappings\ProductGroupMapping;
+use Modules\EnterpriseData\app\Mappings\ProductMapping;
 use Modules\EnterpriseData\app\Mappings\SystemUserMapping;
+use Modules\EnterpriseData\app\Mappings\UnitOfMeasureMapping;
 use Modules\EnterpriseData\app\Registry\ObjectMappingRegistry;
 use Modules\EnterpriseData\app\Services\ExchangeConfigValidator;
 use Modules\EnterpriseData\app\Services\ExchangeDataMapper;
@@ -106,13 +109,16 @@ class EnterpriseDataServiceProvider extends ServiceProvider
         try {
             $registry = $this->app->make(ObjectMappingRegistry::class);
 
-            // Регистрация маппинга для организаций
-            $registry->registerMapping('Справочник.Организации', new OrganizationMapping);
-            $registry->registerMapping('Справочник.Договоры', new ContractMapping);
+            $registry->registerMapping('Справочник.Организации', new OrganizationMapping());
             $registry->registerMapping('Справочник.КонтрагентыГруппа', new CounterpartyGroupMapping());
             $registry->registerMapping('Справочник.Контрагенты', new CounterpartyMapping());
             $registry->registerMapping('Справочник.Валюты', new CurrencyMapping());
             $registry->registerMapping('Справочник.Пользователи', new SystemUserMapping());
+            $registry->registerMapping('Справочник.ЕдиницыИзмерения', new UnitOfMeasureMapping());
+            $registry->registerMapping('Справочник.НоменклатураГруппа', new ProductGroupMapping());
+            $registry->registerMapping('Справочник.Номенклатура', new ProductMapping());
+            $registry->registerMapping('Справочник.Договоры', new ContractMapping());
+
             Log::info('Registered object mappings', [
                 'mappings_count' => count($registry->getAllMappings()),
                 'registered_types' => $registry->getSupportedObjectTypes(),

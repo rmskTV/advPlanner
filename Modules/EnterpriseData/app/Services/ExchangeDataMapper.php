@@ -334,6 +334,24 @@ class ExchangeDataMapper
             if (!empty($model->name)) {
                 $searchKeys['name'] = $model->name;
             }
+        } elseif ($model instanceof \App\Models\UnitOfMeasure) {
+            if (!empty($model->code)) {
+                $searchKeys['code'] = $model->code;
+            } elseif (!empty($model->name)) {
+                $searchKeys['name'] = $model->name;
+            }
+        } elseif ($model instanceof \App\Models\ProductGroup) {
+            if (!empty($model->code)) {
+                $searchKeys['code'] = $model->code;
+            } elseif (!empty($model->name)) {
+                $searchKeys['name'] = $model->name;
+            }
+        } elseif ($model instanceof \App\Models\Product) {
+            if (!empty($model->code)) {
+                $searchKeys['code'] = $model->code;
+            } elseif (!empty($model->name)) {
+                $searchKeys['name'] = $model->name;
+            }
         }
 
         return $searchKeys;
