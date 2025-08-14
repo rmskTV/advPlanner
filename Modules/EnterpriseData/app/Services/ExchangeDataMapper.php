@@ -315,10 +315,30 @@ class ExchangeDataMapper
             } elseif (!empty($model->name)) {
                 $searchKeys['name'] = $model->name;
             }
+        } elseif ($model instanceof \App\Models\Individual) {
+            if (!empty($model->inn)) {
+                $searchKeys['inn'] = $model->inn;
+            } elseif (!empty($model->full_name) && !empty($model->birth_date)) {
+                $searchKeys['full_name'] = $model->full_name;
+                $searchKeys['birth_date'] = $model->birth_date->format('Y-m-d');
+            } elseif (!empty($model->full_name)) {
+                $searchKeys['full_name'] = $model->full_name;
+            }
+        } elseif ($model instanceof \App\Models\Currency) {
+            if (!empty($model->code)) {
+                $searchKeys['code'] = $model->code;
+            } elseif (!empty($model->name)) {
+                $searchKeys['name'] = $model->name;
+            }
+        } elseif ($model instanceof \App\Models\SystemUser) {
+            if (!empty($model->name)) {
+                $searchKeys['name'] = $model->name;
+            }
         }
 
         return $searchKeys;
     }
+
     /**
      * Запись информации о немаппированном объекте
      */

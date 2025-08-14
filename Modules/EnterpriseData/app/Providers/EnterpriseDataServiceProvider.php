@@ -16,7 +16,9 @@ use Modules\EnterpriseData\app\Console\Commands\TestFtpConnectionCommand;
 use Modules\EnterpriseData\app\Mappings\ContractMapping;
 use Modules\EnterpriseData\app\Mappings\CounterpartyGroupMapping;
 use Modules\EnterpriseData\app\Mappings\CounterpartyMapping;
+use Modules\EnterpriseData\app\Mappings\CurrencyMapping;
 use Modules\EnterpriseData\app\Mappings\OrganizationMapping;
+use Modules\EnterpriseData\app\Mappings\SystemUserMapping;
 use Modules\EnterpriseData\app\Registry\ObjectMappingRegistry;
 use Modules\EnterpriseData\app\Services\ExchangeConfigValidator;
 use Modules\EnterpriseData\app\Services\ExchangeDataMapper;
@@ -109,7 +111,8 @@ class EnterpriseDataServiceProvider extends ServiceProvider
             $registry->registerMapping('Справочник.Договоры', new ContractMapping);
             $registry->registerMapping('Справочник.КонтрагентыГруппа', new CounterpartyGroupMapping());
             $registry->registerMapping('Справочник.Контрагенты', new CounterpartyMapping());
-
+            $registry->registerMapping('Справочник.Валюты', new CurrencyMapping());
+            $registry->registerMapping('Справочник.Пользователи', new SystemUserMapping());
             Log::info('Registered object mappings', [
                 'mappings_count' => count($registry->getAllMappings()),
                 'registered_types' => $registry->getSupportedObjectTypes(),
