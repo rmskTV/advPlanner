@@ -24,27 +24,22 @@ class ContactInfoParser
             $type = $row['ВидКонтактнойИнформации'] ?? '';
             $xmlValues = $row['ЗначенияПолей'] ?? '';
 
-            Log::debug('Processing contact info', [
+            Log::debug('Processing contact info row', [
                 'type' => $type,
-                'xml_preview' => substr($xmlValues, 0, 100),
+                'xml_length' => strlen($xmlValues)
             ]);
 
-            // Извлекаем представление из XML
-            $representation = self::extractRepresentation($xmlValues);
-
-            if (empty($representation)) {
-                continue;
-            }
-
-            // Определяем тип контактной информации
+            // Определяем тип контактной информации и извлекаем данные
             if (str_contains($type, 'Телефон') || str_contains($type, 'Phone')) {
-                $contactInfo['phone'] = self::cleanPhone($representation);
+                $contactInfo['phone'] = self::extractPhone($xmlValues);
             } elseif (str_contains($type, 'Email') || str_contains($type, 'Почта')) {
-                $contactInfo['email'] = self::cleanEmail($representation);
+                $contactInfo['email'] = self::extractEmail($xmlValues);
             } elseif (str_contains($type, 'Адрес') || str_contains($type, 'Address')) {
-                $addressData = self::parseAddress($representation, $xmlValues);
-                $contactInfo['address'] = $addressData['address'];
-                $contactInfo['zip'] = $addressData['zip'];
+                $addressData = self::extractAddress($xmlValues);
+                if ($type === 'ЮридическийАдрес') {
+                    $contactInfo['address'] = $addressData['address'];
+                    $contactInfo['zip'] = $addressData['zip'];
+                }
             }
         }
 
@@ -52,25 +47,160 @@ class ContactInfoParser
     }
 
     /**
-     * Извлечение представления из XML контактной информации
+     * Извлечение номера телефона из экранированного XML 1С
      */
-    private static function extractRepresentation(string $xmlString): ?string
+    private static function extractPhone(string $escapedXml): ?string
     {
-        if (empty($xmlString)) {
+        if (empty($escapedXml)) {
             return null;
         }
 
-        // Пытаемся извлечь атрибут Представление
+        // Раскодируем HTML entities
+        $xmlString = html_entity_decode($escapedXml);
+
+        Log::debug('Extracting phone from XML', [
+            'escaped_xml_preview' => substr($escapedXml, 0, 200),
+            'decoded_xml_preview' => substr($xmlString, 0, 200)
+        ]);
+
+        // Способ 1: Извлекаем атрибут Представление (самый надежный)
         if (preg_match('/Представление="([^"]*)"/', $xmlString, $matches)) {
-            return html_entity_decode($matches[1]);
+            $representation = $matches[1];
+            Log::debug('Found phone representation', ['representation' => $representation]);
+            return self::cleanPhone($representation);
         }
 
-        // Если это простая строка без XML
-        if (! str_contains($xmlString, '<')) {
-            return $xmlString;
+        // Способ 2: Парсим структурированные данные телефона
+        $phoneData = self::parsePhoneStructure($xmlString);
+        if ($phoneData) {
+            return $phoneData;
+        }
+
+        // Способ 3: Если это простая строка
+        if (!str_contains($xmlString, '<')) {
+            return self::cleanPhone($xmlString);
         }
 
         return null;
+    }
+
+    /**
+     * Парсинг структурированных данных телефона из XML
+     */
+    private static function parsePhoneStructure(string $xmlString): ?string
+    {
+        // Извлекаем компоненты номера телефона
+        $countryCode = '';
+        $cityCode = '';
+        $number = '';
+        $extension = '';
+
+        if (preg_match('/КодСтраны="([^"]*)"/', $xmlString, $matches)) {
+            $countryCode = $matches[1];
+        }
+
+        if (preg_match('/КодГорода="([^"]*)"/', $xmlString, $matches)) {
+            $cityCode = $matches[1];
+        }
+
+        if (preg_match('/Номер="([^"]*)"/', $xmlString, $matches)) {
+            $number = $matches[1];
+        }
+
+        if (preg_match('/Добавочный="([^"]*)"/', $xmlString, $matches)) {
+            $extension = $matches[1];
+        }
+
+        // Собираем номер телефона
+        $phoneComponents = [];
+
+        if (!empty($countryCode)) {
+            $phoneComponents[] = "({$countryCode})";
+        }
+
+        if (!empty($cityCode)) {
+            $phoneComponents[] = $cityCode;
+        }
+
+        if (!empty($number)) {
+            $phoneComponents[] = $number;
+        }
+
+        if (!empty($extension)) {
+            $phoneComponents[] = "доб. {$extension}";
+        }
+
+        $result = implode(' ', $phoneComponents);
+
+        Log::debug('Parsed phone structure', [
+            'country_code' => $countryCode,
+            'city_code' => $cityCode,
+            'number' => $number,
+            'extension' => $extension,
+            'result' => $result
+        ]);
+
+        return !empty($result) ? $result : null;
+    }
+
+    /**
+     * Извлечение email из экранированного XML 1С
+     */
+    private static function extractEmail(string $escapedXml): ?string
+    {
+        if (empty($escapedXml)) {
+            return null;
+        }
+
+        // Раскодируем HTML entities
+        $xmlString = html_entity_decode($escapedXml);
+
+        // Извлекаем из атрибута Представление
+        if (preg_match('/Представление="([^"]*)"/', $xmlString, $matches)) {
+            $email = $matches[1];
+            return self::cleanEmail($email);
+        }
+
+        // Извлекаем из атрибута Значение
+        if (preg_match('/Значение="([^"]*)"/', $xmlString, $matches)) {
+            $email = $matches[1];
+            return self::cleanEmail($email);
+        }
+
+        return null;
+    }
+
+    /**
+     * Извлечение адреса из экранированного XML 1С
+     */
+    private static function extractAddress(string $escapedXml): array
+    {
+        $result = [
+            'address' => null,
+            'zip' => null
+        ];
+
+        if (empty($escapedXml)) {
+            return $result;
+        }
+
+        // Раскодируем HTML entities
+        $xmlString = html_entity_decode($escapedXml);
+
+        // Извлекаем представление адреса
+        if (preg_match('/Представление="([^"]*)"/', $xmlString, $matches)) {
+            $representation = $matches[1];
+
+            // Извлекаем индекс из начала адреса
+            if (preg_match('/^(\d{6}),?\s*(.+)/', $representation, $addressMatches)) {
+                $result['zip'] = $addressMatches[1];
+                $result['address'] = trim($addressMatches[2]);
+            } else {
+                $result['address'] = $representation;
+            }
+        }
+
+        return $result;
     }
 
     /**
@@ -82,12 +212,18 @@ class ContactInfoParser
             return null;
         }
 
-        // Убираем лишние символы, оставляем только цифры, +, -, (, ), пробелы
-        $cleaned = preg_replace('/[^\d\+\-$$$$\s]/', '', $phone);
-        $cleaned = trim($cleaned);
+        // Убираем лишние пробелы
+        $phone = preg_replace('/\s+/', ' ', trim($phone));
+
+        Log::debug('Cleaning phone number', [
+            'original' => $phone,
+            'length' => strlen($phone)
+        ]);
 
         // Ограничиваем длину
-        return strlen($cleaned) > 50 ? substr($cleaned, 0, 50) : ($cleaned ?: null);
+        $result = strlen($phone) > 50 ? substr($phone, 0, 50) : $phone;
+
+        return !empty($result) ? $result : null;
     }
 
     /**
@@ -101,33 +237,13 @@ class ContactInfoParser
 
         $cleaned = trim($email);
 
+        // Проверяем базовый формат email
+        if (!filter_var($cleaned, FILTER_VALIDATE_EMAIL)) {
+            Log::debug('Invalid email format', ['email' => $cleaned]);
+            return null;
+        }
+
         // Ограничиваем длину
-        return strlen($cleaned) > 100 ? substr($cleaned, 0, 100) : ($cleaned ?: null);
-    }
-
-    /**
-     * Парсинг адреса
-     */
-    private static function parseAddress(string $representation, string $xmlString): array
-    {
-        $result = [
-            'address' => null,
-            'zip' => null,
-        ];
-
-        // Извлекаем индекс из представления (обычно в начале)
-        if (preg_match('/^(\d{6}),?\s*(.+)/', $representation, $matches)) {
-            $result['zip'] = $matches[1];
-            $result['address'] = trim($matches[2]);
-        } else {
-            $result['address'] = $representation;
-        }
-
-        // Пытаемся извлечь индекс из XML
-        if (empty($result['zip']) && preg_match('/Значение="(\d{6})"/', $xmlString, $matches)) {
-            $result['zip'] = $matches[1];
-        }
-
-        return $result;
+        return strlen($cleaned) > 100 ? substr($cleaned, 0, 100) : $cleaned;
     }
 }
