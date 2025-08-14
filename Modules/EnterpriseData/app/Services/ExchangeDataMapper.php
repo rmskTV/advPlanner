@@ -286,34 +286,39 @@ class ExchangeDataMapper
         $searchKeys = [];
 
         // Приоритет 1: GUID 1С
-        if (! empty($model->guid_1c)) {
+        if (!empty($model->guid_1c)) {
             $searchKeys['guid_1c'] = $model->guid_1c;
-
             return $searchKeys;
         }
 
         // Приоритет 2: Уникальные поля в зависимости от типа модели
         if ($model instanceof \App\Models\Organization) {
-            if (! empty($model->inn)) {
+            if (!empty($model->inn)) {
                 $searchKeys['inn'] = $model->inn;
-            } elseif (! empty($model->name)) {
+            } elseif (!empty($model->name)) {
                 $searchKeys['name'] = $model->name;
             }
         } elseif ($model instanceof \App\Models\Contract) {
-            // Для договора ищем по номеру и дате (если они есть)
-            if (! empty($model->number) && ! empty($model->date)) {
+            if (!empty($model->number) && !empty($model->date)) {
                 $searchKeys['number'] = $model->number;
                 $searchKeys['date'] = $model->date->format('Y-m-d');
-            } elseif (! empty($model->number)) {
-                // Если есть только номер
+            } elseif (!empty($model->number)) {
                 $searchKeys['number'] = $model->number;
             }
-            // Если нет ни номера, ни даты - создаем новую запись
+        } elseif ($model instanceof \App\Models\CounterpartyGroup) {
+            if (!empty($model->name)) {
+                $searchKeys['name'] = $model->name;
+            }
+        } elseif ($model instanceof \App\Models\Counterparty) {
+            if (!empty($model->inn)) {
+                $searchKeys['inn'] = $model->inn;
+            } elseif (!empty($model->name)) {
+                $searchKeys['name'] = $model->name;
+            }
         }
 
         return $searchKeys;
     }
-
     /**
      * Запись информации о немаппированном объекте
      */

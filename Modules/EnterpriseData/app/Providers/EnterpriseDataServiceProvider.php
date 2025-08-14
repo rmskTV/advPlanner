@@ -14,6 +14,8 @@ use Modules\EnterpriseData\app\Console\Commands\ShowMappingsCommand;
 use Modules\EnterpriseData\app\Console\Commands\ShowUnmappedObjectsCommand;
 use Modules\EnterpriseData\app\Console\Commands\TestFtpConnectionCommand;
 use Modules\EnterpriseData\app\Mappings\ContractMapping;
+use Modules\EnterpriseData\app\Mappings\CounterpartyGroupMapping;
+use Modules\EnterpriseData\app\Mappings\CounterpartyMapping;
 use Modules\EnterpriseData\app\Mappings\OrganizationMapping;
 use Modules\EnterpriseData\app\Registry\ObjectMappingRegistry;
 use Modules\EnterpriseData\app\Services\ExchangeConfigValidator;
@@ -105,6 +107,8 @@ class EnterpriseDataServiceProvider extends ServiceProvider
             // Регистрация маппинга для организаций
             $registry->registerMapping('Справочник.Организации', new OrganizationMapping);
             $registry->registerMapping('Справочник.Договоры', new ContractMapping);
+            $registry->registerMapping('Справочник.КонтрагентыГруппа', new CounterpartyGroupMapping());
+            $registry->registerMapping('Справочник.Контрагенты', new CounterpartyMapping());
 
             Log::info('Registered object mappings', [
                 'mappings_count' => count($registry->getAllMappings()),
