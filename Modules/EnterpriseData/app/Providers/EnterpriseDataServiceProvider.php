@@ -21,6 +21,7 @@ use Modules\EnterpriseData\app\Mappings\CustomerOrderMapping;
 use Modules\EnterpriseData\app\Mappings\OrganizationMapping;
 use Modules\EnterpriseData\app\Mappings\ProductGroupMapping;
 use Modules\EnterpriseData\app\Mappings\ProductMapping;
+use Modules\EnterpriseData\app\Mappings\SaleMapping;
 use Modules\EnterpriseData\app\Mappings\SystemUserMapping;
 use Modules\EnterpriseData\app\Mappings\UnitOfMeasureMapping;
 use Modules\EnterpriseData\app\Registry\ObjectMappingRegistry;
@@ -120,6 +121,7 @@ class EnterpriseDataServiceProvider extends ServiceProvider
             $registry->registerMapping('Справочник.Номенклатура', new ProductMapping());
             $registry->registerMapping('Справочник.Договоры', new ContractMapping());
             $registry->registerMapping('Документ.ЗаказКлиента', new CustomerOrderMapping());
+            $registry->registerMapping('Документ.РеализацияТоваровУслуг', new SaleMapping());
 
             Log::info('Registered object mappings', [
                 'mappings_count' => count($registry->getAllMappings()),

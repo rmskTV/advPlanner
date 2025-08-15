@@ -13,10 +13,12 @@ use Modules\Accounting\app\Models\CustomerOrder;
 use Modules\Accounting\app\Models\Organization;
 use Modules\Accounting\app\Models\Product;
 use Modules\Accounting\app\Models\ProductGroup;
+use Modules\Accounting\app\Models\Sale;
 use Modules\Accounting\app\Models\SystemUser;
 use Modules\Accounting\app\Models\UnitOfMeasure;
 use Modules\EnterpriseData\app\Exceptions\ExchangeMappingException;
 use Modules\EnterpriseData\app\Mappings\CustomerOrderMapping;
+use Modules\EnterpriseData\app\Mappings\SaleMapping;
 use Modules\EnterpriseData\app\Models\ExchangeFtpConnector;
 use Modules\EnterpriseData\app\Registry\ObjectMappingRegistry;
 use Modules\EnterpriseData\app\ValueObjects\ProcessingResult;
@@ -258,12 +260,10 @@ class ExchangeDataMapper
         $searchKeys = $this->getSearchKeys($model, $object1C);
 
         if (empty($searchKeys)) {
-            // Если нет ключей для поиска, просто создаем
             $model->save();
             $wasCreated = true;
             $savedModel = $model;
         } else {
-            // Используем updateOrCreate
             $savedModel = $modelClass::updateOrCreate(
                 $searchKeys,
                 $model->getAttributes()
@@ -277,14 +277,12 @@ class ExchangeDataMapper
             if ($mapping instanceof CustomerOrderMapping) {
                 $mapping->processTabularSections($savedModel, $object1C);
             }
+        } elseif ($model instanceof Sale) {
+            $mapping = $this->mappingRegistry->getMapping($objectType);
+            if ($mapping instanceof SaleMapping) {
+                $mapping->processTabularSections($savedModel, $object1C);
+            }
         }
-
-        Log::info('Model saved with updateOrCreate', [
-            'object_type' => $objectType,
-            'model_id' => $savedModel->id,
-            'was_created' => $wasCreated,
-            'guid_1c' => $savedModel->guid_1c ?? 'not set'
-        ]);
 
         return ['model' => $savedModel, 'created' => $wasCreated];
     }
@@ -294,74 +292,53 @@ class ExchangeDataMapper
      */
     private function getSearchKeys(Model $model, array $object1C): array
     {
-        $searchKeys = [];
-
         // Приоритет 1: GUID 1С
         if (!empty($model->guid_1c)) {
-            $searchKeys['guid_1c'] = $model->guid_1c;
-            return $searchKeys;
+            return ['guid_1c' => $model->guid_1c];
         }
 
-        // Приоритет 2: Уникальные поля в зависимости от типа модели
-        if ($model instanceof Organization) {
-            if (!empty($model->inn)) {
-                $searchKeys['inn'] = $model->inn;
-            } elseif (!empty($model->name)) {
-                $searchKeys['name'] = $model->name;
-            }
-        } elseif ($model instanceof Contract) {
-            if (!empty($model->number) && !empty($model->date)) {
-                $searchKeys['number'] = $model->number;
-                $searchKeys['date'] = $model->date->format('Y-m-d');
-            } elseif (!empty($model->number)) {
-                $searchKeys['number'] = $model->number;
-            }
-        } elseif ($model instanceof CounterpartyGroup) {
-            if (!empty($model->name)) {
-                $searchKeys['name'] = $model->name;
-            }
-        } elseif ($model instanceof Counterparty) {
-            if (!empty($model->inn)) {
-                $searchKeys['inn'] = $model->inn;
-            } elseif (!empty($model->name)) {
-                $searchKeys['name'] = $model->name;
-            }
-        } elseif ($model instanceof Currency) {
-            if (!empty($model->code)) {
-                $searchKeys['code'] = $model->code;
-            } elseif (!empty($model->name)) {
-                $searchKeys['name'] = $model->name;
-            }
-        } elseif ($model instanceof SystemUser) {
-            if (!empty($model->name)) {
-                $searchKeys['name'] = $model->name;
-            }
-        } elseif ($model instanceof UnitOfMeasure) {
-            if (!empty($model->code)) {
-                $searchKeys['code'] = $model->code;
-            } elseif (!empty($model->name)) {
-                $searchKeys['name'] = $model->name;
-            }
-        } elseif ($model instanceof ProductGroup) {
-            if (!empty($model->code)) {
-                $searchKeys['code'] = $model->code;
-            } elseif (!empty($model->name)) {
-                $searchKeys['name'] = $model->name;
-            }
-        } elseif ($model instanceof Product) {
-            if (!empty($model->code)) {
-                $searchKeys['code'] = $model->code;
-            } elseif (!empty($model->name)) {
-                $searchKeys['name'] = $model->name;
-            }
-        } elseif ($model instanceof CustomerOrder) {
-            if (!empty($model->number) && !empty($model->date)) {
-                $searchKeys['number'] = $model->number;
-                $searchKeys['date'] = $model->date->format('Y-m-d H:i:s');
-            } elseif (!empty($model->number)) {
-                $searchKeys['number'] = $model->number;
-            }
+        $searchKeys = [];
+
+        switch (true) {
+            case $model instanceof Organization:
+            case $model instanceof Counterparty:
+                if (!empty($model->inn)) {
+                    $searchKeys['inn'] = $model->inn;
+                } elseif (!empty($model->name)) {
+                    $searchKeys['name'] = $model->name;
+                }
+                break;
+
+            case $model instanceof Contract:
+            case $model instanceof CustomerOrder:
+            case $model instanceof Sale:
+                if (!empty($model->number) && !empty($model->date)) {
+                    $searchKeys['number'] = $model->number;
+                    $searchKeys['date'] = $model->date->format($model instanceof Contract ? 'Y-m-d' : 'Y-m-d H:i:s');
+                } elseif (!empty($model->number)) {
+                    $searchKeys['number'] = $model->number;
+                }
+                break;
+
+            case $model instanceof CounterpartyGroup:
+            case $model instanceof SystemUser:
+                if (!empty($model->name)) {
+                    $searchKeys['name'] = $model->name;
+                }
+                break;
+
+            case $model instanceof Currency:
+            case $model instanceof UnitOfMeasure:
+            case $model instanceof ProductGroup:
+            case $model instanceof Product:
+                if (!empty($model->code)) {
+                    $searchKeys['code'] = $model->code;
+                } elseif (!empty($model->name)) {
+                    $searchKeys['name'] = $model->name;
+                }
+                break;
         }
+
         return $searchKeys;
     }
 
