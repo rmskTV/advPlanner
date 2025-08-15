@@ -1,7 +1,9 @@
 <?php
 
-namespace App\Models;
+namespace Modules\Accounting\app\Models;
 
+use App\Models\BankAccount;
+use App\Models\CatalogObject;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**

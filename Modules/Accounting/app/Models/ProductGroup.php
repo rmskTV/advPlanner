@@ -1,30 +1,33 @@
 <?php
 
-namespace App\Models;
+namespace Modules\Accounting\app\Models;
 
+use App\Models\CatalogObject;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * Модель группы контрагентов
+ * Модель группы номенклатуры
  *
  * @property int $id
  * @property string $uuid
  * @property string|null $guid_1c
- * @property string $name
+ * @property string|null $name
+ * @property string|null $code
  * @property string|null $description
  * @property int|null $parent_id
  * @property string|null $parent_guid_1c
  * @property bool $deletion_mark
  * @property \Carbon\Carbon|null $last_sync_at
  */
-class CounterpartyGroup extends CatalogObject
+class ProductGroup extends CatalogObject
 {
-    protected $table = 'counterparty_groups';
+    protected $table = 'product_groups';
 
     protected $fillable = [
         'guid_1c',
         'name',
+        'code',
         'description',
         'parent_id',
         'parent_guid_1c',
@@ -42,7 +45,7 @@ class CounterpartyGroup extends CatalogObject
      */
     public function parent(): BelongsTo
     {
-        return $this->belongsTo(CounterpartyGroup::class, 'parent_id');
+        return $this->belongsTo(ProductGroup::class, 'parent_id');
     }
 
     /**
@@ -50,15 +53,15 @@ class CounterpartyGroup extends CatalogObject
      */
     public function children(): HasMany
     {
-        return $this->hasMany(CounterpartyGroup::class, 'parent_id');
+        return $this->hasMany(ProductGroup::class, 'parent_id');
     }
 
     /**
-     * Связь с контрагентами
+     * Связь с номенклатурой
      */
-    public function counterparties(): HasMany
+    public function products(): HasMany
     {
-        return $this->hasMany(Counterparty::class, 'group_id');
+        return $this->hasMany(Product::class, 'group_id');
     }
 
     /**

@@ -2,11 +2,11 @@
 
 namespace Modules\EnterpriseData\app\Mappings;
 
-use App\Models\Contract;
-use App\Models\Organization;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
+use Modules\Accounting\app\Models\Contract;
+use Modules\Accounting\app\Models\Organization;
 use Modules\EnterpriseData\app\Contracts\ObjectMapping;
 use Modules\EnterpriseData\app\ValueObjects\ValidationResult;
 

@@ -1,8 +1,9 @@
 <?php
 
-namespace App\Models;
+namespace Modules\Accounting\app\Models;
 
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\CatalogObject;
+use App\Models\Individual;
 
 /**
  * Модель системного пользователя 1С

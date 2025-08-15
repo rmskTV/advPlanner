@@ -2,13 +2,13 @@
 
 namespace Modules\EnterpriseData\app\Mappings;
 
-use App\Models\Counterparty;
-use App\Models\CounterpartyGroup;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
+use Modules\Accounting\app\Models\Counterparty;
+use Modules\Accounting\app\Models\CounterpartyGroup;
 use Modules\EnterpriseData\app\Contracts\ObjectMapping;
-use Modules\EnterpriseData\app\ValueObjects\ValidationResult;
 use Modules\EnterpriseData\app\Services\ContactInfoParser;
+use Modules\EnterpriseData\app\ValueObjects\ValidationResult;
 
 class CounterpartyMapping extends ObjectMapping
 {

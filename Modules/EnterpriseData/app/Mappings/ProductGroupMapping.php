@@ -2,9 +2,9 @@
 
 namespace Modules\EnterpriseData\app\Mappings;
 
-use App\Models\ProductGroup;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
+use Modules\Accounting\app\Models\ProductGroup;
 use Modules\EnterpriseData\app\Contracts\ObjectMapping;
 use Modules\EnterpriseData\app\ValueObjects\ValidationResult;
 

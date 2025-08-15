@@ -2,11 +2,11 @@
 
 namespace Modules\EnterpriseData\app\Mappings;
 
-use App\Models\Product;
-use App\Models\ProductGroup;
-use App\Models\UnitOfMeasure;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
+use Modules\Accounting\app\Models\Product;
+use Modules\Accounting\app\Models\ProductGroup;
+use Modules\Accounting\app\Models\UnitOfMeasure;
 use Modules\EnterpriseData\app\Contracts\ObjectMapping;
 use Modules\EnterpriseData\app\ValueObjects\ValidationResult;
 

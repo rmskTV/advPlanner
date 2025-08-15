@@ -292,24 +292,24 @@ class ExchangeDataMapper
         }
 
         // Приоритет 2: Уникальные поля в зависимости от типа модели
-        if ($model instanceof \App\Models\Organization) {
+        if ($model instanceof \Modules\Accounting\app\Models\Organization) {
             if (!empty($model->inn)) {
                 $searchKeys['inn'] = $model->inn;
             } elseif (!empty($model->name)) {
                 $searchKeys['name'] = $model->name;
             }
-        } elseif ($model instanceof \App\Models\Contract) {
+        } elseif ($model instanceof \Modules\Accounting\app\Models\Contract) {
             if (!empty($model->number) && !empty($model->date)) {
                 $searchKeys['number'] = $model->number;
                 $searchKeys['date'] = $model->date->format('Y-m-d');
             } elseif (!empty($model->number)) {
                 $searchKeys['number'] = $model->number;
             }
-        } elseif ($model instanceof \App\Models\CounterpartyGroup) {
+        } elseif ($model instanceof \Modules\Accounting\app\Models\CounterpartyGroup) {
             if (!empty($model->name)) {
                 $searchKeys['name'] = $model->name;
             }
-        } elseif ($model instanceof \App\Models\Counterparty) {
+        } elseif ($model instanceof \Modules\Accounting\app\Models\Counterparty) {
             if (!empty($model->inn)) {
                 $searchKeys['inn'] = $model->inn;
             } elseif (!empty($model->name)) {
@@ -324,29 +324,29 @@ class ExchangeDataMapper
             } elseif (!empty($model->full_name)) {
                 $searchKeys['full_name'] = $model->full_name;
             }
-        } elseif ($model instanceof \App\Models\Currency) {
+        } elseif ($model instanceof \Modules\Accounting\app\Models\Currency) {
             if (!empty($model->code)) {
                 $searchKeys['code'] = $model->code;
             } elseif (!empty($model->name)) {
                 $searchKeys['name'] = $model->name;
             }
-        } elseif ($model instanceof \App\Models\SystemUser) {
+        } elseif ($model instanceof \Modules\Accounting\app\Models\SystemUser) {
             if (!empty($model->name)) {
                 $searchKeys['name'] = $model->name;
             }
-        } elseif ($model instanceof \App\Models\UnitOfMeasure) {
+        } elseif ($model instanceof \Modules\Accounting\app\Models\UnitOfMeasure) {
             if (!empty($model->code)) {
                 $searchKeys['code'] = $model->code;
             } elseif (!empty($model->name)) {
                 $searchKeys['name'] = $model->name;
             }
-        } elseif ($model instanceof \App\Models\ProductGroup) {
+        } elseif ($model instanceof \Modules\Accounting\app\Models\ProductGroup) {
             if (!empty($model->code)) {
                 $searchKeys['code'] = $model->code;
             } elseif (!empty($model->name)) {
                 $searchKeys['name'] = $model->name;
             }
-        } elseif ($model instanceof \App\Models\Product) {
+        } elseif ($model instanceof \Modules\Accounting\app\Models\Product) {
             if (!empty($model->code)) {
                 $searchKeys['code'] = $model->code;
             } elseif (!empty($model->name)) {

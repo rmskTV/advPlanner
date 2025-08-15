@@ -2,9 +2,9 @@
 
 namespace Modules\EnterpriseData\app\Mappings;
 
-use App\Models\Currency;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
+use Modules\Accounting\app\Models\Currency;
 use Modules\EnterpriseData\app\Contracts\ObjectMapping;
 use Modules\EnterpriseData\app\ValueObjects\ValidationResult;
 

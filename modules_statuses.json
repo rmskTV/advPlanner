@@ -7,5 +7,6 @@
     "AdvBlockTypes": false,
     "AdvBlocks": true,
     "BroadcastingDayTemplates": true,
-    "EnterpriseData": true
+    "EnterpriseData": true,
+    "Accounting": true
 }

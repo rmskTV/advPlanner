@@ -1,7 +1,10 @@
 <?php
 
-namespace App\Models;
+namespace Modules\Accounting\app\Models;
 
+use App\Models\CatalogObject;
+use App\Models\CustomerOrder;
+use App\Models\Sale;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
