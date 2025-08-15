@@ -80,6 +80,7 @@ class Counterparty extends CatalogObject
 
     // Константы для типов лиц
     public const ENTITY_TYPE_LEGAL = 'legal';
+
     public const ENTITY_TYPE_INDIVIDUAL = 'individual';
 
     /**

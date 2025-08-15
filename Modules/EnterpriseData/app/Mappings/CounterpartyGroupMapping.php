@@ -3,7 +3,6 @@
 namespace Modules\EnterpriseData\app\Mappings;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Log;
 use Modules\Accounting\app\Models\CounterpartyGroup;
 use Modules\EnterpriseData\app\Contracts\ObjectMapping;
 use Modules\EnterpriseData\app\ValueObjects\ValidationResult;
@@ -25,13 +24,7 @@ class CounterpartyGroupMapping extends ObjectMapping
         $properties = $object1C['properties'] ?? [];
         $keyProperties = $properties['КлючевыеСвойства'] ?? [];
 
-        Log::info('Mapping CounterpartyGroup from 1C', [
-            'object_type' => $object1C['type'],
-            'ref' => $object1C['ref'] ?? 'not set',
-            'key_properties_keys' => array_keys($keyProperties)
-        ]);
-
-        $group = new CounterpartyGroup();
+        $group = new CounterpartyGroup;
 
         // Основные реквизиты из ключевых свойств
         $group->guid_1c = $this->getFieldValue($keyProperties, 'Ссылка') ?: ($object1C['ref'] ?? null);
@@ -39,7 +32,7 @@ class CounterpartyGroupMapping extends ObjectMapping
 
         // Родительская группа (если есть)
         $parentData = $keyProperties['Родитель'] ?? [];
-        if (!empty($parentData) && isset($parentData['Ссылка'])) {
+        if (! empty($parentData) && isset($parentData['Ссылка'])) {
             $parentGroup = CounterpartyGroup::findByGuid1C($parentData['Ссылка']);
             $group->parent_id = $parentGroup?->id;
             $group->parent_guid_1c = $parentData['Ссылка'];
@@ -48,12 +41,6 @@ class CounterpartyGroupMapping extends ObjectMapping
         // Системные поля
         $group->deletion_mark = false;
         $group->last_sync_at = now();
-
-        Log::info('Mapped CounterpartyGroup successfully', [
-            'guid_1c' => $group->guid_1c,
-            'name' => $group->name,
-            'parent_guid' => $group->parent_guid_1c
-        ]);
 
         return $group;
     }
@@ -70,7 +57,7 @@ class CounterpartyGroupMapping extends ObjectMapping
                     'Наименование' => $laravelModel->name,
                 ],
             ],
-            'tabular_sections' => []
+            'tabular_sections' => [],
         ];
     }
 

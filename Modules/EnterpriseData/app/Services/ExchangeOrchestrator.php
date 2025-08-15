@@ -96,28 +96,11 @@ readonly class ExchangeOrchestrator
 
                 $objectsCount = $parsedMessage->body->getObjectsCount();
 
-                Log::info('Parsed message details', [
-                    'connector_id' => $connector->id,
-                    'file_name' => $fileName,
-                    'message_no' => $parsedMessage->header->messageNo,
-                    'objects_count' => $objectsCount,
-                    'unique_types' => $parsedMessage->body->getUniqueObjectTypes(),
-                ]);
-
                 // Обработка объектов
                 $processingResult = $this->dataMapper->processIncomingObjects(
                     $parsedMessage->body->objects,
                     $connector
                 );
-
-                Log::info('Processing result', [
-                    'connector_id' => $connector->id,
-                    'file_name' => $fileName,
-                    'processing_success' => $processingResult->success,
-                    'processed_count' => $processingResult->processedCount,
-                    'total_objects_in_message' => $objectsCount,
-                    'errors_count' => count($processingResult->errors),
-                ]);
 
                 // В режиме dry-run НЕ создаем запись в журнале и НЕ помечаем сообщение как обработанное
                 $isDryRun = app()->runningInConsole() &&

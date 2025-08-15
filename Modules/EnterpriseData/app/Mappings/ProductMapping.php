@@ -3,7 +3,6 @@
 namespace Modules\EnterpriseData\app\Mappings;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Log;
 use Modules\Accounting\app\Models\Product;
 use Modules\Accounting\app\Models\ProductGroup;
 use Modules\Accounting\app\Models\UnitOfMeasure;
@@ -27,12 +26,7 @@ class ProductMapping extends ObjectMapping
         $properties = $object1C['properties'] ?? [];
         $keyProperties = $properties['КлючевыеСвойства'] ?? [];
 
-        Log::info('Mapping Product from 1C', [
-            'object_type' => $object1C['type'],
-            'ref' => $object1C['ref'] ?? 'not set'
-        ]);
-
-        $product = new Product();
+        $product = new Product;
 
         // Основные реквизиты из ключевых свойств
         $product->guid_1c = $this->getFieldValue($keyProperties, 'Ссылка') ?: ($object1C['ref'] ?? null);
@@ -42,7 +36,7 @@ class ProductMapping extends ObjectMapping
 
         // Группа номенклатуры
         $groupData = $keyProperties['Группа'] ?? [];
-        if (!empty($groupData) && isset($groupData['Ссылка'])) {
+        if (! empty($groupData) && isset($groupData['Ссылка'])) {
             $group = ProductGroup::findByGuid1C($groupData['Ссылка']);
             $product->group_id = $group?->id;
             $product->group_guid_1c = $groupData['Ссылка'];
@@ -50,7 +44,7 @@ class ProductMapping extends ObjectMapping
 
         // Тип номенклатуры
         $type1C = $this->getFieldValue($properties, 'ТипНоменклатуры');
-        $product->product_type = match($type1C) {
+        $product->product_type = match ($type1C) {
             'Товар' => Product::TYPE_PRODUCT,
             'Услуга' => Product::TYPE_SERVICE,
             'Набор' => Product::TYPE_SET,
@@ -59,7 +53,7 @@ class ProductMapping extends ObjectMapping
 
         // Единица измерения
         $unitData = $properties['ЕдиницаИзмерения'] ?? [];
-        if (!empty($unitData) && isset($unitData['Ссылка'])) {
+        if (! empty($unitData) && isset($unitData['Ссылка'])) {
             $unit = UnitOfMeasure::findByGuid1C($unitData['Ссылка']);
             $product->unit_of_measure_id = $unit?->id;
             $product->unit_guid_1c = $unitData['Ссылка'];
@@ -73,7 +67,7 @@ class ProductMapping extends ObjectMapping
 
         // Группа аналитического учета
         $analyticsData = $properties['ГруппаАналитическогоУчета'] ?? [];
-        if (!empty($analyticsData)) {
+        if (! empty($analyticsData)) {
             $product->analytics_group_guid_1c = $analyticsData['Ссылка'] ?? null;
             $product->analytics_group_code = $analyticsData['КодВПрограмме'] ?? null;
             $product->analytics_group_name = $analyticsData['Наименование'] ?? null;
@@ -81,14 +75,14 @@ class ProductMapping extends ObjectMapping
 
         // Вид номенклатуры
         $kindData = $properties['ВидНоменклатуры'] ?? [];
-        if (!empty($kindData)) {
+        if (! empty($kindData)) {
             $product->product_kind_guid_1c = $kindData['Ссылка'] ?? null;
             $product->product_kind_name = $kindData['Наименование'] ?? null;
         }
 
         // Алкогольная продукция
         $alcoholData = $properties['ДанныеАлкогольнойПродукции'] ?? [];
-        if (!empty($alcoholData)) {
+        if (! empty($alcoholData)) {
             $product->is_alcoholic = $this->getBooleanFieldValue($alcoholData, 'АлкогольнаяПродукция', false);
             $product->alcohol_type = $alcoholData['ВидАлкогольнойПродукции'] ?? null;
             $product->is_imported_alcohol = $this->getBooleanFieldValue($alcoholData, 'ИмпортнаяАлкогольнаяПродукция', false);
@@ -103,22 +97,13 @@ class ProductMapping extends ObjectMapping
         $product->deletion_mark = false;
         $product->last_sync_at = now();
 
-        Log::info('Mapped Product successfully', [
-            'guid_1c' => $product->guid_1c,
-            'name' => $product->name,
-            'code' => $product->code,
-            'product_type' => $product->product_type,
-            'group_guid' => $product->group_guid_1c,
-            'unit_guid' => $product->unit_guid_1c
-        ]);
-
         return $product;
     }
 
     public function mapTo1C(Model $laravelModel): array
     {
         /** @var Product $laravelModel */
-        $type1C = match($laravelModel->product_type) {
+        $type1C = match ($laravelModel->product_type) {
             Product::TYPE_PRODUCT => 'Товар',
             Product::TYPE_SERVICE => 'Услуга',
             Product::TYPE_SET => 'Набор',
@@ -140,7 +125,7 @@ class ProductMapping extends ObjectMapping
                 'КодТРУ' => $laravelModel->tru_code,
                 'ПрослеживаемыйТовар' => $laravelModel->is_traceable ? 'true' : 'false',
             ],
-            'tabular_sections' => []
+            'tabular_sections' => [],
         ];
     }
 

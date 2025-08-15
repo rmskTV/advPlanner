@@ -45,7 +45,7 @@ class SystemUser extends CatalogObject
      */
     public function individual(): ?Individual
     {
-        if (!$this->individual_guid_1c) {
+        if (! $this->individual_guid_1c) {
             return null;
         }
 

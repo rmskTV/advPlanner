@@ -84,7 +84,9 @@ class Sale extends Document
 
     // Константы для видов операций
     public const OPERATION_SALE_TO_CLIENT = 'РеализацияКлиенту';
+
     public const OPERATION_COMMISSION = 'Комиссия';
+
     public const OPERATION_AGENT = 'Агентская';
 
     /**
@@ -108,7 +110,7 @@ class Sale extends Document
      */
     public function getCustomerOrder(): ?CustomerOrder
     {
-        if (!$this->order_guid_1c) {
+        if (! $this->order_guid_1c) {
             return null;
         }
 

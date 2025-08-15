@@ -46,12 +46,6 @@ class ExchangeDataMapper
             $isDryRun = app()->runningInConsole() &&
                 in_array('--dry-run', $_SERVER['argv'] ?? []);
 
-            Log::info('Starting to process incoming objects', [
-                'connector_id' => $connector->id,
-                'objects_count' => count($objects1C),
-                'dry_run' => $isDryRun,
-            ]);
-
             $processedCount = 0;
             $createdIds = [];
             $updatedIds = [];
@@ -63,30 +57,14 @@ class ExchangeDataMapper
             // Группировка объектов по типам для оптимизации
             $groupedObjects = $this->groupObjectsByType($objects1C);
 
-            Log::info('Grouped objects by type', [
-                'types_count' => count($groupedObjects),
-                'types' => array_keys($groupedObjects),
-                'objects_per_type' => array_map('count', $groupedObjects),
-            ]);
-
             foreach ($groupedObjects as $objectType => $objects) {
                 try {
-                    Log::info('Processing object type', [
-                        'object_type' => $objectType,
-                        'objects_count' => count($objects),
-                    ]);
-
                     // Проверяем, есть ли маппинг для этого типа объекта
                     if (! $this->mappingRegistry->hasMapping($objectType)) {
                         $skippedTypes[$objectType] = 'No mapping available';
                         $skippedCount += count($objects);
 
                         $this->recordUnmappedObject($connector, $objectType, $objects, $isDryRun);
-
-                        Log::debug('No mapping found for object type (skipping)', [
-                            'object_type' => $objectType,
-                            'objects_count' => count($objects),
-                        ]);
 
                         continue;
                     }
@@ -99,15 +77,6 @@ class ExchangeDataMapper
                     $updatedIds = array_merge($updatedIds, $result->updatedIds);
                     $deletedIds = array_merge($deletedIds, $result->deletedIds);
                     $errors = array_merge($errors, $result->errors);
-
-                    Log::info('Processed object type', [
-                        'object_type' => $objectType,
-                        'processed_count' => $result->processedCount,
-                        'created_count' => count($result->createdIds),
-                        'updated_count' => count($result->updatedIds),
-                        'deleted_count' => count($result->deletedIds),
-                        'errors_count' => count($result->errors),
-                    ]);
 
                 } catch (\Exception $e) {
                     $errors[] = "Error processing {$objectType}: ".$e->getMessage();
@@ -137,19 +106,6 @@ class ExchangeDataMapper
                 $deletedIds,
                 $errors
             );
-
-            Log::info('Finished processing incoming objects', [
-                'connector_id' => $connector->id,
-                'total_objects_in_message' => count($objects1C),
-                'total_processed' => $processedCount,
-                'total_skipped' => $skippedCount,
-                'total_created' => count($createdIds),
-                'total_updated' => count($updatedIds),
-                'total_deleted' => count($deletedIds),
-                'total_errors' => count($errors),
-                'success' => $finalResult->success,
-                'dry_run' => $isDryRun,
-            ]);
 
             return $finalResult;
 
@@ -194,11 +150,6 @@ class ExchangeDataMapper
                 $laravelModel = $mapping->mapFrom1C($sanitizedObject);
 
                 if ($isDryRun) {
-                    Log::info('DRY RUN: Would process object', [
-                        'object_type' => $objectType,
-                        'object_ref' => $sanitizedObject['ref'] ?? 'not set',
-                        'model_class' => get_class($laravelModel),
-                    ]);
 
                     $processedCount++;
 
@@ -210,18 +161,8 @@ class ExchangeDataMapper
 
                 if ($result['created']) {
                     $createdIds[] = $result['model']->id;
-                    Log::debug('Created object', [
-                        'object_type' => $objectType,
-                        'model_id' => $result['model']->id,
-                        'guid_1c' => $result['model']->guid_1c ?? 'not set',
-                    ]);
                 } else {
                     $updatedIds[] = $result['model']->id;
-                    Log::debug('Updated object', [
-                        'object_type' => $objectType,
-                        'model_id' => $result['model']->id,
-                        'guid_1c' => $result['model']->guid_1c ?? 'not set',
-                    ]);
                 }
 
                 $processedCount++;
@@ -293,7 +234,7 @@ class ExchangeDataMapper
     private function getSearchKeys(Model $model, array $object1C): array
     {
         // Приоритет 1: GUID 1С
-        if (!empty($model->guid_1c)) {
+        if (! empty($model->guid_1c)) {
             return ['guid_1c' => $model->guid_1c];
         }
 
@@ -302,9 +243,9 @@ class ExchangeDataMapper
         switch (true) {
             case $model instanceof Organization:
             case $model instanceof Counterparty:
-                if (!empty($model->inn)) {
+                if (! empty($model->inn)) {
                     $searchKeys['inn'] = $model->inn;
-                } elseif (!empty($model->name)) {
+                } elseif (! empty($model->name)) {
                     $searchKeys['name'] = $model->name;
                 }
                 break;
@@ -312,17 +253,17 @@ class ExchangeDataMapper
             case $model instanceof Contract:
             case $model instanceof CustomerOrder:
             case $model instanceof Sale:
-                if (!empty($model->number) && !empty($model->date)) {
+                if (! empty($model->number) && ! empty($model->date)) {
                     $searchKeys['number'] = $model->number;
                     $searchKeys['date'] = $model->date->format($model instanceof Contract ? 'Y-m-d' : 'Y-m-d H:i:s');
-                } elseif (!empty($model->number)) {
+                } elseif (! empty($model->number)) {
                     $searchKeys['number'] = $model->number;
                 }
                 break;
 
             case $model instanceof CounterpartyGroup:
             case $model instanceof SystemUser:
-                if (!empty($model->name)) {
+                if (! empty($model->name)) {
                     $searchKeys['name'] = $model->name;
                 }
                 break;
@@ -331,9 +272,9 @@ class ExchangeDataMapper
             case $model instanceof UnitOfMeasure:
             case $model instanceof ProductGroup:
             case $model instanceof Product:
-                if (!empty($model->code)) {
+                if (! empty($model->code)) {
                     $searchKeys['code'] = $model->code;
-                } elseif (!empty($model->name)) {
+                } elseif (! empty($model->name)) {
                     $searchKeys['name'] = $model->name;
                 }
                 break;
@@ -353,12 +294,6 @@ class ExchangeDataMapper
     ): void {
         try {
             if ($isDryRun) {
-                Log::info('DRY RUN: Would record unmapped object', [
-                    'connector_id' => $connector->id,
-                    'object_type' => $objectType,
-                    'objects_count' => count($objects),
-                ]);
-
                 return;
             }
 
@@ -383,12 +318,6 @@ class ExchangeDataMapper
                 $objectType,
                 $cleanSample
             );
-
-            Log::info('Recorded unmapped object', [
-                'connector_id' => $connector->id,
-                'object_type' => $objectType,
-                'objects_count' => count($objects),
-            ]);
 
         } catch (\Exception $e) {
             Log::error('Failed to record unmapped object', [
@@ -439,8 +368,8 @@ class ExchangeDataMapper
 
     public function getObjectsForSending(ExchangeFtpConnector $connector): Collection
     {
-        // Реализация зависит от вашей бизнес-логики
-        // Например, поиск измененных объектов с определенной даты
+        // Отправка объектов предусмотрена,
+        // но будет реализована позже
         return collect([]);
     }
 

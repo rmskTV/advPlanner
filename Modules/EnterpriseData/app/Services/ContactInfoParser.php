@@ -2,8 +2,6 @@
 
 namespace Modules\EnterpriseData\app\Services;
 
-use Illuminate\Support\Facades\Log;
-
 class ContactInfoParser
 {
     /**
@@ -23,11 +21,6 @@ class ContactInfoParser
         foreach ($contactSection as $row) {
             $type = $row['ВидКонтактнойИнформации'] ?? '';
             $xmlValues = $row['ЗначенияПолей'] ?? '';
-
-            Log::debug('Processing contact info row', [
-                'type' => $type,
-                'xml_length' => strlen($xmlValues)
-            ]);
 
             // Определяем тип контактной информации и извлекаем данные
             if (str_contains($type, 'Телефон') || str_contains($type, 'Phone')) {
@@ -58,15 +51,10 @@ class ContactInfoParser
         // Раскодируем HTML entities
         $xmlString = html_entity_decode($escapedXml);
 
-        Log::debug('Extracting phone from XML', [
-            'escaped_xml_preview' => substr($escapedXml, 0, 200),
-            'decoded_xml_preview' => substr($xmlString, 0, 200)
-        ]);
-
         // Способ 1: Извлекаем атрибут Представление (самый надежный)
         if (preg_match('/Представление="([^"]*)"/', $xmlString, $matches)) {
             $representation = $matches[1];
-            Log::debug('Found phone representation', ['representation' => $representation]);
+
             return self::cleanPhone($representation);
         }
 
@@ -77,7 +65,7 @@ class ContactInfoParser
         }
 
         // Способ 3: Если это простая строка
-        if (!str_contains($xmlString, '<')) {
+        if (! str_contains($xmlString, '<')) {
             return self::cleanPhone($xmlString);
         }
 
@@ -114,33 +102,25 @@ class ContactInfoParser
         // Собираем номер телефона
         $phoneComponents = [];
 
-        if (!empty($countryCode)) {
+        if (! empty($countryCode)) {
             $phoneComponents[] = "({$countryCode})";
         }
 
-        if (!empty($cityCode)) {
+        if (! empty($cityCode)) {
             $phoneComponents[] = $cityCode;
         }
 
-        if (!empty($number)) {
+        if (! empty($number)) {
             $phoneComponents[] = $number;
         }
 
-        if (!empty($extension)) {
+        if (! empty($extension)) {
             $phoneComponents[] = "доб. {$extension}";
         }
 
         $result = implode(' ', $phoneComponents);
 
-        Log::debug('Parsed phone structure', [
-            'country_code' => $countryCode,
-            'city_code' => $cityCode,
-            'number' => $number,
-            'extension' => $extension,
-            'result' => $result
-        ]);
-
-        return !empty($result) ? $result : null;
+        return ! empty($result) ? $result : null;
     }
 
     /**
@@ -158,12 +138,14 @@ class ContactInfoParser
         // Извлекаем из атрибута Представление
         if (preg_match('/Представление="([^"]*)"/', $xmlString, $matches)) {
             $email = $matches[1];
+
             return self::cleanEmail($email);
         }
 
         // Извлекаем из атрибута Значение
         if (preg_match('/Значение="([^"]*)"/', $xmlString, $matches)) {
             $email = $matches[1];
+
             return self::cleanEmail($email);
         }
 
@@ -177,7 +159,7 @@ class ContactInfoParser
     {
         $result = [
             'address' => null,
-            'zip' => null
+            'zip' => null,
         ];
 
         if (empty($escapedXml)) {
@@ -215,15 +197,10 @@ class ContactInfoParser
         // Убираем лишние пробелы
         $phone = preg_replace('/\s+/', ' ', trim($phone));
 
-        Log::debug('Cleaning phone number', [
-            'original' => $phone,
-            'length' => strlen($phone)
-        ]);
-
         // Ограничиваем длину
         $result = strlen($phone) > 50 ? substr($phone, 0, 50) : $phone;
 
-        return !empty($result) ? $result : null;
+        return ! empty($result) ? $result : null;
     }
 
     /**
@@ -238,8 +215,7 @@ class ContactInfoParser
         $cleaned = trim($email);
 
         // Проверяем базовый формат email
-        if (!filter_var($cleaned, FILTER_VALIDATE_EMAIL)) {
-            Log::debug('Invalid email format', ['email' => $cleaned]);
+        if (! filter_var($cleaned, FILTER_VALIDATE_EMAIL)) {
             return null;
         }
 

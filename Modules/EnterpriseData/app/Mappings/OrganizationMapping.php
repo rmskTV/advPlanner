@@ -23,10 +23,6 @@ class OrganizationMapping extends ObjectMapping
 
     public function mapFrom1C(array $object1C): Model
     {
-        Log::info('Mapping Organization from 1C', [
-            'object_type' => $object1C['type'],
-            'ref' => $object1C['ref'] ?? 'not set',
-        ]);
 
         $properties = $object1C['properties'] ?? [];
         $keyProperties = $properties['КлючевыеСвойства'] ?? [];
@@ -64,14 +60,6 @@ class OrganizationMapping extends ObjectMapping
         // Системные поля
         $organization->deletion_mark = false;
         $organization->last_sync_at = now();
-
-        Log::info('Mapped Organization successfully', [
-            'guid_1c' => $organization->guid_1c,
-            'name' => $organization->name,
-            'inn' => $organization->inn,
-            'phone_length' => strlen($organization->phone ?? ''),
-            'email_length' => strlen($organization->email ?? ''),
-        ]);
 
         return $organization;
     }

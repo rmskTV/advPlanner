@@ -3,7 +3,6 @@
 namespace Modules\EnterpriseData\app\Mappings;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Log;
 use Modules\Accounting\app\Models\ProductGroup;
 use Modules\EnterpriseData\app\Contracts\ObjectMapping;
 use Modules\EnterpriseData\app\ValueObjects\ValidationResult;
@@ -25,12 +24,7 @@ class ProductGroupMapping extends ObjectMapping
         $properties = $object1C['properties'] ?? [];
         $keyProperties = $properties['КлючевыеСвойства'] ?? [];
 
-        Log::info('Mapping ProductGroup from 1C', [
-            'object_type' => $object1C['type'],
-            'ref' => $object1C['ref'] ?? 'not set'
-        ]);
-
-        $group = new ProductGroup();
+        $group = new ProductGroup;
 
         // Основные реквизиты из ключевых свойств
         $group->guid_1c = $this->getFieldValue($keyProperties, 'Ссылка') ?: ($object1C['ref'] ?? null);
@@ -39,7 +33,7 @@ class ProductGroupMapping extends ObjectMapping
 
         // Родительская группа (если есть)
         $parentData = $keyProperties['Родитель'] ?? [];
-        if (!empty($parentData) && isset($parentData['Ссылка'])) {
+        if (! empty($parentData) && isset($parentData['Ссылка'])) {
             $parentGroup = ProductGroup::findByGuid1C($parentData['Ссылка']);
             $group->parent_id = $parentGroup?->id;
             $group->parent_guid_1c = $parentData['Ссылка'];
@@ -48,13 +42,6 @@ class ProductGroupMapping extends ObjectMapping
         // Системные поля
         $group->deletion_mark = false;
         $group->last_sync_at = now();
-
-        Log::info('Mapped ProductGroup successfully', [
-            'guid_1c' => $group->guid_1c,
-            'name' => $group->name,
-            'code' => $group->code,
-            'parent_guid' => $group->parent_guid_1c
-        ]);
 
         return $group;
     }
@@ -72,7 +59,7 @@ class ProductGroupMapping extends ObjectMapping
                     'КодВПрограмме' => $laravelModel->code,
                 ],
             ],
-            'tabular_sections' => []
+            'tabular_sections' => [],
         ];
     }
 

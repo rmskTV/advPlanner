@@ -313,25 +313,6 @@ class ExchangeMessageProcessor
             return new ExchangeBody([]);
         }
 
-        // Логируем все дочерние элементы Body
-        if ($bodyNode->hasChildNodes()) {
-            Log::info('Body child nodes:', [
-                'children_count' => $bodyNode->childNodes->length,
-            ]);
-
-            foreach ($bodyNode->childNodes as $index => $child) {
-                if ($child->nodeType === XML_ELEMENT_NODE) {
-                    Log::info("Body child #{$index}", [
-                        'node_name' => $child->nodeName,
-                        'has_ref_attribute' => $child->hasAttribute('Ref'),
-                        'ref_value' => $child->getAttribute('Ref'),
-                        'has_children' => $child->hasChildNodes(),
-                        'children_count' => $child->childNodes->length,
-                    ]);
-                }
-            }
-        }
-
         $objects = [];
 
         // Ищем все элементы с атрибутом Ref (это объекты данных)
@@ -347,14 +328,6 @@ class ExchangeMessageProcessor
 
             foreach ($bodyNode->childNodes as $childNode) {
                 if ($childNode->nodeType === XML_ELEMENT_NODE) {
-                    Log::info('Processing child element', [
-                        'node_name' => $childNode->nodeName,
-                        'local_name' => $childNode->localName,
-                        'namespace_uri' => $childNode->namespaceURI,
-                        'has_attributes' => $childNode->hasAttributes(),
-                        'attributes_count' => $childNode->attributes ? $childNode->attributes->length : 0,
-                    ]);
-
                     // Парсим как объект даже без Ref
                     $objects[] = $this->parseObject($xpath, $childNode);
                 }
@@ -390,12 +363,6 @@ class ExchangeMessageProcessor
             'tabular_sections' => [],
         ];
 
-        Log::debug('Parsing object', [
-            'type' => $object['type'],
-            'ref' => $object['ref'],
-            'children_count' => $objectNode->childNodes->length,
-        ]);
-
         // Парсинг свойств объекта
         foreach ($objectNode->childNodes as $childNode) {
             if ($childNode->nodeType !== XML_ELEMENT_NODE) {
@@ -404,40 +371,14 @@ class ExchangeMessageProcessor
 
             $propertyName = $childNode->nodeName;
 
-            Log::debug('Processing object property', [
-                'object_type' => $object['type'],
-                'property_name' => $propertyName,
-                'has_children' => $childNode->hasChildNodes(),
-                'text_content' => substr($childNode->textContent, 0, 100),
-            ]);
-
             // Табличные части
             if ($childNode->hasChildNodes() && $this->isTabularSection($childNode)) {
                 $object['tabular_sections'][$propertyName] = $this->parseTabularSection($xpath, $childNode);
-                Log::debug('Parsed tabular section', [
-                    'object_type' => $object['type'],
-                    'section_name' => $propertyName,
-                    'rows_count' => count($object['tabular_sections'][$propertyName]),
-                ]);
             } else {
                 // Обычные свойства
                 $object['properties'][$propertyName] = $this->parsePropertyValue($childNode);
-                Log::debug('Parsed property', [
-                    'object_type' => $object['type'],
-                    'property_name' => $propertyName,
-                    'property_value' => is_string($object['properties'][$propertyName])
-                        ? substr($object['properties'][$propertyName], 0, 100)
-                        : gettype($object['properties'][$propertyName]),
-                ]);
             }
         }
-
-        Log::debug('Object parsed successfully', [
-            'type' => $object['type'],
-            'ref' => $object['ref'],
-            'properties_count' => count($object['properties']),
-            'tabular_sections_count' => count($object['tabular_sections']),
-        ]);
 
         return $object;
     }

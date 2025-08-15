@@ -3,7 +3,6 @@
 namespace Modules\EnterpriseData\app\Mappings;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Log;
 use Modules\Accounting\app\Models\UnitOfMeasure;
 use Modules\EnterpriseData\app\Contracts\ObjectMapping;
 use Modules\EnterpriseData\app\ValueObjects\ValidationResult;
@@ -25,19 +24,14 @@ class UnitOfMeasureMapping extends ObjectMapping
         $properties = $object1C['properties'] ?? [];
         $keyProperties = $properties['КлючевыеСвойства'] ?? [];
 
-        Log::info('Mapping UnitOfMeasure from 1C', [
-            'object_type' => $object1C['type'],
-            'ref' => $object1C['ref'] ?? 'not set'
-        ]);
-
-        $unit = new UnitOfMeasure();
+        $unit = new UnitOfMeasure;
 
         // Основные реквизиты из ключевых свойств
         $unit->guid_1c = $this->getFieldValue($keyProperties, 'Ссылка') ?: ($object1C['ref'] ?? null);
 
         // Данные классификатора
         $classifierData = $keyProperties['ДанныеКлассификатора'] ?? [];
-        if (!empty($classifierData)) {
+        if (! empty($classifierData)) {
             $unit->code = $classifierData['Код'] ?? null;
             $unit->name = $classifierData['Наименование'] ?? null;
         }
@@ -48,13 +42,6 @@ class UnitOfMeasureMapping extends ObjectMapping
         // Системные поля
         $unit->deletion_mark = false;
         $unit->last_sync_at = now();
-
-        Log::info('Mapped UnitOfMeasure successfully', [
-            'guid_1c' => $unit->guid_1c,
-            'code' => $unit->code,
-            'name' => $unit->name,
-            'full_name' => $unit->full_name
-        ]);
 
         return $unit;
     }
@@ -75,7 +62,7 @@ class UnitOfMeasureMapping extends ObjectMapping
                 ],
                 'НаименованиеПолное' => $laravelModel->full_name,
             ],
-            'tabular_sections' => []
+            'tabular_sections' => [],
         ];
     }
 

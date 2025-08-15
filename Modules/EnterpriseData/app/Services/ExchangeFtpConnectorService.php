@@ -37,15 +37,6 @@ class ExchangeFtpConnectorService
             $host = $parsedUrl['host'];
             $port = $connector->ftp_port ?: ($parsedUrl['port'] ?? 21);
 
-            Log::info('Creating FTP connection', [
-                'connector' => $connector->id,
-                'host' => $host,
-                'port' => $port,
-                'login' => $connector->ftp_login,
-                'passive_mode' => $connector->ftp_passive_mode,
-                'transliterate' => $connector->ftp_transliterate,
-            ]);
-
             // Создание опций подключения
             $options = FtpConnectionOptions::fromArray([
                 'host' => $host,
@@ -74,19 +65,10 @@ class ExchangeFtpConnectorService
                 // Пытаемся получить листинг корневой директории или exchange path
                 $testPath = empty($exchangePath) || $exchangePath === '.' ? '/' : $exchangePath;
 
-                Log::info('Testing directory listing', [
-                    'connector' => $connector->id,
-                    'test_path' => $testPath,
-                ]);
-
                 $listing = $filesystem->listContents($testPath, false);
 
                 // Просто проверяем, что можем получить итератор
                 $listing->toArray(); // Это заставит выполниться запрос
-
-                Log::info('FTP connection established successfully', [
-                    'connector' => $connector->id,
-                ]);
 
             } catch (\Exception $e) {
                 Log::error('FTP connection test failed', [

@@ -49,12 +49,6 @@ class ContractMapping extends ObjectMapping
         $properties = $object1C['properties'] ?? [];
         $keyProperties = $properties['КлючевыеСвойства'] ?? [];
 
-        Log::info('Mapping Contract from 1C', [
-            'object_type' => $object1C['type'],
-            'ref' => $object1C['ref'] ?? 'not set',
-            'has_key_properties' => ! empty($keyProperties),
-        ]);
-
         $contract = new Contract;
 
         // Основные реквизиты из ключевых свойств - ТОЧНО как в 1С
@@ -121,15 +115,6 @@ class ContractMapping extends ObjectMapping
         $contract->deletion_mark = false;
         $contract->is_active = true;
         $contract->last_sync_at = now();
-
-        Log::info('Mapped Contract successfully', [
-            'guid_1c' => $contract->guid_1c,
-            'number' => $contract->number,
-            'date' => $contract->date?->format('Y-m-d'),
-            'name' => $contract->name,
-            'contract_type' => $contract->contract_type,
-            'has_missing_fields' => empty($contract->number) || empty($contract->date) || empty($contract->name),
-        ]);
 
         return $contract;
     }

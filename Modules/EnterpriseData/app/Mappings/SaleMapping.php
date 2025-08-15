@@ -2,7 +2,6 @@
 
 namespace Modules\EnterpriseData\app\Mappings;
 
-
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
@@ -29,12 +28,7 @@ class SaleMapping extends ObjectMapping
         $properties = $object1C['properties'] ?? [];
         $keyProperties = $properties['КлючевыеСвойства'] ?? [];
 
-        Log::info('Mapping Sale from 1C', [
-            'object_type' => $object1C['type'],
-            'ref' => $object1C['ref'] ?? 'not set'
-        ]);
-
-        $sale = new Sale();
+        $sale = new Sale;
 
         // Основные реквизиты из ключевых свойств
         $sale->guid_1c = $this->getFieldValue($keyProperties, 'Ссылка') ?: ($object1C['ref'] ?? null);
@@ -42,13 +36,13 @@ class SaleMapping extends ObjectMapping
 
         // Дата документа
         $dateString = $this->getFieldValue($keyProperties, 'Дата');
-        if (!empty($dateString)) {
+        if (! empty($dateString)) {
             try {
                 $sale->date = Carbon::parse($dateString);
             } catch (\Exception $e) {
                 Log::warning('Invalid sale date format', [
                     'original_date' => $dateString,
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
                 ]);
                 $sale->date = null;
             }
@@ -59,7 +53,7 @@ class SaleMapping extends ObjectMapping
 
         // Организация
         $organizationData = $keyProperties['Организация'] ?? [];
-        if (!empty($organizationData) && isset($organizationData['Ссылка'])) {
+        if (! empty($organizationData) && isset($organizationData['Ссылка'])) {
             $organization = Organization::findByGuid1C($organizationData['Ссылка']);
             $sale->organization_id = $organization?->id;
             $sale->organization_guid_1c = $organizationData['Ссылка'];
@@ -67,13 +61,13 @@ class SaleMapping extends ObjectMapping
 
         // Контрагент
         $counterpartyData = $properties['Контрагент'] ?? [];
-        if (!empty($counterpartyData)) {
+        if (! empty($counterpartyData)) {
             $sale->counterparty_guid_1c = $counterpartyData['Ссылка'] ?? null;
         }
 
         // Валюта
         $currencyData = $properties['Валюта'] ?? [];
-        if (!empty($currencyData)) {
+        if (! empty($currencyData)) {
             $sale->currency_guid_1c = $currencyData['Ссылка'] ?? null;
         }
 
@@ -83,7 +77,7 @@ class SaleMapping extends ObjectMapping
 
         // Данные взаиморасчетов
         $settlementData = $properties['ДанныеВзаиморасчетов'] ?? [];
-        if (!empty($settlementData)) {
+        if (! empty($settlementData)) {
             $contractData = $settlementData['Договор'] ?? [];
             $sale->contract_guid_1c = $contractData['Ссылка'] ?? null;
 
@@ -97,7 +91,7 @@ class SaleMapping extends ObjectMapping
 
         // Связанный заказ
         $orderData = $properties['Заказ'] ?? [];
-        if (!empty($orderData)) {
+        if (! empty($orderData)) {
             $sale->order_guid_1c = $orderData['Ссылка'] ?? null;
         }
 
@@ -115,40 +109,31 @@ class SaleMapping extends ObjectMapping
 
         // Руководитель
         $directorData = $properties['Руководитель'] ?? [];
-        if (!empty($directorData)) {
+        if (! empty($directorData)) {
             $sale->director_guid_1c = $directorData['Ссылка'] ?? null;
         }
 
         // Главный бухгалтер
         $accountantData = $properties['ГлавныйБухгалтер'] ?? [];
-        if (!empty($accountantData)) {
+        if (! empty($accountantData)) {
             $sale->accountant_guid_1c = $accountantData['Ссылка'] ?? null;
         }
 
         // Банковский счет организации
         $bankAccountData = $properties['БанковскийСчетОрганизации'] ?? [];
-        if (!empty($bankAccountData)) {
+        if (! empty($bankAccountData)) {
             $sale->organization_bank_account_guid_1c = $bankAccountData['Ссылка'] ?? null;
         }
 
         // Ответственный
         $responsibleData = $properties['ОбщиеСвойстваОбъектовФормата']['Ответственный'] ?? [];
-        if (!empty($responsibleData)) {
+        if (! empty($responsibleData)) {
             $sale->responsible_guid_1c = $responsibleData['Ссылка'] ?? null;
         }
 
         // Системные поля
         $sale->deletion_mark = false;
         $sale->last_sync_at = now();
-
-        Log::info('Mapped Sale successfully', [
-            'guid_1c' => $sale->guid_1c,
-            'number' => $sale->number,
-            'date' => $sale->date?->format('Y-m-d H:i:s'),
-            'amount' => $sale->amount,
-            'operation_type' => $sale->operation_type,
-            'counterparty_guid' => $sale->counterparty_guid_1c
-        ]);
 
         return $sale;
     }
@@ -160,11 +145,6 @@ class SaleMapping extends ObjectMapping
     {
         $tabularSections = $object1C['tabular_sections'] ?? [];
         $servicesSection = $tabularSections['Услуги'] ?? [];
-
-        Log::info('Processing Sale tabular sections', [
-            'sale_id' => $sale->id,
-            'services_count' => count($servicesSection)
-        ]);
 
         // Удаляем существующие строки для пересоздания
         $sale->items()->delete();
@@ -179,20 +159,20 @@ class SaleMapping extends ObjectMapping
      */
     private function createSaleItem(Sale $sale, array $serviceRow, int $lineNumber): void
     {
-        $item = new SaleItem();
+        $item = new SaleItem;
         $item->sale_id = $sale->id;
         $item->line_number = $lineNumber;
         $item->line_identifier = $serviceRow['ИдентификаторСтроки'] ?? null;
 
         // Номенклатура
         $productData = $serviceRow['Номенклатура'] ?? [];
-        if (!empty($productData)) {
+        if (! empty($productData)) {
             $item->product_guid_1c = $productData['Ссылка'] ?? null;
             $item->product_name = $productData['Наименование'] ?? null;
 
             // Единица измерения из данных номенклатуры
             $unitData = $productData['ЕдиницаИзмерения'] ?? [];
-            if (!empty($unitData)) {
+            if (! empty($unitData)) {
                 $item->unit_guid_1c = $unitData['Ссылка'] ?? null;
                 $unitClassifierData = $unitData['ДанныеКлассификатора'] ?? [];
                 $item->unit_name = $unitClassifierData['Наименование'] ?? null;
@@ -216,14 +196,6 @@ class SaleMapping extends ObjectMapping
 
         $item->save();
 
-        Log::debug('Created SaleItem', [
-            'sale_id' => $sale->id,
-            'line_number' => $lineNumber,
-            'line_identifier' => $item->line_identifier,
-            'product_guid' => $item->product_guid_1c,
-            'quantity' => $item->quantity,
-            'amount' => $item->amount
-        ]);
     }
 
     public function mapTo1C(Model $laravelModel): array
@@ -247,8 +219,8 @@ class SaleMapping extends ObjectMapping
                 'СпособПогашенияЗадолженности' => $laravelModel->debt_settlement_method,
             ],
             'tabular_sections' => [
-                'Услуги' => $this->buildServicesSection($laravelModel)
-            ]
+                'Услуги' => $this->buildServicesSection($laravelModel),
+            ],
         ];
     }
 

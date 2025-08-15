@@ -79,7 +79,9 @@ class Product extends CatalogObject
 
     // Константы для типов номенклатуры
     public const TYPE_PRODUCT = 'product';
+
     public const TYPE_SERVICE = 'service';
+
     public const TYPE_SET = 'set';
 
     /**

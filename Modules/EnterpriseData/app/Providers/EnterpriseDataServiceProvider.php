@@ -111,22 +111,17 @@ class EnterpriseDataServiceProvider extends ServiceProvider
         try {
             $registry = $this->app->make(ObjectMappingRegistry::class);
 
-            $registry->registerMapping('Справочник.Организации', new OrganizationMapping());
-            $registry->registerMapping('Справочник.КонтрагентыГруппа', new CounterpartyGroupMapping());
-            $registry->registerMapping('Справочник.Контрагенты', new CounterpartyMapping());
-            $registry->registerMapping('Справочник.Валюты', new CurrencyMapping());
-            $registry->registerMapping('Справочник.Пользователи', new SystemUserMapping());
-            $registry->registerMapping('Справочник.ЕдиницыИзмерения', new UnitOfMeasureMapping());
-            $registry->registerMapping('Справочник.НоменклатураГруппа', new ProductGroupMapping());
-            $registry->registerMapping('Справочник.Номенклатура', new ProductMapping());
-            $registry->registerMapping('Справочник.Договоры', new ContractMapping());
-            $registry->registerMapping('Документ.ЗаказКлиента', new CustomerOrderMapping());
-            $registry->registerMapping('Документ.РеализацияТоваровУслуг', new SaleMapping());
-
-            Log::info('Registered object mappings', [
-                'mappings_count' => count($registry->getAllMappings()),
-                'registered_types' => $registry->getSupportedObjectTypes(),
-            ]);
+            $registry->registerMapping('Справочник.Организации', new OrganizationMapping);
+            $registry->registerMapping('Справочник.КонтрагентыГруппа', new CounterpartyGroupMapping);
+            $registry->registerMapping('Справочник.Контрагенты', new CounterpartyMapping);
+            $registry->registerMapping('Справочник.Валюты', new CurrencyMapping);
+            $registry->registerMapping('Справочник.Пользователи', new SystemUserMapping);
+            $registry->registerMapping('Справочник.ЕдиницыИзмерения', new UnitOfMeasureMapping);
+            $registry->registerMapping('Справочник.НоменклатураГруппа', new ProductGroupMapping);
+            $registry->registerMapping('Справочник.Номенклатура', new ProductMapping);
+            $registry->registerMapping('Справочник.Договоры', new ContractMapping);
+            $registry->registerMapping('Документ.ЗаказКлиента', new CustomerOrderMapping);
+            $registry->registerMapping('Документ.РеализацияТоваровУслуг', new SaleMapping);
 
         } catch (\Exception $e) {
             Log::error('Failed to register object mappings', [

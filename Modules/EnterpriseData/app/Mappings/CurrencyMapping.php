@@ -3,7 +3,6 @@
 namespace Modules\EnterpriseData\app\Mappings;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Log;
 use Modules\Accounting\app\Models\Currency;
 use Modules\EnterpriseData\app\Contracts\ObjectMapping;
 use Modules\EnterpriseData\app\ValueObjects\ValidationResult;
@@ -25,19 +24,14 @@ class CurrencyMapping extends ObjectMapping
         $properties = $object1C['properties'] ?? [];
         $keyProperties = $properties['КлючевыеСвойства'] ?? [];
 
-        Log::info('Mapping Currency from 1C', [
-            'object_type' => $object1C['type'],
-            'ref' => $object1C['ref'] ?? 'not set'
-        ]);
-
-        $currency = new Currency();
+        $currency = new Currency;
 
         // Основные реквизиты из ключевых свойств
         $currency->guid_1c = $this->getFieldValue($keyProperties, 'Ссылка') ?: ($object1C['ref'] ?? null);
 
         // Данные классификатора
         $classifierData = $keyProperties['ДанныеКлассификатора'] ?? [];
-        if (!empty($classifierData)) {
+        if (! empty($classifierData)) {
             $currency->code = $classifierData['Код'] ?? null;
             $currency->name = $classifierData['Наименование'] ?? null;
         }
@@ -54,14 +48,6 @@ class CurrencyMapping extends ObjectMapping
         // Системные поля
         $currency->deletion_mark = false;
         $currency->last_sync_at = now();
-
-        Log::info('Mapped Currency successfully', [
-            'guid_1c' => $currency->guid_1c,
-            'code' => $currency->code,
-            'name' => $currency->name,
-            'full_name' => $currency->full_name,
-            'is_main' => $currency->is_main_currency
-        ]);
 
         return $currency;
     }
@@ -83,7 +69,7 @@ class CurrencyMapping extends ObjectMapping
                 'НаименованиеПолное' => $laravelModel->full_name,
                 'ПараметрыПрописи' => $laravelModel->spelling_parameters,
             ],
-            'tabular_sections' => []
+            'tabular_sections' => [],
         ];
     }
 

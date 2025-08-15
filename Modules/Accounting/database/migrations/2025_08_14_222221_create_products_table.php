@@ -47,8 +47,8 @@ return new class extends Migration
 
             // Единица измерения
             $table->foreignId('unit_of_measure_id')->nullable()
-                //->constrained('units_of_measure')
-                //->onDelete('set null')
+                // ->constrained('units_of_measure')
+                // ->onDelete('set null')
                 ->comment('Единица измерения');
 
             $table->string('unit_guid_1c', 36)->nullable()

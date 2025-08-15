@@ -3,7 +3,6 @@
 namespace Modules\EnterpriseData\app\Mappings;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Log;
 use Modules\Accounting\app\Models\SystemUser;
 use Modules\EnterpriseData\app\Contracts\ObjectMapping;
 use Modules\EnterpriseData\app\ValueObjects\ValidationResult;
@@ -25,12 +24,7 @@ class SystemUserMapping extends ObjectMapping
         $properties = $object1C['properties'] ?? [];
         $keyProperties = $properties['КлючевыеСвойства'] ?? [];
 
-        Log::info('Mapping SystemUser from 1C', [
-            'object_type' => $object1C['type'],
-            'ref' => $object1C['ref'] ?? 'not set'
-        ]);
-
-        $user = new SystemUser();
+        $user = new SystemUser;
 
         // Основные реквизиты из ключевых свойств
         $user->guid_1c = $this->getFieldValue($keyProperties, 'Ссылка') ?: ($object1C['ref'] ?? null);
@@ -48,12 +42,6 @@ class SystemUserMapping extends ObjectMapping
         $user->deletion_mark = false;
         $user->last_sync_at = now();
 
-        Log::info('Mapped SystemUser successfully', [
-            'guid_1c' => $user->guid_1c,
-            'name' => $user->name,
-            'login' => $user->login
-        ]);
-
         return $user;
     }
 
@@ -69,7 +57,7 @@ class SystemUserMapping extends ObjectMapping
                     'Наименование' => $laravelModel->name,
                 ],
             ],
-            'tabular_sections' => []
+            'tabular_sections' => [],
         ];
     }
 

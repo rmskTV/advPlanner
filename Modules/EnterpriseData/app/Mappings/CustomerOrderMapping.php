@@ -2,12 +2,12 @@
 
 namespace Modules\EnterpriseData\app\Mappings;
 
-use Modules\Accounting\app\Models\CustomerOrder;
-use Modules\Accounting\app\Models\CustomerOrderItem;
-use Modules\Accounting\app\Models\Organization;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
+use Modules\Accounting\app\Models\CustomerOrder;
+use Modules\Accounting\app\Models\CustomerOrderItem;
+use Modules\Accounting\app\Models\Organization;
 use Modules\EnterpriseData\app\Contracts\ObjectMapping;
 use Modules\EnterpriseData\app\ValueObjects\ValidationResult;
 
@@ -28,12 +28,7 @@ class CustomerOrderMapping extends ObjectMapping
         $properties = $object1C['properties'] ?? [];
         $keyProperties = $properties['КлючевыеСвойства'] ?? [];
 
-        Log::info('Mapping CustomerOrder from 1C', [
-            'object_type' => $object1C['type'],
-            'ref' => $object1C['ref'] ?? 'not set'
-        ]);
-
-        $order = new CustomerOrder();
+        $order = new CustomerOrder;
 
         // Основные реквизиты из ключевых свойств
         $order->guid_1c = $this->getFieldValue($keyProperties, 'Ссылка') ?: ($object1C['ref'] ?? null);
@@ -41,13 +36,13 @@ class CustomerOrderMapping extends ObjectMapping
 
         // Дата документа
         $dateString = $this->getFieldValue($keyProperties, 'Дата');
-        if (!empty($dateString)) {
+        if (! empty($dateString)) {
             try {
                 $order->date = Carbon::parse($dateString);
             } catch (\Exception $e) {
                 Log::warning('Invalid order date format', [
                     'original_date' => $dateString,
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
                 ]);
                 $order->date = null;
             }
@@ -55,7 +50,7 @@ class CustomerOrderMapping extends ObjectMapping
 
         // Организация
         $organizationData = $keyProperties['Организация'] ?? [];
-        if (!empty($organizationData) && isset($organizationData['Ссылка'])) {
+        if (! empty($organizationData) && isset($organizationData['Ссылка'])) {
             $organization = Organization::findByGuid1C($organizationData['Ссылка']);
             $order->organization_id = $organization?->id;
             $order->organization_guid_1c = $organizationData['Ссылка'];
@@ -63,13 +58,13 @@ class CustomerOrderMapping extends ObjectMapping
 
         // Контрагент
         $counterpartyData = $properties['Контрагент'] ?? [];
-        if (!empty($counterpartyData)) {
+        if (! empty($counterpartyData)) {
             $order->counterparty_guid_1c = $counterpartyData['Ссылка'] ?? null;
         }
 
         // Валюта
         $currencyData = $properties['Валюта'] ?? [];
-        if (!empty($currencyData)) {
+        if (! empty($currencyData)) {
             $order->currency_guid_1c = $currencyData['Ссылка'] ?? null;
         }
 
@@ -79,7 +74,7 @@ class CustomerOrderMapping extends ObjectMapping
 
         // Данные взаиморасчетов
         $settlementData = $properties['ДанныеВзаиморасчетов'] ?? [];
-        if (!empty($settlementData)) {
+        if (! empty($settlementData)) {
             $contractData = $settlementData['Договор'] ?? [];
             $order->contract_guid_1c = $contractData['Ссылка'] ?? null;
 
@@ -96,27 +91,19 @@ class CustomerOrderMapping extends ObjectMapping
 
         // Банковский счет организации
         $bankAccountData = $properties['БанковскийСчетОрганизации'] ?? [];
-        if (!empty($bankAccountData)) {
+        if (! empty($bankAccountData)) {
             $order->organization_bank_account_guid_1c = $bankAccountData['Ссылка'] ?? null;
         }
 
         // Ответственный
         $responsibleData = $properties['ОбщиеСвойстваОбъектовФормата']['Ответственный'] ?? [];
-        if (!empty($responsibleData)) {
+        if (! empty($responsibleData)) {
             $order->responsible_guid_1c = $responsibleData['Ссылка'] ?? null;
         }
 
         // Системные поля
         $order->deletion_mark = false;
         $order->last_sync_at = now();
-
-        Log::info('Mapped CustomerOrder successfully', [
-            'guid_1c' => $order->guid_1c,
-            'number' => $order->number,
-            'date' => $order->date?->format('Y-m-d H:i:s'),
-            'amount' => $order->amount,
-            'counterparty_guid' => $order->counterparty_guid_1c
-        ]);
 
         return $order;
     }
@@ -128,11 +115,6 @@ class CustomerOrderMapping extends ObjectMapping
     {
         $tabularSections = $object1C['tabular_sections'] ?? [];
         $servicesSection = $tabularSections['Услуги'] ?? [];
-
-        Log::info('Processing CustomerOrder tabular sections', [
-            'order_id' => $order->id,
-            'services_count' => count($servicesSection)
-        ]);
 
         // Удаляем существующие строки для пересоздания
         $order->items()->delete();
@@ -147,19 +129,19 @@ class CustomerOrderMapping extends ObjectMapping
      */
     private function createOrderItem(CustomerOrder $order, array $serviceRow, int $lineNumber): void
     {
-        $item = new CustomerOrderItem();
+        $item = new CustomerOrderItem;
         $item->customer_order_id = $order->id;
         $item->line_number = $lineNumber;
 
         // Данные номенклатуры
         $productData = $serviceRow['ДанныеНоменклатуры'] ?? [];
-        if (!empty($productData)) {
+        if (! empty($productData)) {
             $item->product_guid_1c = $productData['Ссылка'] ?? null;
             $item->product_name = $productData['Наименование'] ?? null;
 
             // Единица измерения из данных номенклатуры
             $unitData = $productData['ЕдиницаИзмерения'] ?? [];
-            if (!empty($unitData)) {
+            if (! empty($unitData)) {
                 $item->unit_guid_1c = $unitData['Ссылка'] ?? null;
                 $unitClassifierData = $unitData['ДанныеКлассификатора'] ?? [];
                 $item->unit_name = $unitClassifierData['Наименование'] ?? null;
@@ -177,13 +159,6 @@ class CustomerOrderMapping extends ObjectMapping
 
         $item->save();
 
-        Log::debug('Created CustomerOrderItem', [
-            'order_id' => $order->id,
-            'line_number' => $lineNumber,
-            'product_guid' => $item->product_guid_1c,
-            'quantity' => $item->quantity,
-            'amount' => $item->amount
-        ]);
     }
 
     public function mapTo1C(Model $laravelModel): array
@@ -203,8 +178,8 @@ class CustomerOrderMapping extends ObjectMapping
                 'АдресДоставки' => $laravelModel->delivery_address,
             ],
             'tabular_sections' => [
-                'Услуги' => $this->buildServicesSection($laravelModel)
-            ]
+                'Услуги' => $this->buildServicesSection($laravelModel),
+            ],
         ];
     }
 

@@ -32,13 +32,6 @@ class ExchangeFileManager
             $filesystem = $this->ftpService->getConnection($connector);
             $exchangePath = $this->getExchangePath($connector);
 
-            Log::info('Scanning for incoming files', [
-                'connector' => $connector->id,
-                'exchange_path' => $exchangePath,
-                'ftp_host' => parse_url($connector->ftp_path, PHP_URL_HOST),
-                'ftp_port' => $connector->ftp_port,
-            ]);
-
             // Получаем список всех файлов в папке обмена
             $allFiles = [];
             try {
@@ -47,14 +40,6 @@ class ExchangeFileManager
                 foreach ($listing as $item) {
                     if ($item->isFile()) {
                         $fileName = basename($item->path());
-
-                        Log::debug('Found file', [
-                            'connector' => $connector->id,
-                            'file' => $fileName,
-                            'is_incoming' => $this->isIncomingFileForUs($fileName, $connector),
-                            'is_locked' => $this->isFileLocked($fileName),
-                            'valid_extension' => $this->isValidFileExtension($fileName),
-                        ]);
 
                         // Проверяем, является ли файл входящим для нас
                         if ($this->isIncomingFileForUs($fileName, $connector)) {
@@ -78,13 +63,6 @@ class ExchangeFileManager
                 return [];
             }
 
-            Log::info('Scanned incoming files', [
-                'connector' => $connector->id,
-                'path' => $exchangePath,
-                'files_found' => count($allFiles),
-                'files' => $allFiles,
-            ]);
-
             return $allFiles;
 
         } catch (\Exception $e) {
@@ -102,13 +80,6 @@ class ExchangeFileManager
             $exchangePath = $this->getExchangePath($connector);
             $filePath = empty($exchangePath) ? $fileName : $exchangePath.'/'.$fileName;
 
-            Log::info('Downloading file', [
-                'connector' => $connector->id,
-                'file' => $fileName,
-                'full_path' => $filePath,
-                'exchange_path' => $exchangePath,
-            ]);
-
             // Проверка существования файла
             if (! $filesystem->fileExists($filePath)) {
                 throw new ExchangeFileException("File {$fileName} does not exist at path {$filePath}");
@@ -116,13 +87,6 @@ class ExchangeFileManager
 
             // Проверка размера файла
             $fileSize = $filesystem->fileSize($filePath);
-            Log::info('File size check', [
-                'connector' => $connector->id,
-                'file' => $fileName,
-                'size' => $fileSize,
-                'max_allowed' => self::MAX_FILE_SIZE,
-            ]);
-
             if ($fileSize > self::MAX_FILE_SIZE) {
                 throw new ExchangeFileException("File {$fileName} exceeds maximum size limit ({$fileSize} bytes)");
             }
@@ -134,23 +98,8 @@ class ExchangeFileManager
 
             $content = $filesystem->read($filePath);
 
-            Log::info('File content preview', [
-                'connector' => $connector->id,
-                'file' => $fileName,
-                'content_length' => strlen($content),
-                'content_preview' => substr($content, 0, 200), // Первые 200 символов для диагностики
-                'starts_with_xml' => str_starts_with(trim($content), '<?xml'),
-                'encoding' => mb_detect_encoding($content),
-            ]);
-
             // Проверка на наличие вредоносного содержимого
             $this->validateFileContent($content, $fileName);
-
-            Log::info('Downloaded file successfully', [
-                'connector' => $connector->id,
-                'file' => $fileName,
-                'size' => strlen($content),
-            ]);
 
             return $content;
 
@@ -179,13 +128,6 @@ class ExchangeFileManager
             $exchangePath = $this->getExchangePath($connector);
             $filePath = empty($exchangePath) ? $fileName : $exchangePath.'/'.$fileName;
 
-            Log::info('Uploading file', [
-                'connector' => $connector->id,
-                'file' => $fileName,
-                'full_path' => $filePath,
-                'size' => strlen($content),
-            ]);
-
             // Создание временного файла с уникальным именем
             $tempFileName = $fileName.'.tmp.'.Str::random(8);
             $tempFilePath = empty($exchangePath) ? $tempFileName : $exchangePath.'/'.$tempFileName;
@@ -195,12 +137,6 @@ class ExchangeFileManager
 
             // Атомарное переименование
             $filesystem->move($tempFilePath, $filePath);
-
-            Log::info('Uploaded file successfully', [
-                'connector' => $connector->id,
-                'file' => $fileName,
-                'size' => strlen($content),
-            ]);
 
             return true;
 
@@ -223,11 +159,6 @@ class ExchangeFileManager
         $lockId = Str::uuid()->toString();
         $cacheKey = "exchange_file_lock:{$fileName}";
 
-        Log::debug('Attempting to lock file', [
-            'file' => $fileName,
-            'lock_id' => $lockId,
-        ]);
-
         // Попытка получения блокировки
         if (! Cache::add($cacheKey, $lockId, self::LOCK_TIMEOUT)) {
             throw new ExchangeFileException("File {$fileName} is already locked");
@@ -235,11 +166,6 @@ class ExchangeFileManager
 
         // Сохраняем время создания блокировки
         Cache::put($cacheKey.'_created_at', Carbon::now()->toISOString(), self::LOCK_TIMEOUT);
-
-        Log::info('File locked successfully', [
-            'file' => $fileName,
-            'lock_id' => $lockId,
-        ]);
 
         return new FileLock($fileName, $lockId, Carbon::now());
     }
@@ -256,10 +182,6 @@ class ExchangeFileManager
             Cache::forget($cacheKey);
             Cache::forget($cacheKey.'_created_at');
 
-            Log::info('File unlocked successfully', [
-                'file' => $lock->fileName,
-                'lock_id' => $lock->lockId,
-            ]);
         } else {
             Log::warning('Attempted to unlock file with wrong lock ID', [
                 'file' => $lock->fileName,
@@ -280,13 +202,6 @@ class ExchangeFileManager
             $sourcePath = empty($exchangePath) ? $fileName : $exchangePath.'/'.$fileName;
             $archivePath = $this->getArchivePath($connector).'/incoming/'.date('Y/m/d/H/i').'/'.$fileName;
 
-            Log::info('Archiving processed file', [
-                'connector' => $connector->id,
-                'file' => $fileName,
-                'source_path' => $sourcePath,
-                'archive_path' => $archivePath,
-            ]);
-
             // Создание директории архива если не существует
             $archiveDir = dirname($archivePath);
             if (! $filesystem->directoryExists($archiveDir)) {
@@ -306,12 +221,6 @@ class ExchangeFileManager
 
             // Копирование файла в архив - или move() для перемещения
             $filesystem->copy($sourcePath, $archivePath);
-
-            Log::info('Archived processed file successfully', [
-                'connector' => $connector->id,
-                'file' => $fileName,
-                'archive_path' => $archivePath,
-            ]);
 
             return true;
 
@@ -459,21 +368,9 @@ class ExchangeFileManager
             ? $this->transliterate($connector->foreign_base_prefix)
             : $connector->foreign_base_prefix;
 
-        Log::debug('Checking if file is incoming for us', [
-            'file' => $fileName,
-            'our_prefix' => $ourPrefix,
-            'foreign_prefix' => $foreignPrefix,
-            'transliterate' => $connector->ftp_transliterate,
-        ]);
-
         // Проверяем паттерн 1: Message_{foreignPrefix}_{ourPrefix}.xml
         $pattern1 = "/^Message_{$foreignPrefix}_{$ourPrefix}\.xml$/i";
         if (preg_match($pattern1, $fileName)) {
-            Log::debug('File matches pattern 1 (prefix-based)', [
-                'file' => $fileName,
-                'pattern' => $pattern1,
-            ]);
-
             return true;
         }
 
@@ -485,19 +382,10 @@ class ExchangeFileManager
             if ($ourUUID && $foreignUUID) {
                 $pattern2 = "/^Message_{$foreignPrefix}_{$foreignUUID}_{$ourUUID}\.xml$/i";
                 if (preg_match($pattern2, $fileName)) {
-                    Log::debug('File matches pattern 2 (UUID-based)', [
-                        'file' => $fileName,
-                        'pattern' => $pattern2,
-                    ]);
-
                     return true;
                 }
             }
         }
-
-        Log::debug('File does not match any incoming patterns', [
-            'file' => $fileName,
-        ]);
 
         return false;
     }
@@ -714,10 +602,6 @@ class ExchangeFileManager
 
             if (! $filesystem->directoryExists($currentPath)) {
                 $filesystem->createDirectory($currentPath);
-
-                Log::debug('Created directory part', [
-                    'directory' => $currentPath,
-                ]);
             }
         }
     }

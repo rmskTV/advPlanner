@@ -74,7 +74,7 @@ class SaleItem extends Model
      */
     public function getProduct(): ?Product
     {
-        if (!$this->product_guid_1c) {
+        if (! $this->product_guid_1c) {
             return null;
         }
 
@@ -86,7 +86,7 @@ class SaleItem extends Model
      */
     public function getUnitOfMeasure(): ?UnitOfMeasure
     {
-        if (!$this->unit_guid_1c) {
+        if (! $this->unit_guid_1c) {
             return null;
         }
 

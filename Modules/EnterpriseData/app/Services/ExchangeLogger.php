@@ -31,7 +31,7 @@ class ExchangeLogger
             'started_at' => Carbon::now()->toISOString(),
         ]);
 
-        Log::channel('exchange')->info(
+        Log::info(
             "Exchange started: {$direction} for connector {$connector->foreign_base_name}",
             $context
         );
@@ -67,7 +67,7 @@ class ExchangeLogger
             ? "Exchange completed successfully: {$direction} for {$connector->foreign_base_name}"
             : "Exchange failed: {$direction} for {$connector->foreign_base_name}";
 
-        Log::channel('exchange')->{$level}($message, $context);
+        Log::info($message, $context);
 
         // Предупреждение о медленном обмене
         if ($duration && $duration > 60) {
@@ -87,7 +87,7 @@ class ExchangeLogger
             'processed_at' => Carbon::now()->toISOString(),
         ]);
 
-        Log::channel('exchange')->info(
+        Log::info(
             "Processing message file: {$fileName} with {$objectsCount} objects",
             $context
         );
@@ -119,7 +119,7 @@ class ExchangeLogger
             ? "File {$operation} successful: {$fileName}"
             : "File {$operation} failed: {$fileName}";
 
-        Log::channel('exchange')->{$level}($message, $context);
+        Log::info($message, $context);
     }
 
     public function logObjectProcessing(
@@ -137,7 +137,7 @@ class ExchangeLogger
             'processed_at' => Carbon::now()->toISOString(),
         ], $additionalContext));
 
-        Log::channel('exchange')->info(
+        Log::info(
             "Object processing: {$operation} {$count} objects of type {$objectType}",
             $context
         );
@@ -148,7 +148,7 @@ class ExchangeLogger
         $sanitizedMessage = $this->sanitizeMessage($message);
         $secureContext = $this->buildSecureContext($context);
 
-        Log::channel('exchange')->error($sanitizedMessage, $secureContext);
+        Log::error($sanitizedMessage, $secureContext);
     }
 
     public function logWarning(string $message, array $context = []): void
@@ -156,7 +156,7 @@ class ExchangeLogger
         $sanitizedMessage = $this->sanitizeMessage($message);
         $secureContext = $this->buildSecureContext($context);
 
-        Log::channel('exchange')->warning($sanitizedMessage, $secureContext);
+        Log::warning($sanitizedMessage, $secureContext);
     }
 
     public function logSecurityEvent(string $event, array $context = []): void
@@ -168,7 +168,7 @@ class ExchangeLogger
             'user_agent' => request()?->userAgent(),
         ]));
 
-        Log::channel('security')->warning("Security event: {$event}", $secureContext);
+        Log::warning("Security event: {$event}", $secureContext);
     }
 
     public function logPerformanceMetric(
@@ -184,7 +184,7 @@ class ExchangeLogger
             'timestamp' => Carbon::now()->toISOString(),
         ]));
 
-        Log::channel('performance')->info("Performance metric: {$metric} = {$value}{$unit}", $secureContext);
+        Log::info("Performance metric: {$metric} = {$value}{$unit}", $secureContext);
     }
 
     public function getExchangeHistory(
@@ -255,7 +255,7 @@ class ExchangeLogger
             ? "FTP connection test successful for {$connector->foreign_base_name}"
             : "FTP connection test failed for {$connector->foreign_base_name}";
 
-        Log::channel('exchange')->{$level}($message, $context);
+        Log::info($message, $context);
     }
 
     private function buildSecureContext(array $context): array
@@ -370,7 +370,7 @@ class ExchangeLogger
             'threshold_seconds' => 60,
         ]);
 
-        Log::channel('performance')->warning(
+        Log::warning(
             "Slow exchange detected: {$direction} for {$connector->foreign_base_name} took {$duration}s",
             $context
         );

@@ -3,7 +3,6 @@
 namespace Modules\EnterpriseData\app\Mappings;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Log;
 use Modules\Accounting\app\Models\Counterparty;
 use Modules\Accounting\app\Models\CounterpartyGroup;
 use Modules\EnterpriseData\app\Contracts\ObjectMapping;
@@ -27,13 +26,7 @@ class CounterpartyMapping extends ObjectMapping
         $properties = $object1C['properties'] ?? [];
         $keyProperties = $properties['КлючевыеСвойства'] ?? [];
 
-        Log::info('Mapping Counterparty from 1C', [
-            'object_type' => $object1C['type'],
-            'ref' => $object1C['ref'] ?? 'not set',
-            'key_properties_keys' => array_keys($keyProperties)
-        ]);
-
-        $counterparty = new Counterparty();
+        $counterparty = new Counterparty;
 
         // Основные реквизиты из ключевых свойств
         $counterparty->guid_1c = $this->getFieldValue($keyProperties, 'Ссылка') ?: ($object1C['ref'] ?? null);
@@ -51,7 +44,7 @@ class CounterpartyMapping extends ObjectMapping
 
         // Группа контрагента
         $groupData = $keyProperties['Группа'] ?? [];
-        if (!empty($groupData) && isset($groupData['Ссылка'])) {
+        if (! empty($groupData) && isset($groupData['Ссылка'])) {
             $group = CounterpartyGroup::findByGuid1C($groupData['Ссылка']);
             $counterparty->group_id = $group?->id;
             $counterparty->group_guid_1c = $groupData['Ссылка'];
@@ -59,11 +52,11 @@ class CounterpartyMapping extends ObjectMapping
 
         // Страна регистрации
         $countryData = $keyProperties['СтранаРегистрации'] ?? [];
-        if (!empty($countryData)) {
+        if (! empty($countryData)) {
             $counterparty->country_guid_1c = $countryData['Ссылка'] ?? null;
 
             $countryClassifierData = $countryData['ДанныеКлассификатора'] ?? [];
-            if (!empty($countryClassifierData)) {
+            if (! empty($countryClassifierData)) {
                 $counterparty->country_code = $countryClassifierData['Код'] ?? null;
                 $counterparty->country_name = $countryClassifierData['Наименование'] ?? null;
             }
@@ -86,14 +79,6 @@ class CounterpartyMapping extends ObjectMapping
         $counterparty->deletion_mark = false;
         $counterparty->last_sync_at = now();
 
-        Log::info('Mapped Counterparty successfully', [
-            'guid_1c' => $counterparty->guid_1c,
-            'name' => $counterparty->name,
-            'entity_type' => $counterparty->entity_type,
-            'inn' => $counterparty->inn,
-            'group_guid' => $counterparty->group_guid_1c
-        ]);
-
         return $counterparty;
     }
 
@@ -114,7 +99,7 @@ class CounterpartyMapping extends ObjectMapping
                 ],
                 'ОбособленноеПодразделение' => $laravelModel->is_separate_division ? 'true' : 'false',
             ],
-            'tabular_sections' => []
+            'tabular_sections' => [],
         ];
     }
 
@@ -137,8 +122,8 @@ class CounterpartyMapping extends ObjectMapping
 
         // Проверяем ИНН если есть
         $inn = $this->getFieldValue($keyProperties, 'ИНН');
-        if ($inn && !$this->isValidInn($inn)) {
-            $warnings[] = 'Invalid INN format: ' . $inn;
+        if ($inn && ! $this->isValidInn($inn)) {
+            $warnings[] = 'Invalid INN format: '.$inn;
         }
 
         return ValidationResult::success($warnings);
@@ -147,6 +132,7 @@ class CounterpartyMapping extends ObjectMapping
     private function isValidInn(string $inn): bool
     {
         $inn = preg_replace('/\D/', '', $inn);
+
         return preg_match('/^\d{10}$|^\d{12}$/', $inn) === 1;
     }
 }
