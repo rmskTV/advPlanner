@@ -37,21 +37,26 @@ class ExchangeFtpConnector extends CatalogObject
 
     public static function getOwnBaseGuid(): string
     {
-        return config('exchange.own_base_guid');
+        return config('enterprisedata.own_base_guid');
     }
 
     public static function getAvailableVersionsSending(): array
     {
-        return config('exchange.available_versions_sending');
+        return config('enterprisedata.available_versions_sending');
     }
 
     public static function getAvailableVersionsReceiving(): array
     {
-        return config('exchange.available_versions_receiving');
+        return config('enterprisedata.available_versions_receiving');
     }
 
     public static function getExchangePlanName(): string
     {
-        return config('exchange.exchange_plan_name');
+        return config('enterprisedata.exchange_plan_name');
+    }
+
+    public function getOwnBasePrefix(): string
+    {
+        return $this->own_base_prefix;
     }
 }

@@ -51,43 +51,60 @@ class ProductMapping extends ObjectMapping
             default => Product::TYPE_PRODUCT
         };
 
-        // Единица измерения
+        // Единица измерения - ИСПРАВЛЕНИЕ
         $unitData = $properties['ЕдиницаИзмерения'] ?? [];
-        if (! empty($unitData) && isset($unitData['Ссылка'])) {
-            $unit = UnitOfMeasure::findByGuid1C($unitData['Ссылка']);
-            $product->unit_of_measure_id = $unit?->id;
-            $product->unit_guid_1c = $unitData['Ссылка'];
+        if (! empty($unitData)) {
+            if (isset($unitData['Ссылка'])) {
+                $unit = UnitOfMeasure::findByGuid1C($unitData['Ссылка']);
+                $product->unit_of_measure_id = $unit?->id;
+                $product->unit_guid_1c = $unitData['Ссылка'];
+            }
         }
 
-        // НДС
-        $product->vat_rate = $this->getFieldValue($properties, 'СтавкаНДС');
+        // НДС - ИСПРАВЛЕНИЕ: преобразуем в строку
+        $vatRateData = $properties['СтавкаНДС'] ?? null;
+
+        if (is_array($vatRateData)) {
+            // Сложный объект НДС - извлекаем только ВидСтавки
+            $product->vat_rate = $vatRateData['ВидСтавки'] ?? null;
+        } else {
+            // Простое значение НДС
+            $product->vat_rate = $vatRateData;
+        }
 
         // Код ТРУ
         $product->tru_code = $this->getFieldValue($properties, 'КодТРУ');
 
-        // Группа аналитического учета
+        // Группа аналитического учета - ИСПРАВЛЕНИЕ
         $analyticsData = $properties['ГруппаАналитическогоУчета'] ?? [];
-        if (! empty($analyticsData)) {
+        if (! empty($analyticsData) && is_array($analyticsData)) {
             $product->analytics_group_guid_1c = $analyticsData['Ссылка'] ?? null;
             $product->analytics_group_code = $analyticsData['КодВПрограмме'] ?? null;
             $product->analytics_group_name = $analyticsData['Наименование'] ?? null;
         }
 
-        // Вид номенклатуры
+        // Вид номенклатуры - ИСПРАВЛЕНИЕ
         $kindData = $properties['ВидНоменклатуры'] ?? [];
-        if (! empty($kindData)) {
+        if (! empty($kindData) && is_array($kindData)) {
             $product->product_kind_guid_1c = $kindData['Ссылка'] ?? null;
             $product->product_kind_name = $kindData['Наименование'] ?? null;
         }
 
-        // Алкогольная продукция
+        // Алкогольная продукция - ИСПРАВЛЕНИЕ
         $alcoholData = $properties['ДанныеАлкогольнойПродукции'] ?? [];
-        if (! empty($alcoholData)) {
+        if (! empty($alcoholData) && is_array($alcoholData)) {
             $product->is_alcoholic = $this->getBooleanFieldValue($alcoholData, 'АлкогольнаяПродукция', false);
-            $product->alcohol_type = $alcoholData['ВидАлкогольнойПродукции'] ?? null;
+            $product->alcohol_type = $this->getStringValue($alcoholData, 'ВидАлкогольнойПродукции');
             $product->is_imported_alcohol = $this->getBooleanFieldValue($alcoholData, 'ИмпортнаяАлкогольнаяПродукция', false);
-            $product->alcohol_volume = $alcoholData['ОбъемДАЛ'] ?? null;
-            $product->alcohol_producer = $alcoholData['ПроизводительИмпортер'] ?? null;
+
+            // Объем ДАЛ может быть строкой или числом
+            $alcoholVolume = $alcoholData['ОбъемДАЛ'] ?? null;
+            $product->alcohol_volume = is_numeric($alcoholVolume) ? (float) $alcoholVolume : null;
+
+            $product->alcohol_producer = $this->getStringValue($alcoholData, 'ПроизводительИмпортер');
+        } else {
+            $product->is_alcoholic = false;
+            $product->is_imported_alcohol = false;
         }
 
         // Прослеживаемость
@@ -98,6 +115,20 @@ class ProductMapping extends ObjectMapping
         $product->last_sync_at = now();
 
         return $product;
+    }
+
+    /**
+     * Безопасное получение строкового значения
+     */
+    protected function getStringValue(array $data, string $key): ?string
+    {
+        $value = $data[$key] ?? null;
+
+        if (is_array($value)) {
+            return json_encode($value);
+        }
+
+        return $value ? (string) $value : null;
     }
 
     public function mapTo1C(Model $laravelModel): array

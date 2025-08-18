@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use DOMDocument;
 use DOMXPath;
 use Illuminate\Support\Facades\Log;
+use Modules\EnterpriseData\app\Exceptions\ExchangeGenerationException;
 use Modules\EnterpriseData\app\Exceptions\ExchangeParsingException;
 use Modules\EnterpriseData\app\Models\ExchangeFtpConnector;
 use Modules\EnterpriseData\app\ValueObjects\ExchangeBody;
@@ -62,6 +63,332 @@ class ExchangeMessageProcessor
         }
     }
 
+    public function generateOutgoingMessage(
+        ExchangeFtpConnector $connector,
+        int $messageNo,
+        int $receivedNo = 0,
+        array $objects = []
+    ): string {
+        try {
+            Log::info('Generating outgoing message', [
+                'connector_id' => $connector->id,
+                'message_no' => $messageNo,
+                'received_no' => $receivedNo,
+                'objects_count' => count($objects),
+            ]);
+
+            // Создание DOM документа
+            $dom = $this->createSecureDomDocument();
+
+            // Корневой элемент Message
+            $messageElement = $this->createMessageRootElement($dom);
+            $dom->appendChild($messageElement);
+
+            // Заголовок
+            $headerElement = $this->generateHeader($dom, $connector, $messageNo, $receivedNo);
+            $messageElement->appendChild($headerElement);
+
+            // Тело сообщения
+            if (! empty($objects)) {
+                $bodyElement = $this->generateBody($dom, $objects);
+                $messageElement->appendChild($bodyElement);
+            }
+
+            $xmlString = $dom->saveXML();
+
+            Log::info('Generated outgoing message', [
+                'connector_id' => $connector->id,
+                'message_no' => $messageNo,
+                'xml_length' => strlen($xmlString),
+            ]);
+
+            return $xmlString;
+
+        } catch (\Exception $e) {
+            Log::error('Failed to generate outgoing message', [
+                'connector_id' => $connector->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw new ExchangeGenerationException('Failed to generate outgoing message: '.$e->getMessage(), 0, $e);
+        }
+    }
+
+    public function generateConfirmationOnlyMessage(
+        ExchangeFtpConnector $connector,
+        int $messageNo,
+        int $receivedNo
+    ): string {
+        try {
+            $dom = $this->createSecureDomDocument();
+
+            // Корневой элемент Message
+            $messageElement = $this->createMessageRootElement($dom);
+            $dom->appendChild($messageElement);
+
+            // Заголовок с подтверждением
+            $headerElement = $this->generateHeader($dom, $connector, $messageNo, $receivedNo);
+            $messageElement->appendChild($headerElement);
+
+            // Пустое тело сообщения
+            $bodyElement = $dom->createElementNS(self::ENTERPRISE_DATA_NAMESPACE, 'Body');
+            $messageElement->appendChild($bodyElement);
+
+            $dom->formatOutput = true;
+
+            return $dom->saveXML();
+
+        } catch (\Exception $e) {
+            throw new ExchangeParsingException('Failed to generate confirmation message: '.$e->getMessage(), 0, $e);
+        }
+    }
+
+    /**
+     * Создание корневого элемента Message с namespace-ами
+     */
+    private function createMessageRootElement(DOMDocument $dom): \DOMElement
+    {
+        $messageElement = $dom->createElementNS(self::MESSAGE_NAMESPACE, 'Message');
+        $messageElement->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:msg', self::MESSAGE_NAMESPACE);
+        $messageElement->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:xs', 'http://www.w3.org/2001/XMLSchema');
+        $messageElement->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance');
+
+        return $messageElement;
+    }
+
+    /**
+     * Генерация заголовка сообщения (ЕДИНЫЙ метод)
+     */
+    private function generateHeader(
+        DOMDocument $dom,
+        ExchangeFtpConnector $connector,
+        int $messageNo,
+        ?int $receivedNo = null
+    ): \DOMElement {
+        $headerElement = $dom->createElementNS(self::MESSAGE_NAMESPACE, 'msg:Header');
+
+        // Формат
+        $this->addHeaderElement($dom, $headerElement, 'msg:Format', config('enterprisedata.format'));
+
+        // Дата создания
+        $this->addHeaderElement($dom, $headerElement, 'msg:CreationDate', now()->format('Y-m-d\TH:i:s'));
+
+        // Подтверждение
+        $confirmationElement = $this->generateConfirmationSection($dom, $connector, $messageNo, $receivedNo);
+        $headerElement->appendChild($confirmationElement);
+
+        // Доступные версии
+        $this->addAvailableVersions($dom, $headerElement);
+
+        // NewFrom (GUID нашей базы)
+        // $this->addHeaderElement($dom, $headerElement, 'msg:NewFrom', config('enterprisedata.own_base_guid'));
+
+        // NewFrom и доступные типы объектов
+        $this->addObjectTypes($dom, $headerElement);
+
+        // Префикс
+        $this->addHeaderElement($dom, $headerElement, 'msg:prefix', $connector->getOwnBasePrefix());
+
+        return $headerElement;
+    }
+
+    /**
+     * Генерация секции подтверждения
+     */
+    private function generateConfirmationSection(
+        DOMDocument $dom,
+        ExchangeFtpConnector $connector,
+        int $messageNo,
+        ?int $receivedNo
+    ): \DOMElement {
+        $confirmationElement = $dom->createElementNS(self::MESSAGE_NAMESPACE, 'msg:Confirmation');
+
+        $this->addHeaderElement($dom, $confirmationElement, 'msg:ExchangePlan', config('enterprisedata.exchange_plan'));
+        $this->addHeaderElement($dom, $confirmationElement, 'msg:To', $connector->foreign_base_prefix);
+        $this->addHeaderElement($dom, $confirmationElement, 'msg:From', $connector->getOwnBasePrefix());
+        $this->addHeaderElement($dom, $confirmationElement, 'msg:MessageNo', (string) $messageNo);
+
+        // ReceivedNo добавляем только если передан
+        if ($receivedNo !== null) {
+            $this->addHeaderElement($dom, $confirmationElement, 'msg:ReceivedNo', (string) $receivedNo);
+        }
+
+        return $confirmationElement;
+    }
+
+    /**
+     * Добавление доступных версий
+     */
+    private function addAvailableVersions(DOMDocument $dom, \DOMElement $headerElement): void
+    {
+        $availableVersions = config('enterprisedata.available_versions_sending', ['1.11']);
+
+        foreach ($availableVersions as $version) {
+            $this->addHeaderElement($dom, $headerElement, 'msg:AvailableVersion', $version);
+        }
+    }
+
+    /**
+     * Добавление NewFrom и доступных типов объектов
+     */
+    private function addObjectTypes(DOMDocument $dom, \DOMElement $headerElement): void
+    {
+        // Доступные типы объектов
+        $this->addAvailableObjectTypes($dom, $headerElement);
+    }
+
+    /**
+     * Добавление доступных типов объектов
+     */
+    private function addAvailableObjectTypes(DOMDocument $dom, \DOMElement $headerElement): void
+    {
+        $objectTypes = config('enterprisedata.available_object_types', []);
+
+        if (empty($objectTypes)) {
+            Log::warning('No object types configured');
+
+            return;
+        }
+
+        // Контейнер для типов объектов
+        $availableObjectTypesElement = $dom->createElementNS(self::MESSAGE_NAMESPACE, 'msg:AvailableObjectTypes');
+        $headerElement->appendChild($availableObjectTypesElement);
+
+        foreach ($objectTypes as $objectType) {
+            $objectTypeElement = $dom->createElementNS(self::MESSAGE_NAMESPACE, 'msg:ObjectType');
+            $availableObjectTypesElement->appendChild($objectTypeElement);
+
+            $this->addHeaderElement($dom, $objectTypeElement, 'msg:Name', $objectType['name']);
+            $this->addHeaderElement($dom, $objectTypeElement, 'msg:Sending', $objectType['sending'] ?? '');
+            $this->addHeaderElement($dom, $objectTypeElement, 'msg:Receiving', $objectType['receiving'] ?? '');
+        }
+
+        Log::info('Added available object types successfully', [
+            'object_types_count' => count($objectTypes),
+        ]);
+    }
+
+    /**
+     * Универсальный метод добавления элемента заголовка
+     */
+    private function addHeaderElement(DOMDocument $dom, \DOMElement $parent, string $elementName, string $value): void
+    {
+        $element = $dom->createElementNS(self::MESSAGE_NAMESPACE, $elementName);
+        $element->textContent = $value;
+        $parent->appendChild($element);
+    }
+
+    /**
+     * Генерация тела сообщения
+     */
+    private function generateBody(DOMDocument $dom, array $objects): \DOMElement
+    {
+        $bodyElement = $dom->createElement('Body');
+
+        foreach ($objects as $object) {
+            $this->addObjectToBody($dom, $bodyElement, $object);
+        }
+
+        return $bodyElement;
+    }
+
+    /**
+     * Добавление объекта в тело сообщения
+     */
+    private function addObjectToBody(DOMDocument $dom, \DOMElement $bodyElement, array $object): void
+    {
+        try {
+            $objectType = $object['type'] ?? 'UnknownObject';
+
+            // Создаем элемент объекта
+            $objectElement = $dom->createElement($objectType);
+            $bodyElement->appendChild($objectElement);
+
+            // Добавляем атрибут Ref если есть
+            if (! empty($object['ref'])) {
+                $objectElement->setAttribute('Ref', $object['ref']);
+            }
+
+            // Добавляем свойства объекта
+            $properties = $object['properties'] ?? [];
+            foreach ($properties as $propertyName => $propertyValue) {
+                $this->addPropertyToObject($dom, $objectElement, $propertyName, $propertyValue);
+            }
+
+            // Добавляем табличные части
+            $tabularSections = $object['tabular_sections'] ?? [];
+            foreach ($tabularSections as $sectionName => $sectionRows) {
+                $this->addTabularSectionToObject($dom, $objectElement, $sectionName, $sectionRows);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Failed to add object to body', [
+                'object_type' => $object['type'] ?? 'unknown',
+                'error' => $e->getMessage(),
+            ]);
+
+            throw new ExchangeGenerationException('Failed to add object to body: '.$e->getMessage(), 0, $e);
+        }
+    }
+
+    /**
+     * Добавление свойства к объекту
+     */
+    private function addPropertyToObject(DOMDocument $dom, \DOMElement $objectElement, string $propertyName, $propertyValue): void
+    {
+        $propertyElement = $dom->createElement($propertyName);
+        $objectElement->appendChild($propertyElement);
+
+        if (is_array($propertyValue)) {
+            // Если значение - массив, добавляем его элементы рекурсивно
+            foreach ($propertyValue as $key => $value) {
+                $this->addPropertyToObject($dom, $propertyElement, $key, $value);
+            }
+        } else {
+            // Простое значение
+            $propertyElement->textContent = $this->formatValueForXml($propertyValue);
+
+            // Добавление типа если необходимо
+            $type = $this->getXmlTypeForValue($propertyValue);
+            if ($type) {
+                $propertyElement->setAttributeNS('http://www.w3.org/2001/XMLSchema-instance', 'xsi:type', $type);
+            }
+        }
+    }
+
+    /**
+     * Добавление табличной части к объекту
+     */
+    private function addTabularSectionToObject(DOMDocument $dom, \DOMElement $objectElement, string $sectionName, array $rows): void
+    {
+        $sectionElement = $dom->createElement($sectionName);
+        $objectElement->appendChild($sectionElement);
+
+        foreach ($rows as $row) {
+            $rowElement = $dom->createElement('Строка');
+            $sectionElement->appendChild($rowElement);
+
+            if (is_array($row)) {
+                foreach ($row as $columnName => $columnValue) {
+                    $this->addPropertyToObject($dom, $rowElement, $columnName, $columnValue);
+                }
+            }
+        }
+    }
+
+    private function createSecureDomDocument(): DOMDocument
+    {
+        $dom = new DOMDocument('1.0', 'UTF-8');
+
+        // Безопасные настройки DOM
+        $dom->resolveExternals = false;
+        $dom->substituteEntities = false;
+        $dom->recover = false;
+        $dom->strictErrorChecking = true;
+
+        return $dom;
+    }
+
     private function removeBOM(string $content): string
     {
         // UTF-8 BOM
@@ -90,145 +417,6 @@ class ExchangeMessageProcessor
         }
 
         return $content;
-    }
-
-    public function generateOutgoingMessage(
-        array $objects1C,
-        ExchangeFtpConnector $connector,
-        int $messageNo,
-        ?int $receivedNo = null // Номер последнего обработанного входящего сообщения
-    ): string {
-        try {
-            $dom = $this->createSecureDomDocument();
-
-            // Корневой элемент Message
-            $messageElement = $dom->createElementNS(self::MESSAGE_NAMESPACE, 'Message');
-            $messageElement->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:msg', self::MESSAGE_NAMESPACE);
-            $messageElement->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:xs', 'http://www.w3.org/2001/XMLSchema');
-            $messageElement->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance');
-            $dom->appendChild($messageElement);
-
-            // Заголовок сообщения с подтверждением
-            $headerElement = $this->generateHeaderWithConfirmation($dom, $connector, $messageNo, $receivedNo);
-            $messageElement->appendChild($headerElement);
-
-            // Тело сообщения
-            $bodyElement = $this->generateBody($dom, $objects1C);
-            $messageElement->appendChild($bodyElement);
-
-            // Форматирование XML
-            $dom->formatOutput = true;
-            $xmlContent = $dom->saveXML();
-
-            // Валидация сгенерированного XML
-            $this->validateGeneratedXml($xmlContent);
-
-            return $xmlContent;
-
-        } catch (\Exception $e) {
-            throw new ExchangeParsingException('Failed to generate exchange message: '.$e->getMessage(), 0, $e);
-        }
-    }
-
-    public function generateConfirmationOnlyMessage(
-        ExchangeFtpConnector $connector,
-        int $messageNo,
-        int $receivedNo
-    ): string {
-        try {
-            $dom = $this->createSecureDomDocument();
-
-            // Корневой элемент Message
-            $messageElement = $dom->createElementNS(self::MESSAGE_NAMESPACE, 'Message');
-            $messageElement->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:msg', self::MESSAGE_NAMESPACE);
-            $messageElement->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:xs', 'http://www.w3.org/2001/XMLSchema');
-            $messageElement->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance');
-            $dom->appendChild($messageElement);
-
-            // Заголовок с подтверждением
-            $headerElement = $this->generateHeaderWithConfirmation($dom, $connector, $messageNo, $receivedNo);
-            $messageElement->appendChild($headerElement);
-
-            // Пустое тело сообщения
-            $bodyElement = $dom->createElementNS(self::ENTERPRISE_DATA_NAMESPACE, 'Body');
-            $messageElement->appendChild($bodyElement);
-
-            $dom->formatOutput = true;
-
-            return $dom->saveXML();
-
-        } catch (\Exception $e) {
-            throw new ExchangeParsingException('Failed to generate confirmation message: '.$e->getMessage(), 0, $e);
-        }
-    }
-
-    private function generateHeaderWithConfirmation(
-        DOMDocument $dom,
-        ExchangeFtpConnector $connector,
-        int $messageNo,
-        ?int $receivedNo = null
-    ): \DOMElement {
-        $headerElement = $dom->createElementNS(self::MESSAGE_NAMESPACE, 'msg:Header');
-
-        // Формат
-        $formatElement = $dom->createElementNS(self::MESSAGE_NAMESPACE, 'msg:Format');
-        $formatElement->textContent = self::ENTERPRISE_DATA_NAMESPACE;
-        $headerElement->appendChild($formatElement);
-
-        // Дата создания
-        $creationDateElement = $dom->createElementNS(self::MESSAGE_NAMESPACE, 'msg:CreationDate');
-        $creationDateElement->textContent = Carbon::now()->format('Y-m-d\TH:i:s');
-        $headerElement->appendChild($creationDateElement);
-
-        // Подтверждение
-        $confirmationElement = $dom->createElementNS(self::MESSAGE_NAMESPACE, 'msg:Confirmation');
-
-        $exchangePlanElement = $dom->createElementNS(self::MESSAGE_NAMESPACE, 'msg:ExchangePlan');
-        $exchangePlanElement->textContent = $connector->exchange_plan_name;
-        $confirmationElement->appendChild($exchangePlanElement);
-
-        $toElement = $dom->createElementNS(self::MESSAGE_NAMESPACE, 'msg:To');
-        $toElement->textContent = $connector->foreign_base_guid;
-        $confirmationElement->appendChild($toElement);
-
-        $fromElement = $dom->createElementNS(self::MESSAGE_NAMESPACE, 'msg:From');
-        $fromElement->textContent = $connector->getOwnBaseGuid();
-        $confirmationElement->appendChild($fromElement);
-
-        $messageNoElement = $dom->createElementNS(self::MESSAGE_NAMESPACE, 'msg:MessageNo');
-        $messageNoElement->textContent = $messageNo;
-        $confirmationElement->appendChild($messageNoElement);
-
-        // КЛЮЧЕВОЙ МОМЕНТ: Добавляем ReceivedNo только если есть подтверждаемое сообщение
-        if ($receivedNo !== null) {
-            $receivedNoElement = $dom->createElementNS(self::MESSAGE_NAMESPACE, 'msg:ReceivedNo');
-            $receivedNoElement->textContent = $receivedNo;
-            $confirmationElement->appendChild($receivedNoElement);
-        }
-
-        $headerElement->appendChild($confirmationElement);
-
-        // Доступные версии
-        foreach ($connector->getAvailableVersionsSending() as $version) {
-            $versionElement = $dom->createElementNS(self::MESSAGE_NAMESPACE, 'msg:AvailableVersion');
-            $versionElement->textContent = $version;
-            $headerElement->appendChild($versionElement);
-        }
-
-        return $headerElement;
-    }
-
-    private function createSecureDomDocument(): DOMDocument
-    {
-        $dom = new DOMDocument('1.0', 'UTF-8');
-
-        // Безопасные настройки DOM
-        $dom->resolveExternals = false;
-        $dom->substituteEntities = false;
-        $dom->recover = false;
-        $dom->strictErrorChecking = true;
-
-        return $dom;
     }
 
     private function parseHeader(DOMXPath $xpath): ExchangeHeader
@@ -484,126 +672,6 @@ class ExchangeMessageProcessor
         return count($childElementNames) > 1 && count(array_unique($childElementNames)) === 1;
     }
 
-    private function generateHeader(DOMDocument $dom, ExchangeFtpConnector $connector, int $messageNo): \DOMElement
-    {
-        $headerElement = $dom->createElementNS(self::MESSAGE_NAMESPACE, 'msg:Header');
-
-        // Формат
-        $formatElement = $dom->createElementNS(self::MESSAGE_NAMESPACE, 'msg:Format');
-        $formatElement->textContent = self::ENTERPRISE_DATA_NAMESPACE;
-        $headerElement->appendChild($formatElement);
-
-        // Дата создания
-        $creationDateElement = $dom->createElementNS(self::MESSAGE_NAMESPACE, 'msg:CreationDate');
-        $creationDateElement->textContent = Carbon::now()->format('Y-m-d\TH:i:s');
-        $headerElement->appendChild($creationDateElement);
-
-        // Подтверждение
-        $confirmationElement = $dom->createElementNS(self::MESSAGE_NAMESPACE, 'msg:Confirmation');
-
-        $exchangePlanElement = $dom->createElementNS(self::MESSAGE_NAMESPACE, 'msg:ExchangePlan');
-        $exchangePlanElement->textContent = $connector->exchange_plan_name;
-        $confirmationElement->appendChild($exchangePlanElement);
-
-        $toElement = $dom->createElementNS(self::MESSAGE_NAMESPACE, 'msg:To');
-        $toElement->textContent = $connector->foreign_base_guid;
-        $confirmationElement->appendChild($toElement);
-
-        $fromElement = $dom->createElementNS(self::MESSAGE_NAMESPACE, 'msg:From');
-        $fromElement->textContent = $connector->getOwnBaseGuid();
-        $confirmationElement->appendChild($fromElement);
-
-        $messageNoElement = $dom->createElementNS(self::MESSAGE_NAMESPACE, 'msg:MessageNo');
-        $messageNoElement->textContent = $messageNo;
-        $confirmationElement->appendChild($messageNoElement);
-
-        $headerElement->appendChild($confirmationElement);
-
-        // Доступные версии
-        foreach ($connector->getAvailableVersionsSending() as $version) {
-            $versionElement = $dom->createElementNS(self::MESSAGE_NAMESPACE, 'msg:AvailableVersion');
-            $versionElement->textContent = $version;
-            $headerElement->appendChild($versionElement);
-        }
-
-        return $headerElement;
-    }
-
-    private function generateBody(DOMDocument $dom, array $objects1C): \DOMElement
-    {
-        $bodyElement = $dom->createElementNS(self::ENTERPRISE_DATA_NAMESPACE, 'Body');
-
-        foreach ($objects1C as $object) {
-            $objectElement = $this->generateObject($dom, $object);
-            $bodyElement->appendChild($objectElement);
-        }
-
-        return $bodyElement;
-    }
-
-    private function generateObject(DOMDocument $dom, array $object): \DOMElement
-    {
-        $objectElement = $dom->createElement($object['type']);
-
-        if (isset($object['ref'])) {
-            $objectElement->setAttribute('Ref', $object['ref']);
-        }
-
-        // Генерация свойств
-        foreach ($object['properties'] ?? [] as $propertyName => $propertyValue) {
-            $propertyElement = $this->generateProperty($dom, $propertyName, $propertyValue);
-            $objectElement->appendChild($propertyElement);
-        }
-
-        // Генерация табличных частей
-        foreach ($object['tabular_sections'] ?? [] as $sectionName => $sectionData) {
-            $sectionElement = $this->generateTabularSection($dom, $sectionName, $sectionData);
-            $objectElement->appendChild($sectionElement);
-        }
-
-        return $objectElement;
-    }
-
-    private function generateProperty(DOMDocument $dom, string $name, mixed $value): \DOMElement
-    {
-        $element = $dom->createElement($name);
-
-        if (is_array($value)) {
-            foreach ($value as $key => $subValue) {
-                $subElement = $this->generateProperty($dom, $key, $subValue);
-                $element->appendChild($subElement);
-            }
-        } else {
-            $element->textContent = $this->formatValueForXml($value);
-
-            // Добавление типа если необходимо
-            $type = $this->getXmlTypeForValue($value);
-            if ($type) {
-                $element->setAttributeNS('http://www.w3.org/2001/XMLSchema-instance', 'xsi:type', $type);
-            }
-        }
-
-        return $element;
-    }
-
-    private function generateTabularSection(DOMDocument $dom, string $sectionName, array $rows): \DOMElement
-    {
-        $sectionElement = $dom->createElement($sectionName);
-
-        foreach ($rows as $row) {
-            $rowElement = $dom->createElement('Row');
-
-            foreach ($row as $columnName => $columnValue) {
-                $columnElement = $this->generateProperty($dom, $columnName, $columnValue);
-                $rowElement->appendChild($columnElement);
-            }
-
-            $sectionElement->appendChild($rowElement);
-        }
-
-        return $sectionElement;
-    }
-
     private function formatValueForXml(mixed $value): string
     {
         if ($value instanceof Carbon) {
@@ -636,20 +704,6 @@ class ExchangeMessageProcessor
         }
 
         return null;
-    }
-
-    private function validateGeneratedXml(string $xmlContent): void
-    {
-        // Базовая валидация XML
-        if (strlen($xmlContent) > self::MAX_XML_SIZE) {
-            throw new ExchangeParsingException('Generated XML exceeds maximum size limit');
-        }
-
-        // Проверка на корректность XML
-        $dom = new DOMDocument;
-        if (! $dom->loadXML($xmlContent)) {
-            throw new ExchangeParsingException('Generated XML is invalid');
-        }
     }
 
     private function getNodeValue(DOMXPath $xpath, string $query, ?\DOMNode $contextNode = null): string

@@ -92,4 +92,16 @@ abstract class ObjectMapping
             ? ValidationResult::success()
             : ValidationResult::failure($errors);
     }
+
+    protected function getStringValue(array $data, string $key): ?string
+    {
+        $value = $data[$key] ?? null;
+
+        if (is_array($value)) {
+            // Если это массив, сериализуем в JSON
+            return json_encode($value, JSON_UNESCAPED_UNICODE);
+        }
+
+        return $value ? (string) $value : null;
+    }
 }

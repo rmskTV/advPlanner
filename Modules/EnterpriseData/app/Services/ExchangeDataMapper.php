@@ -18,6 +18,7 @@ use Modules\Accounting\app\Models\SystemUser;
 use Modules\Accounting\app\Models\UnitOfMeasure;
 use Modules\EnterpriseData\app\Exceptions\ExchangeMappingException;
 use Modules\EnterpriseData\app\Mappings\CustomerOrderMapping;
+use Modules\EnterpriseData\app\Mappings\ObjectDeletionMapping;
 use Modules\EnterpriseData\app\Mappings\SaleMapping;
 use Modules\EnterpriseData\app\Models\ExchangeFtpConnector;
 use Modules\EnterpriseData\app\Registry\ObjectMappingRegistry;
@@ -46,30 +47,42 @@ class ExchangeDataMapper
             $isDryRun = app()->runningInConsole() &&
                 in_array('--dry-run', $_SERVER['argv'] ?? []);
 
+            Log::info('Starting to process incoming objects', [
+                'connector_id' => $connector->id,
+                'objects_count' => count($objects1C),
+                'dry_run' => $isDryRun,
+            ]);
+
             $processedCount = 0;
             $createdIds = [];
             $updatedIds = [];
             $deletedIds = [];
             $errors = [];
             $skippedCount = 0;
-            $skippedTypes = [];
 
-            // Группировка объектов по типам для оптимизации
+            // Группировка объектов по типам
             $groupedObjects = $this->groupObjectsByType($objects1C);
 
             foreach ($groupedObjects as $objectType => $objects) {
                 try {
-                    // Проверяем, есть ли маппинг для этого типа объекта
-                    if (! $this->mappingRegistry->hasMapping($objectType)) {
-                        $skippedTypes[$objectType] = 'No mapping available';
-                        $skippedCount += count($objects);
+                    // СПЕЦИАЛЬНАЯ ОБРАБОТКА для объектов удаления
+                    if ($objectType === 'УдалениеОбъекта') {
+                        $deletionResult = $this->processDeletions($objects, $connector, $isDryRun);
+                        $deletedIds = array_merge($deletedIds, $deletionResult['deleted_ids']);
+                        $errors = array_merge($errors, $deletionResult['errors']);
+                        $processedCount += count($objects);
 
+                        continue;
+                    }
+
+                    // Обычная обработка объектов
+                    if (! $this->mappingRegistry->hasMapping($objectType)) {
+                        $skippedCount += count($objects);
                         $this->recordUnmappedObject($connector, $objectType, $objects, $isDryRun);
 
                         continue;
                     }
 
-                    // Обрабатываем только те типы, для которых есть маппинг
                     $result = $this->processObjectGroup($objectType, $objects, $connector, $isDryRun);
 
                     $processedCount += $result->processedCount;
@@ -83,22 +96,13 @@ class ExchangeDataMapper
                     Log::error('Object processing failed', [
                         'object_type' => $objectType,
                         'error' => $e->getMessage(),
-                        'connector' => $connector->id,
                     ]);
                 }
             }
 
-            // Логируем информацию о пропущенных типах
-            if (! empty($skippedTypes)) {
-                Log::info('Skipped object types without mappings', [
-                    'connector_id' => $connector->id,
-                    'skipped_types' => array_keys($skippedTypes),
-                    'skipped_objects_count' => $skippedCount,
-                    'total_skipped_types' => count($skippedTypes),
-                ]);
-            }
+            // Остальная логика остается без изменений...
 
-            $finalResult = new ProcessingResult(
+            return new ProcessingResult(
                 empty($errors),
                 $processedCount,
                 $createdIds,
@@ -107,17 +111,66 @@ class ExchangeDataMapper
                 $errors
             );
 
-            return $finalResult;
-
         } catch (\Exception $e) {
             Log::error('Failed to process incoming objects', [
                 'connector_id' => $connector->id,
                 'error' => $e->getMessage(),
-                'objects_count' => count($objects1C),
             ]);
 
             throw new ExchangeMappingException('Failed to process incoming objects: '.$e->getMessage(), 0, $e);
         }
+    }
+
+    /**
+     * Обработка объектов удаления
+     */
+    /**
+     * Обработка объектов удаления
+     */
+    private function processDeletions(array $deletionObjects, ExchangeFtpConnector $connector, bool $isDryRun): array
+    {
+        $deletedIds = [];
+        $errors = [];
+
+        $deletionMapping = new ObjectDeletionMapping($this->mappingRegistry);
+
+        foreach ($deletionObjects as $deletionObject) {
+            try {
+                if ($isDryRun) {
+                    Log::info('DRY RUN: Would process deletion', [
+                        'deletion_object' => $deletionObject,
+                    ]);
+
+                    continue;
+                }
+
+                $success = $deletionMapping->processDeletion($deletionObject);
+
+                if ($success) {
+                    $deletedIds[] = 'deletion_processed_'.time(); // Уникальный ID для статистики
+                }
+                // НЕ добавляем в ошибки если success = false
+
+            } catch (\Exception $e) {
+                // Только реальные исключения считаем ошибками
+                $errors[] = 'Error processing deletion: '.$e->getMessage();
+                Log::error('Deletion processing error', [
+                    'error' => $e->getMessage(),
+                    'deletion_object' => $deletionObject,
+                ]);
+            }
+        }
+
+        Log::info('Deletions processing summary', [
+            'total_deletion_objects' => count($deletionObjects),
+            'successful_deletions' => count($deletedIds),
+            'errors' => count($errors),
+        ]);
+
+        return [
+            'deleted_ids' => $deletedIds,
+            'errors' => $errors,
+        ];
     }
 
     private function processObjectGroup(string $objectType, array $objects, ExchangeFtpConnector $connector, bool $isDryRun = false): ProcessingResult

@@ -18,6 +18,7 @@ use Modules\EnterpriseData\app\Mappings\CounterpartyGroupMapping;
 use Modules\EnterpriseData\app\Mappings\CounterpartyMapping;
 use Modules\EnterpriseData\app\Mappings\CurrencyMapping;
 use Modules\EnterpriseData\app\Mappings\CustomerOrderMapping;
+use Modules\EnterpriseData\app\Mappings\ObjectDeletionMapping;
 use Modules\EnterpriseData\app\Mappings\OrganizationMapping;
 use Modules\EnterpriseData\app\Mappings\ProductGroupMapping;
 use Modules\EnterpriseData\app\Mappings\ProductMapping;
@@ -122,7 +123,7 @@ class EnterpriseDataServiceProvider extends ServiceProvider
             $registry->registerMapping('Справочник.Договоры', new ContractMapping);
             $registry->registerMapping('Документ.ЗаказКлиента', new CustomerOrderMapping);
             $registry->registerMapping('Документ.РеализацияТоваровУслуг', new SaleMapping);
-
+            $registry->registerMapping('УдалениеОбъекта', new ObjectDeletionMapping($registry));
         } catch (\Exception $e) {
             Log::error('Failed to register object mappings', [
                 'error' => $e->getMessage(),
