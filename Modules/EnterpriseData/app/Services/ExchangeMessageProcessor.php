@@ -422,7 +422,7 @@ class ExchangeMessageProcessor
     private function parseHeader(DOMXPath $xpath): ExchangeHeader
     {
         $headerNode = $xpath->query('//msg:Header')->item(0);
-        if (!$headerNode) {
+        if (! $headerNode) {
             throw new ExchangeParsingException('Header not found in message');
         }
 
@@ -484,7 +484,6 @@ class ExchangeMessageProcessor
             $newFrom  // ДОБАВЛЯЕМ новый параметр
         );
     }
-
 
     private function parseBody(DOMXPath $xpath): ExchangeBody
     {

@@ -12,10 +12,10 @@ readonly class ExchangeHeader
         public string $exchangePlan,
         public string $fromNode,
         public string $toNode,
-        public int    $messageNo,
-        public int    $receivedNo,
-        public array  $availableVersions,
-        public array  $availableObjectTypes,
+        public int $messageNo,
+        public int $receivedNo,
+        public array $availableVersions,
+        public array $availableObjectTypes,
         public ?string $newFrom = null
     ) {}
 
@@ -59,6 +59,6 @@ readonly class ExchangeHeader
 
     public function hasNewFrom(): bool
     {
-        return !empty($this->newFrom);
+        return ! empty($this->newFrom);
     }
 }

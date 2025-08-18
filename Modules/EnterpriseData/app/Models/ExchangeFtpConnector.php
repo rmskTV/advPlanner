@@ -79,13 +79,13 @@ class ExchangeFtpConnector extends CatalogObject
         }
     }
 
-
     /**
      * Получение следующего номера исходящего сообщения
      */
     public function getNextOutgoingMessageNo(): int
     {
         $nextNo = $this->last_outgoing_message_no + 1;
+
         return $nextNo;
     }
 
@@ -96,5 +96,4 @@ class ExchangeFtpConnector extends CatalogObject
     {
         $this->update(['last_outgoing_message_no' => $messageNo]);
     }
-
 }

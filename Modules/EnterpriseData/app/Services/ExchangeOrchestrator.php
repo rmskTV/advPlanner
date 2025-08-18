@@ -99,7 +99,7 @@ readonly class ExchangeOrchestrator
 
                     Log::info('Updated foreign GUID from NewFrom', [
                         'connector_id' => $connector->id,
-                        'new_guid' => $parsedMessage->header->newFrom
+                        'new_guid' => $parsedMessage->header->newFrom,
                     ]);
                 }
 
@@ -114,7 +114,7 @@ readonly class ExchangeOrchestrator
                 $isDryRun = app()->runningInConsole() &&
                     in_array('--dry-run', $_SERVER['argv'] ?? []);
 
-                if (!$isDryRun) {
+                if (! $isDryRun) {
                     $exchangeLog = $this->createExchangeLogEntry($connector, $parsedMessage, $processingResult, 'incoming');
 
                     if ($processingResult->success) {
@@ -294,8 +294,6 @@ readonly class ExchangeOrchestrator
             ->orderBy('message_no', 'desc')
             ->value('message_no');
     }
-
-
 
     /**
      * Пометка входящего сообщения как успешно обработанного

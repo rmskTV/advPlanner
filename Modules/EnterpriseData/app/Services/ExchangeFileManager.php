@@ -251,9 +251,10 @@ class ExchangeFileManager
 
         $foreignGuid = $connector->current_foreign_guid;
 
-        if ( $foreignGuid){
+        if ($foreignGuid) {
             return "Message_{$ourPrefix}_{$ourPrefix}_{$foreignGuid}.xml";
         }
+
         // Используем простой формат с префиксами
         return "Message_{$ourPrefix}_{$foreignPrefix}.xml";
     }
@@ -363,11 +364,12 @@ class ExchangeFileManager
         // Используем не жадный квантификатор для первой группы
         $pattern = '/^Message_(?:.*_)?(.+)_(.+)\.xml$/i';
 
-        if (!preg_match($pattern, $fileName, $matches)) {
+        if (! preg_match($pattern, $fileName, $matches)) {
             Log::debug('File does not match message pattern', [
                 'file_name' => $fileName,
-                'pattern' => $pattern
+                'pattern' => $pattern,
             ]);
+
             return false;
         }
 
@@ -387,7 +389,7 @@ class ExchangeFileManager
             ? $this->transliterate($connector->foreign_base_prefix)
             : $connector->foreign_base_prefix;
 
-        $foreignGuid= $connector->getCurrentForeignGuid();
+        $foreignGuid = $connector->getCurrentForeignGuid();
 
         Log::debug('Analyzing incoming file parts', [
             'file_name' => $fileName,
@@ -396,7 +398,7 @@ class ExchangeFileManager
             'our_prefix' => $ourPrefix,
             'our_guid' => $ourGuid,
             'foreign_prefix' => $foreignPrefix,
-            'transliterate_enabled' => $connector->ftp_transliterate
+            'transliterate_enabled' => $connector->ftp_transliterate,
         ]);
 
         // Проверяем, что получатель - это мы (по префиксу или GUID)
@@ -411,7 +413,7 @@ class ExchangeFileManager
             'file_name' => $fileName,
             'is_for_us' => $isForUs,
             'is_from_foreign' => $isFromForeign,
-            'is_incoming' => $isIncoming
+            'is_incoming' => $isIncoming,
         ]);
 
         return $isIncoming;
@@ -422,7 +424,7 @@ class ExchangeFileManager
         // Тот же паттерн для исходящих файлов
         $pattern = '/^Message_(?:.*_)?(.+)_(.+)\.xml$/i';
 
-        if (!preg_match($pattern, $fileName, $matches)) {
+        if (! preg_match($pattern, $fileName, $matches)) {
             return false;
         }
 
@@ -444,7 +446,7 @@ class ExchangeFileManager
             'receiver_part' => $receiverPart,
             'our_prefix' => $ourPrefix,
             'our_guid' => $ourGuid,
-            'transliterate_enabled' => $connector->ftp_transliterate
+            'transliterate_enabled' => $connector->ftp_transliterate,
         ]);
 
         // Проверяем, что отправитель - это мы
@@ -460,7 +462,7 @@ class ExchangeFileManager
             'is_from_us' => $isFromUs,
             'is_to_foreign' => $isToForeign,
             'is_outgoing' => $isOutgoing,
-            'transliterate_enabled' => $connector->ftp_transliterate
+            'transliterate_enabled' => $connector->ftp_transliterate,
         ]);
 
         return $isOutgoing;
