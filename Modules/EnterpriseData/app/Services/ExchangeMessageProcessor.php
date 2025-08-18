@@ -204,7 +204,7 @@ class ExchangeMessageProcessor
         $confirmationElement = $dom->createElementNS(self::MESSAGE_NAMESPACE, 'msg:Confirmation');
 
         $this->addHeaderElement($dom, $confirmationElement, 'msg:ExchangePlan', config('enterprisedata.exchange_plan'));
-        $this->addHeaderElement($dom, $confirmationElement, 'msg:To', $connector->foreign_base_prefix);
+        $this->addHeaderElement($dom, $confirmationElement, 'msg:To', $connector->getCurrentForeignGuid());
         $this->addHeaderElement($dom, $confirmationElement, 'msg:From', $connector->getOwnBasePrefix());
         $this->addHeaderElement($dom, $confirmationElement, 'msg:MessageNo', (string) $messageNo);
 
@@ -422,7 +422,7 @@ class ExchangeMessageProcessor
     private function parseHeader(DOMXPath $xpath): ExchangeHeader
     {
         $headerNode = $xpath->query('//msg:Header')->item(0);
-        if (! $headerNode) {
+        if (!$headerNode) {
             throw new ExchangeParsingException('Header not found in message');
         }
 
@@ -445,6 +445,9 @@ class ExchangeMessageProcessor
             $messageNo = (int) $this->getNodeValue($xpath, './/msg:MessageNo', $confirmationNode);
             $receivedNo = (int) $this->getNodeValue($xpath, './/msg:ReceivedNo', $confirmationNode);
         }
+
+        // ДОБАВЛЯЕМ: Извлечение NewFrom
+        $newFrom = $this->getNodeValue($xpath, './/msg:NewFrom', $headerNode);
 
         // Доступные версии
         $availableVersions = [];
@@ -477,9 +480,11 @@ class ExchangeMessageProcessor
             $messageNo,
             $receivedNo,
             $availableVersions,
-            $availableObjectTypes
+            $availableObjectTypes,
+            $newFrom  // ДОБАВЛЯЕМ новый параметр
         );
     }
+
 
     private function parseBody(DOMXPath $xpath): ExchangeBody
     {

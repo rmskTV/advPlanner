@@ -10,6 +10,8 @@ use Modules\Accounting\app\Models\Counterparty;
 use Modules\Accounting\app\Models\CounterpartyGroup;
 use Modules\Accounting\app\Models\Currency;
 use Modules\Accounting\app\Models\CustomerOrder;
+use Modules\Accounting\app\Models\OrderPaymentStatus;
+use Modules\Accounting\app\Models\OrderShipmentStatus;
 use Modules\Accounting\app\Models\Organization;
 use Modules\Accounting\app\Models\Product;
 use Modules\Accounting\app\Models\ProductGroup;
@@ -329,6 +331,13 @@ class ExchangeDataMapper
                     $searchKeys['code'] = $model->code;
                 } elseif (! empty($model->name)) {
                     $searchKeys['name'] = $model->name;
+                }
+                break;
+
+            case $model instanceof OrderPaymentStatus:
+            case $model instanceof OrderShipmentStatus:
+                if (! empty($model->order_guid_1c)) {
+                    $searchKeys['order_guid_1c'] = $model->order_guid_1c;
                 }
                 break;
         }

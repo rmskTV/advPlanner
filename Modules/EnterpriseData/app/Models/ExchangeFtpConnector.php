@@ -59,4 +59,42 @@ class ExchangeFtpConnector extends CatalogObject
     {
         return $this->own_base_prefix;
     }
+
+    /**
+     * Получение актуального GUID для отправки сообщений
+     */
+    public function getCurrentForeignGuid(): string
+    {
+        return $this->current_foreign_guid ?: $this->foreign_base_guid;
+    }
+
+    /**
+     * Обновление текущего GUID внешней базы
+     */
+    public function updateCurrentForeignGuid(string $newGuid): void
+    {
+        if ($newGuid !== $this->current_foreign_guid) {
+
+            $this->update(['current_foreign_guid' => $newGuid]);
+        }
+    }
+
+
+    /**
+     * Получение следующего номера исходящего сообщения
+     */
+    public function getNextOutgoingMessageNo(): int
+    {
+        $nextNo = $this->last_outgoing_message_no + 1;
+        return $nextNo;
+    }
+
+    /**
+     * Обновление номера последнего исходящего сообщения
+     */
+    public function updateLastOutgoingMessageNo(int $messageNo): void
+    {
+        $this->update(['last_outgoing_message_no' => $messageNo]);
+    }
+
 }

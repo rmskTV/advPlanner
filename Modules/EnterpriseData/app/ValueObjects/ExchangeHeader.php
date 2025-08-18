@@ -4,18 +4,19 @@ namespace Modules\EnterpriseData\app\ValueObjects;
 
 use Carbon\Carbon;
 
-class ExchangeHeader
+readonly class ExchangeHeader
 {
     public function __construct(
-        public readonly string $format,
-        public readonly Carbon $creationDate,
-        public readonly string $exchangePlan,
-        public readonly string $fromNode,
-        public readonly string $toNode,
-        public readonly int $messageNo,
-        public readonly int $receivedNo,
-        public readonly array $availableVersions,
-        public readonly array $availableObjectTypes
+        public string $format,
+        public Carbon $creationDate,
+        public string $exchangePlan,
+        public string $fromNode,
+        public string $toNode,
+        public int    $messageNo,
+        public int    $receivedNo,
+        public array  $availableVersions,
+        public array  $availableObjectTypes,
+        public ?string $newFrom = null
     ) {}
 
     public function isConfirmationMessage(): bool
@@ -54,5 +55,10 @@ class ExchangeHeader
     public function hasConfirmation(): bool
     {
         return $this->receivedNo > 0;
+    }
+
+    public function hasNewFrom(): bool
+    {
+        return !empty($this->newFrom);
     }
 }

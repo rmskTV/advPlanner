@@ -84,7 +84,6 @@ readonly class ExchangeOrchestrator
     private function processIncomingFile(ExchangeFtpConnector $connector, string $fileName): ExchangeResult
     {
         return $this->transactionManager->executeInTransaction(function () use ($connector, $fileName) {
-            // Блокировка файла
             $lock = $this->fileManager->lockFile($fileName);
 
             try {
@@ -94,6 +93,16 @@ readonly class ExchangeOrchestrator
                 // Парсинг сообщения
                 $parsedMessage = $this->messageProcessor->parseIncomingMessage($xmlContent);
 
+                // ДОБАВЛЯЕМ: Обработка NewFrom
+                if ($parsedMessage->header->hasNewFrom()) {
+                    $connector->updateCurrentForeignGuid($parsedMessage->header->newFrom);
+
+                    Log::info('Updated foreign GUID from NewFrom', [
+                        'connector_id' => $connector->id,
+                        'new_guid' => $parsedMessage->header->newFrom
+                    ]);
+                }
+
                 $objectsCount = $parsedMessage->body->getObjectsCount();
 
                 // Обработка объектов
@@ -102,34 +111,21 @@ readonly class ExchangeOrchestrator
                     $connector
                 );
 
-                // В режиме dry-run НЕ создаем запись в журнале и НЕ помечаем сообщение как обработанное
                 $isDryRun = app()->runningInConsole() &&
                     in_array('--dry-run', $_SERVER['argv'] ?? []);
 
-                if (! $isDryRun) {
-                    // Создание записи в журнале
+                if (!$isDryRun) {
                     $exchangeLog = $this->createExchangeLogEntry($connector, $parsedMessage, $processingResult, 'incoming');
 
-                    // Помечаем сообщение как успешно обработанное только если обработка прошла без ошибок
                     if ($processingResult->success) {
                         $this->markIncomingMessageAsProcessed($connector, $parsedMessage->header->messageNo, $exchangeLog->id);
                     }
-
-                    // Архивирование файла
-                    $this->fileManager->archiveProcessedFile($connector, $fileName);
-                } else {
-                    Log::info('DRY RUN: Skipping database operations', [
-                        'file' => $fileName,
-                        'total_objects' => $objectsCount,
-                        'objects_processed' => $processingResult->processedCount,
-                    ]);
                 }
 
-                // ИСПРАВЛЕНИЕ: Возвращаем общее количество объектов в сообщении, а не только обработанных
                 return new ExchangeResult(
                     $processingResult->success,
-                    1, // 1 сообщение обработано
-                    $objectsCount, // Общее количество объектов в сообщении
+                    1,
+                    $objectsCount,
                     $processingResult->errors,
                     []
                 );
@@ -159,7 +155,7 @@ readonly class ExchangeOrchestrator
 
             // Группировка объектов по типам
             $groupedObjects = $objectsToSend->groupBy('object_type');
-            $messageNo = $this->getNextOutgoingMessageNumber($connector);
+            $messageNo = $connector->getNextOutgoingMessageNo();
 
             $totalObjects = 0;
             $allErrors = [];
@@ -188,6 +184,7 @@ readonly class ExchangeOrchestrator
                 // Отправляем пустое сообщение только с подтверждением
                 try {
                     $this->sendConfirmationOnlyMessage($connector, $messageNo, $lastProcessedIncomingMessageNo);
+                    $connector->updateLastOutgoingMessageNo($messageNo);
                 } catch (\Exception $e) {
                     $allErrors[] = 'Confirmation message: '.$e->getMessage();
                 }
@@ -235,10 +232,10 @@ readonly class ExchangeOrchestrator
 
             // Генерация XML сообщения с подтверждением
             $xmlContent = $this->messageProcessor->generateOutgoingMessage(
-                $objects1C,
                 $connector,
                 $messageNo,
-                $lastProcessedIncomingMessageNo // Передаем номер последнего обработанного входящего сообщения
+                $lastProcessedIncomingMessageNo, // Передаем номер последнего обработанного входящего сообщения
+                $objects1C
             );
 
             // Генерация имени файла
@@ -298,15 +295,7 @@ readonly class ExchangeOrchestrator
             ->value('message_no');
     }
 
-    /**
-     * Получение следующего номера исходящего сообщения
-     */
-    private function getNextOutgoingMessageNumber(ExchangeFtpConnector $connector): int
-    {
-        return ExchangeLog::where('connector_id', $connector->id)
-            ->where('direction', 'outgoing')
-            ->max('message_no') + 1 ?? 1;
-    }
+
 
     /**
      * Пометка входящего сообщения как успешно обработанного

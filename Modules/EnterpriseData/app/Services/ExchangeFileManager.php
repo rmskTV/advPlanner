@@ -237,7 +237,7 @@ class ExchangeFileManager
 
     /**
      * Генерация имени файла для исходящего сообщения
-     * Формат: Message_{senderPrefix}_{receiverPrefix}.xml
+     * Формат: Message_{senderPrefix}_{receiverPrefixOrGuid}.xml
      */
     public function generateFileName(ExchangeFtpConnector $connector, int $messageNo): string
     {
@@ -249,6 +249,11 @@ class ExchangeFileManager
             ? $this->transliterate($connector->foreign_base_prefix)
             : $connector->foreign_base_prefix;
 
+        $foreignGuid = $connector->current_foreign_guid;
+
+        if ( $foreignGuid){
+            return "Message_{$ourPrefix}_{$ourPrefix}_{$foreignGuid}.xml";
+        }
         // Используем простой формат с префиксами
         return "Message_{$ourPrefix}_{$foreignPrefix}.xml";
     }
@@ -352,83 +357,113 @@ class ExchangeFileManager
      * Проверка, является ли файл входящим для нас
      * Формат: Message_{senderPrefix}_{receiverPrefix}.xml или Message_{senderPrefix}_{senderUUID}_{receiverUUID}.xml
      */
-    private function isIncomingFileForUs(string $fileName, ExchangeFtpConnector $connector): bool
+    public function isIncomingFileForUs(string $fileName, ExchangeFtpConnector $connector): bool
     {
-        // Проверка расширения
-        if (! $this->isValidFileExtension($fileName)) {
+        // Паттерн для файлов: Message_A_B.xml или Message_ANYSTRING_A_B.xml
+        // Используем не жадный квантификатор для первой группы
+        $pattern = '/^Message_(?:.*_)?(.+)_(.+)\.xml$/i';
+
+        if (!preg_match($pattern, $fileName, $matches)) {
+            Log::debug('File does not match message pattern', [
+                'file_name' => $fileName,
+                'pattern' => $pattern
+            ]);
             return false;
         }
 
-        // Получаем префиксы с учетом транслитерации
+        $senderPart = $matches[1]; // Префикс отправителя
+        $receiverPart = $matches[2]; // Префикс получателя
+
+        // Применяем транслитерацию если нужно
         $ourPrefix = $connector->ftp_transliterate
-            ? $this->transliterate($connector->own_base_prefix)
-            : $connector->own_base_prefix;
+            ? $this->transliterate($connector->getOwnBasePrefix())
+            : $connector->getOwnBasePrefix();
+
+        $ourGuid = $connector->ftp_transliterate
+            ? $this->transliterate($connector->getOwnBaseGuid())
+            : $connector->getOwnBaseGuid();
 
         $foreignPrefix = $connector->ftp_transliterate
             ? $this->transliterate($connector->foreign_base_prefix)
             : $connector->foreign_base_prefix;
 
-        // Проверяем паттерн 1: Message_{foreignPrefix}_{ourPrefix}.xml
-        $pattern1 = "/^Message_{$foreignPrefix}_{$ourPrefix}\.xml$/i";
-        if (preg_match($pattern1, $fileName)) {
-            return true;
-        }
+        $foreignGuid= $connector->getCurrentForeignGuid();
 
-        // Проверяем паттерн 2: Message_{foreignPrefix}_{foreignUUID}_{ourUUID}.xml
-        if ($connector->foreign_base_guid) {
-            $ourUUID = config('enterprisedata.own_base_guid');
-            $foreignUUID = $connector->foreign_base_guid;
+        Log::debug('Analyzing incoming file parts', [
+            'file_name' => $fileName,
+            'sender_part' => $senderPart,
+            'receiver_part' => $receiverPart,
+            'our_prefix' => $ourPrefix,
+            'our_guid' => $ourGuid,
+            'foreign_prefix' => $foreignPrefix,
+            'transliterate_enabled' => $connector->ftp_transliterate
+        ]);
 
-            if ($ourUUID && $foreignUUID) {
-                $pattern2 = "/^Message_{$foreignPrefix}_{$foreignUUID}_{$ourUUID}\.xml$/i";
-                if (preg_match($pattern2, $fileName)) {
-                    return true;
-                }
-            }
-        }
+        // Проверяем, что получатель - это мы (по префиксу или GUID)
+        $isForUs = ($receiverPart === $ourPrefix) || ($receiverPart === $ourGuid);
 
-        return false;
+        // Проверяем, что отправитель - это внешний префикс
+        $isFromForeign = ($senderPart === $foreignPrefix) || ($senderPart === $foreignGuid);
+
+        $isIncoming = $isForUs && $isFromForeign;
+
+        Log::debug('Incoming file validation result', [
+            'file_name' => $fileName,
+            'is_for_us' => $isForUs,
+            'is_from_foreign' => $isFromForeign,
+            'is_incoming' => $isIncoming
+        ]);
+
+        return $isIncoming;
     }
 
-    /**
-     * Проверка, является ли файл исходящим от нас
-     */
-    private function isOutgoingFileFromUs(string $fileName, ExchangeFtpConnector $connector): bool
+    public function isOutgoingFileFromUs(string $fileName, ExchangeFtpConnector $connector): bool
     {
-        // Проверка расширения
-        if (! $this->isValidFileExtension($fileName)) {
+        // Тот же паттерн для исходящих файлов
+        $pattern = '/^Message_(?:.*_)?(.+)_(.+)\.xml$/i';
+
+        if (!preg_match($pattern, $fileName, $matches)) {
             return false;
         }
 
-        // Получаем префиксы с учетом транслитерации
+        $senderPart = $matches[1]; // Префикс отправителя
+        $receiverPart = $matches[2]; // Префикс получателя
+
+        // Применяем транслитерацию если нужно
         $ourPrefix = $connector->ftp_transliterate
-            ? $this->transliterate($connector->own_base_prefix)
-            : $connector->own_base_prefix;
+            ? $this->transliterate($connector->getOwnBasePrefix())
+            : $connector->getOwnBasePrefix();
 
-        $foreignPrefix = $connector->ftp_transliterate
-            ? $this->transliterate($connector->foreign_base_prefix)
-            : $connector->foreign_base_prefix;
+        $ourGuid = $connector->ftp_transliterate
+            ? $this->transliterate($connector->getOwnBaseGuid())
+            : $connector->getOwnBaseGuid();
 
-        // Проверяем паттерн 1: Message_{ourPrefix}_{foreignPrefix}.xml
-        $pattern1 = "/^Message_{$ourPrefix}_{$foreignPrefix}\.xml$/i";
-        if (preg_match($pattern1, $fileName)) {
-            return true;
-        }
+        Log::debug('Analyzing outgoing file parts', [
+            'file_name' => $fileName,
+            'sender_part' => $senderPart,
+            'receiver_part' => $receiverPart,
+            'our_prefix' => $ourPrefix,
+            'our_guid' => $ourGuid,
+            'transliterate_enabled' => $connector->ftp_transliterate
+        ]);
 
-        // Проверяем паттерн 2: Message_{ourPrefix}_{ourUUID}_{foreignUUID}.xml
-        if ($connector->foreign_base_guid) {
-            $ourUUID = config('enterprisedata.own_base_guid');
-            $foreignUUID = $connector->foreign_base_guid;
+        // Проверяем, что отправитель - это мы
+        $isFromUs = ($senderPart === $ourPrefix) || ($senderPart === $ourGuid);
 
-            if ($ourUUID && $foreignUUID) {
-                $pattern2 = "/^Message_{$ourPrefix}_{$ourUUID}_{$foreignUUID}\.xml$/i";
-                if (preg_match($pattern2, $fileName)) {
-                    return true;
-                }
-            }
-        }
+        // Проверяем, что получатель - не мы
+        $isToForeign = ($receiverPart !== $ourPrefix) && ($receiverPart !== $ourGuid);
 
-        return false;
+        $isOutgoing = $isFromUs && $isToForeign;
+
+        Log::debug('Outgoing file validation result', [
+            'file_name' => $fileName,
+            'is_from_us' => $isFromUs,
+            'is_to_foreign' => $isToForeign,
+            'is_outgoing' => $isOutgoing,
+            'transliterate_enabled' => $connector->ftp_transliterate
+        ]);
+
+        return $isOutgoing;
     }
 
     /**
