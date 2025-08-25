@@ -1,0 +1,11 @@
+{
+    "name": "VkAds",
+    "alias": "vkads",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\VkAds\\Providers\\VkAdsServiceProvider"
+    ],
+    "files": []
+}

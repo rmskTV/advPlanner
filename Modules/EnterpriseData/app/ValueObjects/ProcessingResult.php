@@ -2,15 +2,21 @@
 
 namespace Modules\EnterpriseData\app\ValueObjects;
 
-class ProcessingResult
+/**
+ * VO результата обмена
+ *
+ * @property array|null $warnings
+ *
+ * */
+readonly class ProcessingResult
 {
     public function __construct(
-        public readonly bool $success,
-        public readonly int $processedCount = 0,
-        public readonly array $createdIds = [],
-        public readonly array $updatedIds = [],
-        public readonly array $deletedIds = [],
-        public readonly array $errors = []
+        public bool $success,
+        public int $processedCount = 0,
+        public array $createdIds = [],
+        public array $updatedIds = [],
+        public array $deletedIds = [],
+        public array $errors = []
     ) {}
 
     public function hasErrors(): bool

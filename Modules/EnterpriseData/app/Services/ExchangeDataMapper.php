@@ -28,16 +28,6 @@ use Modules\EnterpriseData\app\ValueObjects\ProcessingResult;
 
 class ExchangeDataMapper
 {
-    private const MAX_OBJECTS_PER_BATCH = 10000;
-
-    private const ALLOWED_OBJECT_TYPES = [
-        'Документ.*',
-        'Справочник.*',
-        'РегистрСведений.*',
-        'РегистрНакопления.*',
-        'Константа.*',
-    ];
-
     public function __construct(
         private readonly ObjectMappingRegistry $mappingRegistry,
         private readonly ExchangeDataSanitizer $sanitizer
@@ -450,17 +440,6 @@ class ExchangeDataMapper
         return $grouped;
     }
 
-    private function isAllowedObjectType(string $objectType): bool
-    {
-        foreach (self::ALLOWED_OBJECT_TYPES as $allowedPattern) {
-            if (fnmatch($allowedPattern, $objectType)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     private function validateLaravelModel(Model $model, string $expectedClass): void
     {
         if (! $model instanceof $expectedClass) {
@@ -473,32 +452,5 @@ class ExchangeDataMapper
         if (! $model->exists && ! $model->isDirty()) {
             throw new ExchangeMappingException('Model has no data to process');
         }
-    }
-
-    private function determineOperation(array $object1C, Model $laravelModel): string
-    {
-        // Логика определения операции на основе данных объекта
-        if (isset($object1C['properties']['ПометкаУдаления']) && $object1C['properties']['ПометкаУдаления'] === true) {
-            return 'delete';
-        }
-
-        // Проверка существования объекта
-        $existingModel = $this->findExistingModel($laravelModel, $object1C);
-
-        return $existingModel ? 'update' : 'create';
-    }
-
-    private function findExistingModel(Model $laravelModel, array $object1C): ?Model
-    {
-        // Поиск существующей модели по GUID или другим уникальным полям
-        $modelClass = get_class($laravelModel);
-
-        // Поиск по GUID 1С
-        if (isset($object1C['ref'])) {
-            return $modelClass::where('guid_1c', $object1C['ref'])->first();
-        }
-
-        // Поиск по другим уникальным полям (зависит от маппинга)
-        return null;
     }
 }

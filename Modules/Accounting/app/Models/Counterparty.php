@@ -3,6 +3,7 @@
 namespace Modules\Accounting\app\Models;
 
 use App\Models\CatalogObject;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -36,7 +37,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $main_bank_name
  * @property bool $is_our_company
  * @property bool $deletion_mark
- * @property \Carbon\Carbon|null $last_sync_at
+ * @property bool $is_separate_division
+ * @property Carbon|null $last_sync_at
  */
 class Counterparty extends CatalogObject
 {

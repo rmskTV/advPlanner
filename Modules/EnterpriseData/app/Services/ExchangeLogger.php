@@ -3,7 +3,6 @@
 namespace Modules\EnterpriseData\app\Services;
 
 use Carbon\Carbon;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Modules\EnterpriseData\app\Models\ExchangeFtpConnector;
 use Modules\EnterpriseData\app\Models\ExchangeLog;
@@ -185,23 +184,6 @@ class ExchangeLogger
         ]));
 
         Log::info("Performance metric: {$metric} = {$value}{$unit}", $secureContext);
-    }
-
-    public function getExchangeHistory(
-        ExchangeFtpConnector $connector,
-        int $limit = 100
-    ): Collection {
-        return ExchangeLog::where('connector_id', $connector->id)
-            ->latest('created_at')
-            ->limit($limit)
-            ->get()
-            ->map(function ($log) {
-                // Удаляем чувствительные данные из истории
-                $logData = $log->toArray();
-                unset($logData['errors']); // Ошибки могут содержать чувствительную информацию
-
-                return $logData;
-            });
     }
 
     public function getExchangeStatistics(

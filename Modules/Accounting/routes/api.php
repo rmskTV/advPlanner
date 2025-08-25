@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Modules\Accounting\Http\Controllers\AccountingController;
+use Modules\Accounting\app\Http\Controllers\AccountingController;
 
 /*
  *--------------------------------------------------------------------------

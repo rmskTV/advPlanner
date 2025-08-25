@@ -2,8 +2,8 @@
 
 namespace Modules\EnterpriseData\Tests\Unit\ValueObjects;
 
-use Tests\TestCase;
 use Modules\EnterpriseData\app\ValueObjects\ValidationResult;
+use Tests\TestCase;
 
 class ValidationResultTest extends TestCase
 {
@@ -122,7 +122,7 @@ class ValidationResultTest extends TestCase
         $conditions = [
             true => 'Should not appear',
             false => 'Should appear as error',
-            2 > 1 => 'Should not appear'
+            2 > 1 => 'Should not appear',
         ];
 
         $result = ValidationResult::fromConditions($conditions);
@@ -140,11 +140,11 @@ class ValidationResultTest extends TestCase
         $successCallbackCalled = false;
         $failureCallbackCalled = false;
 
-        $successResult->onSuccess(function() use (&$successCallbackCalled) {
+        $successResult->onSuccess(function () use (&$successCallbackCalled) {
             $successCallbackCalled = true;
         });
 
-        $failureResult->onFailure(function() use (&$failureCallbackCalled) {
+        $failureResult->onFailure(function () use (&$failureCallbackCalled) {
             $failureCallbackCalled = true;
         });
 

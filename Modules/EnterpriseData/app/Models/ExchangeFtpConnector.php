@@ -12,7 +12,9 @@ use App\Models\CatalogObject;
  * @property string $own_base_name Название локальной базы
  * @property string $foreign_base_prefix Буквенный префикс удаленной базы
  * @property string $foreign_base_guid Глобальный идентификатор (UUID) удаленной базы
+ * @property string $current_foreign_guid Глобальный идентификатор (UUID) удаленной базы
  * @property string $foreign_base_name Название удаленной базы
+ * @property int $last_outgoing_message_no Номер последнего отправленного сообщения
  * @property string $ftp_path Адрес и путь к папке на FTP-сервере
  * @property int $ftp_port Порт для подключения FTP-сервера
  * @property string $ftp_login Логин FTP

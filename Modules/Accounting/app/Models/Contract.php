@@ -3,12 +3,12 @@
 namespace Modules\Accounting\app\Models;
 
 use App\Models\CatalogObject;
-use App\Models\CustomerOrder;
-use App\Models\Sale;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Modules\VkAds\app\Models\VkAdsAccount;
 
 /**
  * Модель договора
@@ -16,8 +16,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $id
  * @property string $uuid
  * @property string|null $guid_1c
- * @property string $number
- * @property Carbon $date
+ * @property string|null $number
+ * @property Carbon|null $date
  * @property string $name
  * @property string|null $description
  * @property int|null $organization_id
@@ -290,18 +290,6 @@ class Contract extends CatalogObject
     }
 
     /**
-     * Получение дней до истечения срока действия
-     */
-    public function getDaysUntilExpiration(): ?int
-    {
-        if (! $this->valid_to) {
-            return null;
-        }
-
-        return now()->diffInDays($this->valid_to, false);
-    }
-
-    /**
      * Получение типа договора на русском языке
      */
     public function getContractTypeLabel(): string
@@ -399,5 +387,13 @@ class Contract extends CatalogObject
             'errors' => $errors,
             'warnings' => $warnings,
         ];
+    }
+
+    /**
+     * Аккаунт Vk Ads уровня контрагента (Кабинет клиента), привязывается к договору с контрагентом
+     */
+    public function vkAdsAccount(): HasOne
+    {
+        return $this->hasOne(VkAdsAccount::class);
     }
 }

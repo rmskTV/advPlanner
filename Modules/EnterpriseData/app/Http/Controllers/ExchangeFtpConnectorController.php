@@ -27,15 +27,16 @@ class ExchangeFtpConnectorController extends Controller
         $validator = Validator::make(request()->all(), $filters);
         $filters = $validator->validated();
 
-        return $service->getAll($repository, $filters);
+        return response()->json([], 201);
+        // return $service->getAll($repository, $filters);
     }
 
     public function store(Repository $repository, StoreExchangeConnectorRequest $request): \Illuminate\Http\JsonResponse
     {
         try {
-            $connector = $this->service->createFromXml($repository, $request->file('config')->get());
-
-            return response()->json($connector, 201);
+            // $connector = $this->service->createFromXml($repository, $request->file('config')->get());
+            return response()->json([], 201);
+            // return response()->json($connector, 201);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 400);
         }

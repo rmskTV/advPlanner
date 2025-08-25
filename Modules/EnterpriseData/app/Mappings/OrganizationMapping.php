@@ -73,33 +73,6 @@ class OrganizationMapping extends ObjectMapping
     }
 
     /**
-     * Извлечение представления из XML контактной информации 1С
-     */
-    private function extractRepresentationFromContactXml(string $xmlString): ?string
-    {
-        if (empty($xmlString)) {
-            return null;
-        }
-
-        // Пытаемся извлечь атрибут Представление
-        if (preg_match('/Представление="([^"]*)"/', $xmlString, $matches)) {
-            return html_entity_decode($matches[1]);
-        }
-
-        // Если не найдено представление, пытаемся извлечь номер телефона
-        if (preg_match('/Номер="([^"]*)"/', $xmlString, $matches)) {
-            return html_entity_decode($matches[1]);
-        }
-
-        // Если это простая строка без XML
-        if (! str_contains($xmlString, '<')) {
-            return $xmlString;
-        }
-
-        return null;
-    }
-
-    /**
      * Очистка строки от лишних пробелов
      */
     private function cleanString(?string $value): ?string

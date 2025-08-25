@@ -18,7 +18,7 @@ class ExchangeStatusCommand extends Command
 
     public function handle(ExchangeConfigValidator $validator): int
     {
-        $connectorId = $this->argument('connector');
+        $connectorId = (int) $this->argument('connector');
 
         if ($connectorId) {
             return $this->showConnectorStatus($connectorId, $validator);

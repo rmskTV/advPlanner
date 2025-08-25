@@ -2,21 +2,21 @@
 
 namespace Modules\EnterpriseData\Tests\Unit\Services;
 
-use Tests\TestCase;
-use Modules\EnterpriseData\app\Services\ExchangeMessageProcessor;
-use Modules\EnterpriseData\app\Models\ExchangeFtpConnector;
 use Modules\EnterpriseData\app\Exceptions\ExchangeParsingException;
-use Modules\EnterpriseData\app\Exceptions\ExchangeGenerationException;
+use Modules\EnterpriseData\app\Models\ExchangeFtpConnector;
+use Modules\EnterpriseData\app\Services\ExchangeMessageProcessor;
+use Tests\TestCase;
 
 class ExchangeMessageProcessorTest extends TestCase
 {
     private ExchangeMessageProcessor $processor;
+
     private ExchangeFtpConnector $connector;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->processor = new ExchangeMessageProcessor();
+        $this->processor = new ExchangeMessageProcessor;
         $this->connector = $this->createTestConnector();
     }
 
@@ -35,7 +35,7 @@ class ExchangeMessageProcessorTest extends TestCase
 
     public function test_handles_bom_in_xml(): void
     {
-        $xmlWithBom = "\xEF\xBB\xBF" . $this->getValidXmlMessage();
+        $xmlWithBom = "\xEF\xBB\xBF".$this->getValidXmlMessage();
 
         $result = $this->processor->parseIncomingMessage($xmlWithBom);
 
@@ -57,8 +57,8 @@ class ExchangeMessageProcessorTest extends TestCase
                 'type' => 'Справочник.Организации',
                 'ref' => 'test-guid',
                 'properties' => ['Наименование' => 'Test Organization'],
-                'tabular_sections' => []
-            ]
+                'tabular_sections' => [],
+            ],
         ];
 
         $result = $this->processor->generateOutgoingMessage($this->connector, 1, 0, $objects);
@@ -68,7 +68,7 @@ class ExchangeMessageProcessorTest extends TestCase
         $this->assertStringContainsString('Test Organization', $result);
 
         // Проверяем что XML валидный
-        $dom = new \DOMDocument();
+        $dom = new \DOMDocument;
         $this->assertTrue($dom->loadXML($result));
     }
 
@@ -79,7 +79,7 @@ class ExchangeMessageProcessorTest extends TestCase
         $this->assertStringContainsString('<?xml', $result);
         $this->assertStringContainsString('ReceivedNo>5</msg:ReceivedNo>', $result);
 
-        $dom = new \DOMDocument();
+        $dom = new \DOMDocument;
         $this->assertTrue($dom->loadXML($result));
     }
 
@@ -100,7 +100,7 @@ class ExchangeMessageProcessorTest extends TestCase
 
     private function createTestConnector(): ExchangeFtpConnector
     {
-        $connector = new ExchangeFtpConnector();
+        $connector = new ExchangeFtpConnector;
         $connector->own_base_prefix = 'TEST';
         $connector->foreign_base_prefix = 'EXT';
         $connector->foreign_base_guid = 'test-foreign-guid';

@@ -77,7 +77,7 @@ abstract class ObjectMapping
                 }
 
                 // Проверяем что значение не пустое
-                if (isset($current) && empty(trim($current))) {
+                if (empty(trim($current))) {
                     $errors[] = "Required field is empty: {$field}";
                 }
             } else {

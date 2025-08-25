@@ -2,6 +2,7 @@
 
 namespace Modules\EnterpriseData\app\Services;
 
+use Illuminate\Support\Facades\Log;
 use Modules\EnterpriseData\app\Models\ExchangeFtpConnector;
 use Modules\EnterpriseData\app\ValueObjects\ValidationResult;
 

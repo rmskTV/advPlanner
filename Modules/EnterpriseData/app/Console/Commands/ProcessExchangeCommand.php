@@ -3,6 +3,7 @@
 namespace Modules\EnterpriseData\app\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Collection;
 use Modules\EnterpriseData\app\Models\ExchangeFtpConnector;
 use Modules\EnterpriseData\app\Services\ExchangeOrchestrator;
 
@@ -23,7 +24,7 @@ class ProcessExchangeCommand extends Command
 
         try {
             // Установка таймаута
-            set_time_limit($this->option('timeout'));
+            set_time_limit((int) $this->option('timeout'));
 
             // Получение коннекторов
             $connectors = $this->getConnectors();
@@ -63,7 +64,7 @@ class ProcessExchangeCommand extends Command
         }
     }
 
-    private function getConnectors()
+    private function getConnectors(): Collection
     {
         $connectorId = $this->argument('connector');
 

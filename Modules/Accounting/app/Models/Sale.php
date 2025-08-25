@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $counterparty_guid_1c
  * @property string|null $currency_guid_1c
  * @property float|null $amount
+ * @property array|null $items
  * @property bool $amount_includes_vat
  * @property string|null $contract_guid_1c
  * @property string|null $settlement_currency_guid_1c

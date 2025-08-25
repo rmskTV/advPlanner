@@ -7,8 +7,6 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Collection;
 
 /**
  * Модель журнала операций обмена данными
@@ -31,7 +29,6 @@ use Illuminate\Support\Collection;
  * @property Carbon $updated_at
  * @property Carbon|null $deleted_at
  * @property ExchangeFtpConnector $connector
- * @property Collection|ObjectChangeLog[] $objectChanges
  */
 class ExchangeLog extends Registry
 {
@@ -121,14 +118,6 @@ class ExchangeLog extends Registry
     }
 
     /**
-     * Связь с изменениями объектов
-     */
-    public function objectChanges(): HasMany
-    {
-        return $this->hasMany(ObjectChangeLog::class, 'exchange_log_id');
-    }
-
-    /**
      * Accessor для получения читаемого статуса
      */
     protected function statusLabel(): Attribute
@@ -178,7 +167,7 @@ class ExchangeLog extends Registry
     {
         return Attribute::make(
             get: function () {
-                if (! $this->objects_count || $this->objects_count === 0) {
+                if (! $this->objects_count || $this->objects_count == 0) {
                     return null;
                 }
 
@@ -421,32 +410,6 @@ class ExchangeLog extends Registry
         }
 
         $this->update($updateData);
-    }
-
-    /**
-     * Получение статистики по коннектору
-     */
-    public static function getConnectorStatistics(int $connectorId, int $days = 30): array
-    {
-        $from = now()->subDays($days);
-
-        $logs = self::forConnector($connectorId)
-            ->where('created_at', '>=', $from)
-            ->get();
-
-        $successful = $logs->where('status', self::STATUS_COMPLETED);
-        $failed = $logs->where('status', self::STATUS_FAILED);
-
-        return [
-            'total' => $logs->count(),
-            'successful' => $successful->count(),
-            'failed' => $failed->count(),
-            'success_rate' => $logs->count() > 0 ? round(($successful->count() / $logs->count()) * 100, 2) : 0,
-            'total_objects' => $successful->sum('objects_count'),
-            'avg_duration' => $successful->avg('duration_seconds'),
-            'slow_operations' => $logs->where('duration_seconds', '>', 60)->count(),
-            'period_days' => $days,
-        ];
     }
 
     /**

@@ -2,21 +2,22 @@
 
 namespace Modules\EnterpriseData\Tests\Unit\Registry;
 
-use Tests\TestCase;
-use Modules\EnterpriseData\app\Registry\ObjectMappingRegistry;
-use Modules\EnterpriseData\app\Contracts\ObjectMapping;
-use Modules\EnterpriseData\app\ValueObjects\ValidationResult;
 use Illuminate\Database\Eloquent\Model;
+use Modules\EnterpriseData\app\Contracts\ObjectMapping;
+use Modules\EnterpriseData\app\Registry\ObjectMappingRegistry;
+use Modules\EnterpriseData\app\ValueObjects\ValidationResult;
+use Tests\TestCase;
 
 class ObjectMappingRegistryTest extends TestCase
 {
     private ObjectMappingRegistry $registry;
+
     private ObjectMapping $mockMapping;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->registry = new ObjectMappingRegistry();
+        $this->registry = new ObjectMappingRegistry;
         $this->mockMapping = $this->createMockMapping();
     }
 
@@ -92,7 +93,8 @@ class ObjectMappingRegistryTest extends TestCase
 
     private function createMockMapping(): ObjectMapping
     {
-        return new class extends ObjectMapping {
+        return new class extends ObjectMapping
+        {
             public function getObjectType(): string
             {
                 return 'Справочник.Тест';
@@ -105,7 +107,8 @@ class ObjectMappingRegistryTest extends TestCase
 
             public function mapFrom1C(array $object1C): Model
             {
-                return new class extends Model {
+                return new class extends Model
+                {
                     protected $fillable = ['*'];
                 };
             }

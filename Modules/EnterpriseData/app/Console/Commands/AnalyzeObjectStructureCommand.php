@@ -24,7 +24,7 @@ class AnalyzeObjectStructureCommand extends Command
         $connectorId = $this->argument('connector');
         $fileName = $this->argument('filename');
         $objectType = $this->argument('object-type');
-        $index = $this->option('index');
+        $index = (int) $this->option('index');
 
         $connector = ExchangeFtpConnector::find($connectorId);
 

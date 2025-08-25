@@ -14,14 +14,6 @@ class ExchangeBody
             return ($obj['type'] ?? '') === $type;
         });
 
-        // Логируем для отладки
-        \Log::debug('Filtering objects by type', [
-            'requested_type' => $type,
-            'total_objects' => count($this->objects),
-            'filtered_count' => count($filtered),
-            'available_types' => $this->getUniqueObjectTypes(),
-        ]);
-
         return array_values($filtered); // Переиндексируем массив
     }
 

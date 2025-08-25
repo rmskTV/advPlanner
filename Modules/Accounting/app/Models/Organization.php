@@ -2,11 +2,13 @@
 
 namespace Modules\Accounting\app\Models;
 
-use App\Models\BankAccount;
 use App\Models\CatalogObject;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Modules\VkAds\app\Models\VkAdsAccount;
 
 /**
+ * Организации
+ *
  * @property int $id
  * @property string $uuid
  * @property string|null $guid_1c
@@ -20,6 +22,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $oktmo
  * @property string|null $ogrn
  * @property string|null $okved
+ * @property string|null $okopf
+ * @property string|null $okfs
  * @property string|null $legal_address
  * @property string|null $legal_address_zip
  * @property string|null $phone
@@ -74,14 +78,6 @@ class Organization extends CatalogObject
     ];
 
     /**
-     * Связь с банковскими счетами
-     */
-    public function bankAccounts(): HasMany
-    {
-        return $this->hasMany(BankAccount::class, 'organization_id');
-    }
-
-    /**
      * Поиск организации по GUID 1С
      */
     public static function findByGuid1C(string $guid): ?self
@@ -111,5 +107,13 @@ class Organization extends CatalogObject
     public function touchSync(): void
     {
         $this->update(['last_sync_at' => now()]);
+    }
+
+    /**
+     * Аккаунт Vk Ads уровня Организации (Аккаунт рекламного агентства)
+     */
+    public function vkAdsAccount(): HasOne
+    {
+        return $this->hasOne(VkAdsAccount::class);
     }
 }

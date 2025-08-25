@@ -8,5 +8,6 @@
     "AdvBlocks": true,
     "BroadcastingDayTemplates": true,
     "EnterpriseData": true,
-    "Accounting": true
+    "Accounting": true,
+    "VkAds": true
 }

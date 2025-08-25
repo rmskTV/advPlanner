@@ -3,7 +3,6 @@
 namespace Modules\Accounting\app\Models;
 
 use App\Models\CatalogObject;
-use App\Models\Individual;
 
 /**
  * Модель системного пользователя 1С
@@ -39,18 +38,6 @@ class SystemUser extends CatalogObject
         'deletion_mark' => 'boolean',
         'last_sync_at' => 'datetime',
     ];
-
-    /**
-     * Связь с физическим лицом (через GUID)
-     */
-    public function individual(): ?Individual
-    {
-        if (! $this->individual_guid_1c) {
-            return null;
-        }
-
-        return Individual::findByGuid1C($this->individual_guid_1c);
-    }
 
     /**
      * Поиск пользователя по GUID 1С

@@ -16,7 +16,7 @@ readonly class ExchangeResult
         public ?Carbon $endTime = null
     ) {}
 
-    public function getDuration(): ?int
+    public function getDuration(): ?float
     {
         if ($this->startTime && $this->endTime) {
             return $this->endTime->diffInSeconds($this->startTime);
