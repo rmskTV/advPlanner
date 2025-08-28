@@ -40,7 +40,7 @@ return new class extends Migration
             $table->index(['stats_date', 'period_type']);
 
             // Уникальность по группе и дате
-            $table->unique(['vk_ads_ad_group_id', 'stats_date', 'period_type']);
+            $table->unique(['vk_ads_ad_group_id', 'stats_date', 'period_type'], 'vk_stats_unique');
         });
     }
 

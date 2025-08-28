@@ -1,9 +1,16 @@
 <?php
 
-namespace Modules\VkAds\Providers;
+namespace Modules\VkAds\app\Providers;
 
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ServiceProvider;
+use Modules\VkAds\app\Services\AgencyDocumentService;
+use Modules\VkAds\app\Services\VkAdsAccountService;
+use Modules\VkAds\app\Services\VkAdsAdGroupService;
+use Modules\VkAds\app\Services\VkAdsApiService;
+use Modules\VkAds\app\Services\VkAdsCampaignService;
+use Modules\VkAds\app\Services\VkAdsStatisticsService;
+use Modules\VkAds\Providers\RouteServiceProvider;
 use Nwidart\Modules\Traits\PathNamespace;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -55,6 +62,19 @@ class VkAdsServiceProvider extends ServiceProvider
         //     $schedule = $this->app->make(Schedule::class);
         //     $schedule->command('inspire')->hourly();
         // });
+    }
+
+    /**
+     * Register services.
+     */
+    protected function registerServices(): void
+    {
+        $this->app->singleton(VkAdsApiService::class);
+        $this->app->singleton(VkAdsAccountService::class);
+        $this->app->singleton(VkAdsCampaignService::class);
+        $this->app->singleton(VkAdsAdGroupService::class);
+        $this->app->singleton(VkAdsStatisticsService::class);
+        $this->app->singleton(AgencyDocumentService::class);
     }
 
     /**

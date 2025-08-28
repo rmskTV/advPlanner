@@ -1,11 +1,11 @@
 {
     "name": "VkAds",
     "alias": "vkads",
-    "description": "",
+    "description": "Модуль для работы с VK Ads API и управления рекламными кампаниями",
     "keywords": [],
     "priority": 0,
     "providers": [
-        "Modules\\VkAds\\Providers\\VkAdsServiceProvider"
+        "Modules\\VkAds\\app\\Providers\\VkAdsServiceProvider"
     ],
     "files": []
 }
