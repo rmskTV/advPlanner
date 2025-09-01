@@ -20,14 +20,17 @@ return new class extends Migration
             $table->string('name');
 
             // СВЯЗЬ С ЗАКАЗОМ КЛИЕНТА (перенесено с кампании)
-            $table->foreignId('customer_order_item_id')
+            $table->foreignId('customer_order_item_id')->nullable()
                 ->constrained('customer_order_items')->onDelete('cascade')
                 ->comment('Строка заказа клиента, к которой привязана группа объявлений');
+            $table->foreignId('vk_ads_account_id')->nullable()->after('id')
+                ->constrained('vk_ads_accounts')->onDelete('cascade')
+                ->comment('VK Ads аккаунт');
 
             // Настройки группы
             $table->enum('status', ['active', 'paused', 'deleted']);
             $table->decimal('bid', 15, 2)->nullable();
-            $table->json('targeting')->nullable();
+            $table->json('targetings')->nullable();
             $table->json('placements')->nullable();
 
             // Синхронизация
@@ -37,6 +40,7 @@ return new class extends Migration
             // Индексы
             $table->index('customer_order_item_id');
             $table->index(['vk_ads_campaign_id', 'status']);
+            $table->index('vk_ads_account_id');
         });
     }
 

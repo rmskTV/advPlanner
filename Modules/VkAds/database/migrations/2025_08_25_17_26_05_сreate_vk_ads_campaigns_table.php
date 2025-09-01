@@ -22,7 +22,7 @@ return new class extends Migration
 
             // Статус и настройки
             $table->enum('status', ['active', 'paused', 'deleted', 'archived']);
-            $table->enum('campaign_type', ['promoted_posts', 'website_conversions', 'mobile_app_promotion']);
+            $table->string('campaign_type');
 
             // Бюджет
             $table->decimal('daily_budget', 15, 2)->nullable();

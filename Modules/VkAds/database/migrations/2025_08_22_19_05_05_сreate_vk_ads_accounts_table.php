@@ -20,6 +20,10 @@ return new class extends Migration
 
             // VK Ads специфичные поля
             $table->bigInteger('vk_account_id')->unique();
+            $table->bigInteger('vk_user_id')->nullable()->after('vk_account_id')
+                ->comment('ID пользователя в VK (для agency_client_credentials)');
+            $table->string('vk_username')->nullable()->after('vk_user_id')
+                ->comment('Username пользователя в VK');
             $table->string('account_name');
             $table->enum('account_type', ['general', 'agency', 'client']);
             $table->enum('account_status', ['active', 'blocked', 'deleted']);

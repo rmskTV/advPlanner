@@ -3,9 +3,8 @@
 namespace Modules\VkAds\app\Services;
 
 use Illuminate\Database\Eloquent\Collection;
-use Modules\Accounting\app\Models\Contract;
-use Modules\Accounting\app\Models\Organization;
 use Modules\VkAds\app\Models\VkAdsAccount;
+use Illuminate\Support\Facades\Log;
 
 class VkAdsAccountService
 {
@@ -16,124 +15,161 @@ class VkAdsAccountService
         $this->apiService = $apiService;
     }
 
-    // === СОЗДАНИЕ АККАУНТОВ ===
-
-    /**
-     * Создать агентский кабинет для организации
-     */
-    public function createAgencyAccount(Organization $organization, array $vkAccountData): VkAdsAccount
+    public function createAccount(array $data): VkAdsAccount
     {
-        return VkAdsAccount::create([
-            'vk_account_id' => $vkAccountData['account_id'],
-            'account_name' => $vkAccountData['account_name'],
-            'account_type' => 'agency',
-            'organization_id' => $organization->id,
-            'account_status' => 'active',
-        ]);
+        return VkAdsAccount::create($data);
+    }
+
+    public function getAccounts(): Collection
+    {
+        return VkAdsAccount::with(['organization', 'contract', 'campaigns'])->get();
+    }
+
+    public function getAccount(int $id): VkAdsAccount
+    {
+        return VkAdsAccount::with(['organization', 'contract', 'campaigns.adGroups'])
+            ->findOrFail($id);
+    }
+
+    public function updateAccount(int $id, array $data): VkAdsAccount
+    {
+        $account = VkAdsAccount::findOrFail($id);
+        $account->update($data);
+        return $account;
     }
 
     /**
-     * Создать клиентский кабинет для договора
+     * Синхронизировать аккаунт с VK Ads
      */
-    public function createClientAccount(Contract $contract, array $vkAccountData): VkAdsAccount
-    {
-        return VkAdsAccount::create([
-            'vk_account_id' => $vkAccountData['account_id'],
-            'account_name' => $vkAccountData['account_name'],
-            'account_type' => 'client',
-            'contract_id' => $contract->id,
-            'account_status' => 'active',
-        ]);
-    }
-
-    // === CRUD ОПЕРАЦИИ ===
-
-    public function createAccount(array $accountData): VkAdsAccount
-    {
-        return VkAdsAccount::create($accountData);
-    }
-
-    public function getAccounts(array $filters = []): Collection
-    {
-        $query = VkAdsAccount::with(['organization', 'contract.counterparty']);
-
-        if (isset($filters['account_type'])) {
-            $query->where('account_type', $filters['account_type']);
-        }
-
-        if (isset($filters['account_status'])) {
-            $query->where('account_status', $filters['account_status']);
-        }
-
-        return $query->get();
-    }
-
-    public function updateAccount(int $accountId, array $data): VkAdsAccount
+    public function syncAccount(int $accountId): VkAdsAccount
     {
         $account = VkAdsAccount::findOrFail($accountId);
-        $account->update($data);
 
-        return $account;
-    }
-
-    public function deleteAccount(int $accountId): bool
-    {
-        return VkAdsAccount::findOrFail($accountId)->delete();
-    }
-
-    // === СИНХРОНИЗАЦИЯ С VK ===
-
-    public function syncAccountFromVk(int $vkAccountId): VkAdsAccount
-    {
-        $account = VkAdsAccount::where('vk_account_id', $vkAccountId)->firstOrFail();
-
-        $vkData = $this->apiService->makeAuthenticatedRequest($account, 'accounts.get', [
-            'account_ids' => [$vkAccountId],
-        ]);
-
-        if (! empty($vkData)) {
-            $account->update([
-                'account_name' => $vkData[0]['account_name'],
-                'account_status' => $vkData[0]['account_status'],
-                'balance' => $vkData[0]['balance'] / 100, // VK возвращает в копейках
-                'last_sync_at' => now(),
-            ]);
-        }
-
-        return $account;
-    }
-
-    public function syncAllAccounts(): Collection
-    {
-        $accounts = VkAdsAccount::where('sync_enabled', true)->get();
-
-        foreach ($accounts as $account) {
-            try {
-                $this->syncAccountFromVk($account->vk_account_id);
-            } catch (\Exception $e) {
-                // Логируем ошибку, но продолжаем синхронизацию других аккаунтов
-                \Log::error("Failed to sync account {$account->id}: ".$e->getMessage());
+        try {
+            if ($account->isAgency()) {
+                // Для агентского аккаунта получаем список клиентов
+                $clients = $this->syncAgencyClients($account);
+                Log::info("Synced agency clients", ['count' => count($clients)]);
+            } else {
+                // Для клиентского аккаунта синхронизируем его данные через кампании
+                Log::info("Client account sync - will sync through campaigns");
             }
+
+            // ИСПРАВЛЕНО: обновляем время синхронизации для самого аккаунта
+            $account->update(['last_sync_at' => now()]);
+
+        } catch (\Exception $e) {
+            Log::warning("Failed to sync account {$account->id}: " . $e->getMessage());
+            $account->update(['last_sync_at' => now()]);
         }
 
-        return $accounts;
+        return $account;
     }
 
-    public function getAccountBalance(VkAdsAccount $account): array
+    public function syncAgencyClients(VkAdsAccount $agencyAccount): array
     {
-        return $this->apiService->makeAuthenticatedRequest($account, 'accounts.getBalance', [
-            'account_id' => $account->vk_account_id,
-        ]);
+        if (!$agencyAccount->isAgency()) {
+            throw new \Exception('Only agency accounts can sync clients');
+        }
+
+        try {
+            $vkClients = $this->apiService->makeAuthenticatedRequest($agencyAccount, 'agency/clients');
+            $clients = [];
+
+            Log::info("Found VK clients", ['count' => count($vkClients)]);
+
+            foreach ($vkClients as $vkClient) {
+                $accountData = $vkClient['user']['account'] ?? [];
+                $userData = $vkClient['user'] ?? [];
+
+                // ИСПРАВЛЕНО: сохраняем и account_id и user_id
+                $client = VkAdsAccount::updateOrCreate([
+                    'vk_account_id' => $accountData['id'] ?? $userData['id']
+                ], [
+                    'vk_user_id' => $userData['id'], // ДОБАВЛЕНО: ID пользователя для токенов
+                    'vk_username' => $userData['username'], // ДОБАВЛЕНО: username для токенов
+                    'account_name' => $userData['client_username'] ?? 'Client ' . ($accountData['id'] ?? $userData['id']),
+                    'account_type' => 'client',
+                    'account_status' => $this->mapVkAccountStatus($vkClient['status'] ?? 'active'),
+                    'balance' => isset($accountData['balance']) ? (float)$accountData['balance'] : 0,
+                    'currency' => $accountData['currency'] ?? 'RUB',
+                    'last_sync_at' => now()
+                ]);
+
+                $clients[] = $client;
+                Log::info("Synced client", [
+                    'id' => $client->id,
+                    'vk_account_id' => $client->vk_account_id,
+                    'vk_user_id' => $client->vk_user_id,
+                    'vk_username' => $client->vk_username,
+                    'name' => $client->account_name,
+                    'balance' => $client->balance
+                ]);
+            }
+
+            return $clients;
+
+        } catch (\Exception $e) {
+            Log::error("Failed to sync agency clients: " . $e->getMessage());
+            return [];
+        }
     }
 
-    // === ПОЛУЧЕНИЕ С EAGER LOADING ===
-
-    public function getAccountsWithAccounting(): Collection
+    /**
+     * Синхронизировать креативы аккаунта
+     */
+    public function syncCreatives(VkAdsAccount $account): array
     {
-        return VkAdsAccount::with([
-            'organization',
-            'contract.counterparty',
-            'campaigns.adGroups.orderItem.customerOrder',
-        ])->get();
+        try {
+            $vkCreatives = $this->apiService->makeAuthenticatedRequest($account, 'creatives');
+            $creatives = [];
+
+            foreach ($vkCreatives as $vkCreative) {
+                $creative = \Modules\VkAds\app\Models\VkAdsCreative::updateOrCreate([
+                    'vk_creative_id' => $vkCreative['id']
+                ], [
+                    'vk_ads_account_id' => $account->id,
+                    'name' => $vkCreative['name'] ?? 'Creative ' . $vkCreative['id'],
+                    'creative_type' => $this->mapCreativeType($vkCreative['type'] ?? 'image'),
+                    'width' => $vkCreative['width'] ?? null,
+                    'height' => $vkCreative['height'] ?? null,
+                    'duration' => $vkCreative['duration'] ?? null,
+                    'last_sync_at' => now()
+                ]);
+
+                $creatives[] = $creative;
+            }
+
+            return $creatives;
+
+        } catch (\Exception $e) {
+            Log::warning("Failed to sync creatives for account {$account->id}: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    private function mapVkAccountStatus($status): string
+    {
+        return match($status) {
+            'active', 1 => 'active',
+            'blocked', 'suspended', 0 => 'blocked',
+            'deleted', -1 => 'deleted',
+            default => 'active'
+        };
+    }
+
+    private function mapCreativeType($type): string
+    {
+        return match($type) {
+            'video', 'video_file' => 'video',
+            'image', 'banner' => 'image',
+            default => 'image'
+        };
+    }
+    private function getAgencyAccount(): VkAdsAccount
+    {
+        return VkAdsAccount::where('account_type', 'agency')
+            ->where('id', 1)
+            ->firstOrFail();
     }
 }

@@ -19,6 +19,8 @@ return new class extends Migration
 
             $table->foreignId('vk_ads_account_id')->constrained()->onDelete('cascade');
             $table->text('access_token');
+            $table->enum('token_type', ['agency', 'client'])->default('agency')
+                ->comment('Тип токена: агентский или клиентский');
             $table->text('refresh_token')->nullable();
             $table->timestamp('expires_at');
             $table->json('scopes')->nullable();

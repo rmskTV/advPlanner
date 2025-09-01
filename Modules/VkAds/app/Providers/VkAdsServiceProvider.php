@@ -41,7 +41,6 @@ class VkAdsServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->register(EventServiceProvider::class);
         $this->app->register(RouteServiceProvider::class);
     }
 
@@ -50,8 +49,16 @@ class VkAdsServiceProvider extends ServiceProvider
      */
     protected function registerCommands(): void
     {
-        // $this->commands([]);
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                \Modules\VkAds\app\Console\Commands\SyncVkAdsCommand::class,
+                \Modules\VkAds\app\Console\Commands\TestVkAdsConnectionCommand::class,
+                \Modules\VkAds\app\Console\Commands\ShowVkAdsAccountsCommand::class,
+                \Modules\VkAds\app\Console\Commands\TestVkAdsEndpointsCommand::class,
+            ]);
+        }
     }
+
 
     /**
      * Register command Schedules.
@@ -73,7 +80,6 @@ class VkAdsServiceProvider extends ServiceProvider
         $this->app->singleton(VkAdsAccountService::class);
         $this->app->singleton(VkAdsCampaignService::class);
         $this->app->singleton(VkAdsAdGroupService::class);
-        $this->app->singleton(VkAdsStatisticsService::class);
         $this->app->singleton(AgencyDocumentService::class);
     }
 

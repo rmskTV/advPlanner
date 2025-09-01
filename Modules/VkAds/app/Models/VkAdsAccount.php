@@ -5,61 +5,33 @@ namespace Modules\VkAds\app\Models;
 use App\Models\CatalogObject;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOneThrough;
+use Illuminate\Support\Facades\Log;
 use Modules\Accounting\app\Models\Contract;
-use Modules\Accounting\app\Models\Counterparty;
 use Modules\Accounting\app\Models\Organization;
 
 class VkAdsAccount extends CatalogObject
 {
     protected $fillable = [
-        'vk_account_id', 'account_name', 'account_type', 'account_status',
-        'organization_id', 'contract_id', 'balance', 'currency',
-        'access_roles', 'can_view_budget', 'sync_enabled',
+        'vk_account_id', 'vk_user_id', 'vk_username',
+        'account_name', 'account_type', 'account_status',
+        'organization_id', 'contract_id', 'balance', 'currency', 'last_sync_at'
     ];
 
     protected $casts = [
-        'access_roles' => 'array',
-        'can_view_budget' => 'boolean',
-        'sync_enabled' => 'boolean',
         'balance' => 'decimal:2',
         'last_sync_at' => 'datetime',
     ];
 
-    // === СВЯЗИ С ACCOUNTING МОДУЛЕМ ===
-
-    /**
-     * Агентский кабинет принадлежит организации
-     */
+    // === СВЯЗИ ===
     public function organization(): BelongsTo
     {
         return $this->belongsTo(Organization::class);
     }
 
-    /**
-     * Клиентский кабинет привязан к договору
-     */
     public function contract(): BelongsTo
     {
         return $this->belongsTo(Contract::class);
     }
-
-    /**
-     * Получить контрагента через договор (для клиентских кабинетов) - УПРОЩЕНО
-     */
-    public function counterparty(): HasOneThrough
-    {
-        return $this->hasOneThrough(
-            Counterparty::class,
-            Contract::class,
-            'id',              // Foreign key on contracts table
-            'guid_1c',         // Foreign key on counterparties table
-            'contract_id',     // Local key on vk_ads_accounts table
-            'counterparty_guid_1c' // Local key on contracts table
-        );
-    }
-
-    // === VK ADS СВЯЗИ ===
 
     public function campaigns(): HasMany
     {
@@ -71,25 +43,7 @@ class VkAdsAccount extends CatalogObject
         return $this->hasMany(VkAdsToken::class);
     }
 
-    // === SCOPES ===
-
-    public function scopeAgency($query)
-    {
-        return $query->where('account_type', 'agency');
-    }
-
-    public function scopeClient($query)
-    {
-        return $query->where('account_type', 'client');
-    }
-
-    public function scopeActive($query)
-    {
-        return $query->where('account_status', 'active');
-    }
-
     // === МЕТОДЫ ===
-
     public function isAgency(): bool
     {
         return $this->account_type === 'agency';
@@ -100,11 +54,51 @@ class VkAdsAccount extends CatalogObject
         return $this->account_type === 'client';
     }
 
-    public function getValidToken(): ?VkAdsToken
+    public function getValidTokenProd(): ?VkAdsToken
     {
         return $this->tokens()
             ->where('is_active', true)
             ->where('expires_at', '>', now())
             ->first();
+    }
+
+    public function getValidToken(): ?VkAdsToken
+    {
+        Log::info("Looking for valid token", [
+            'account_id' => $this->id,
+            'account_type' => $this->account_type
+        ]);
+
+        $token = $this->tokens()
+            ->where('is_active', true)
+            ->where('expires_at', '>', now())
+            ->first();
+
+        if ($token) {
+            Log::info("Found valid token", [
+                'token_id' => $token->id,
+                'token_type' => $token->token_type,
+                'expires_at' => $token->expires_at,
+                'minutes_until_expiry' => now()->diffInMinutes($token->expires_at)
+            ]);
+        } else {
+            // ДОБАВЛЕНО: логирование всех токенов для диагностики
+            $allTokens = $this->tokens()->get();
+            Log::info("No valid token found", [
+                'account_id' => $this->id,
+                'total_tokens' => $allTokens->count(),
+                'tokens_info' => $allTokens->map(function($t) {
+                    return [
+                        'id' => $t->id,
+                        'type' => $t->token_type,
+                        'active' => $t->is_active,
+                        'expires_at' => $t->expires_at,
+                        'is_expired' => $t->expires_at < now()
+                    ];
+                })
+            ]);
+        }
+
+        return $token;
     }
 }

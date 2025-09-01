@@ -3,10 +3,9 @@
 namespace Modules\VkAds\app\Services;
 
 use Illuminate\Database\Eloquent\Collection;
-use Modules\Accounting\app\Models\CustomerOrderItem;
-use Modules\VkAds\app\DTOs\CreateAdGroupDTO;
+use Illuminate\Support\Facades\Log;
+use Modules\VkAds\app\Models\VkAdsAccount;
 use Modules\VkAds\app\Models\VkAdsAdGroup;
-use Modules\VkAds\app\Models\VkAdsCampaign;
 
 class VkAdsAdGroupService
 {
@@ -17,105 +16,98 @@ class VkAdsAdGroupService
         $this->apiService = $apiService;
     }
 
-    /**
-     * Создать группу объявлений из строки заказа клиента
-     */
-    public function createAdGroupFromOrderItem(VkAdsCampaign $campaign, CustomerOrderItem $orderItem, array $adGroupData): VkAdsAdGroup
+
+    public function getAdGroups(VkAdsAccount $account): Collection
     {
-        // Создаем группу в VK Ads
-        $vkResponse = $this->apiService->makeAuthenticatedRequest($campaign->account, 'adgroups.create', [
-            'account_id' => $campaign->account->vk_account_id,
-            'campaign_id' => $campaign->vk_campaign_id,
-            'name' => $adGroupData['name'] ?? $orderItem->product_name,
-            'bid' => $adGroupData['bid'] ?? null,
-            'targeting' => $adGroupData['targeting'] ?? [],
-        ]);
-
-        return VkAdsAdGroup::create([
-            'vk_ad_group_id' => $vkResponse['id'],
-            'vk_ads_campaign_id' => $campaign->id,
-            'customer_order_item_id' => $orderItem->id,
-            'name' => $adGroupData['name'] ?? $orderItem->product_name,
-            'status' => 'active',
-            'bid' => $adGroupData['bid'] ?? null,
-            'targeting' => $adGroupData['targeting'] ?? [],
-            'placements' => $adGroupData['placements'] ?? [],
-            'vk_data' => $vkResponse,
-        ]);
-    }
-
-    public function createAdGroup(int $campaignId, CreateAdGroupDTO $data): VkAdsAdGroup
-    {
-        $campaign = VkAdsCampaign::findOrFail($campaignId);
-
-        $vkResponse = $this->apiService->makeAuthenticatedRequest($campaign->account, 'adgroups.create', [
-            'account_id' => $campaign->account->vk_account_id,
-            'campaign_id' => $campaign->vk_campaign_id,
-            'name' => $data->name,
-            'bid' => $data->bid ? $data->bid * 100 : null,
-            'targeting' => $data->targeting,
-        ]);
-
-        return VkAdsAdGroup::create([
-            'vk_ad_group_id' => $vkResponse['id'],
-            'vk_ads_campaign_id' => $campaign->id,
-            'customer_order_item_id' => $data->customerOrderItemId,
-            'name' => $data->name,
-            'status' => 'active',
-            'bid' => $data->bid,
-            'targeting' => $data->targeting,
-            'placements' => $data->placements,
-            'vk_data' => $vkResponse,
-        ]);
-    }
-
-    public function getAdGroups(int $campaignId): Collection
-    {
-        return VkAdsAdGroup::where('vk_ads_campaign_id', $campaignId)
-            ->with(['orderItem.customerOrder', 'statistics'])
+        return VkAdsAdGroup::where('vk_ads_account_id', $account->id)
+            ->with(['campaign', 'orderItem.customerOrder', 'ads'])
             ->get();
     }
-
-    public function updateAdGroup(int $adGroupId, array $data): VkAdsAdGroup
+    public function syncAdGroupsForCampaigns(VkAdsAccount $account, Collection $campaigns): Collection
     {
-        $adGroup = VkAdsAdGroup::findOrFail($adGroupId);
+        try {
+            if ($campaigns->isEmpty()) {
+                Log::info("No campaigns to sync ad groups for");
+                return collect();
+            }
 
-        $this->apiService->makeAuthenticatedRequest($adGroup->campaign->account, 'adgroups.update', [
-            'adgroup_id' => $adGroup->vk_ad_group_id,
-            'name' => $data['name'] ?? $adGroup->name,
-            'bid' => isset($data['bid']) ? $data['bid'] * 100 : $adGroup->bid * 100,
-            'targeting' => $data['targeting'] ?? $adGroup->targeting,
-        ]);
+            $campaignIds = $campaigns->pluck('vk_campaign_id')->toArray();
 
-        $adGroup->update($data);
+            Log::info("Syncing ad groups for campaigns", [
+                'account_id' => $account->id,
+                'campaign_ids' => $campaignIds
+            ]);
 
-        return $adGroup;
+            // ИСПРАВЛЕНО: запрашиваем все нужные поля для групп объявлений
+            $vkAdGroups = $this->apiService->makeAuthenticatedRequest($account, 'ad_groups', [
+                'ad_plan_id__in' => implode(',', $campaignIds),
+                'fields' => 'id,name,status,ad_plan_id,targetings,age_restrictions,autobidding_mode,budget_limit,budget_limit_day,max_price,uniq_shows_limit,uniq_shows_period'
+            ]);
+
+            Log::info("Received ad groups from VK", [
+                'count' => count($vkAdGroups),
+                'sample_fields' => !empty($vkAdGroups) ? array_keys($vkAdGroups[0]) : []
+            ]);
+
+            foreach ($vkAdGroups as $vkAdGroup) {
+                // Ищем кампанию по ad_plan_id из ответа API
+                $campaign = $campaigns->firstWhere('vk_campaign_id', $vkAdGroup['ad_plan_id'] ?? null);
+
+                if (!$campaign) {
+                    Log::warning("Campaign not found for ad group", [
+                        'ad_group_id' => $vkAdGroup['id'],
+                        'ad_plan_id' => $vkAdGroup['ad_plan_id'] ?? 'missing'
+                    ]);
+                    continue;
+                }
+
+                $adGroup = VkAdsAdGroup::updateOrCreate([
+                    'vk_ad_group_id' => $vkAdGroup['id']
+                ], [
+                    'vk_ads_account_id' => $account->id,
+                    'vk_ads_campaign_id' => $campaign->id,
+                    'customer_order_item_id' => null,
+                    'name' => $vkAdGroup['name'],
+                    'status' => $this->mapVkStatus($vkAdGroup['status'] ?? 'active'),
+                    'bid' => $vkAdGroup['bid'] ?? null,
+                    'targetings' => $vkAdGroup['targeting'] ?? null,
+
+                    // ДОБАВЛЕНО: новые поля
+                    'age_restrictions' => $vkAdGroup['age_restrictions'] ?? null,
+                    'autobidding_mode' => $vkAdGroup['autobidding_mode'] ?? null,
+                    'budget_limit' => $vkAdGroup['budget_limit'] ?? null,
+                    'budget_limit_day' => $vkAdGroup['budget_limit_day'] ?? null,
+                    'max_price' => $vkAdGroup['max_price'] ?? null,
+                    'uniq_shows_limit' => $vkAdGroup['uniq_shows_limit'] ?? null,
+                    'uniq_shows_period' => $vkAdGroup['uniq_shows_period'] ?? null,
+
+                    'last_sync_at' => now(),
+                ]);
+
+                Log::info("Synced ad group", [
+                    'vk_ad_group_id' => $vkAdGroup['id'],
+                    'name' => $vkAdGroup['name'],
+                    'campaign_id' => $campaign->id,
+                    'budget_limit_day' => $adGroup->budget_limit_day,
+                    'max_price' => $adGroup->max_price
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            Log::warning("Failed to sync ad groups for campaigns: " . $e->getMessage());
+        }
+
+        return $this->getAdGroups($account);
+    }
+    private function mapVkStatus($vkStatus): string
+    {
+        return match($vkStatus) {
+            1, 'active' => 'active',
+            0, 'paused' => 'paused',
+            'deleted' => 'deleted',
+            default => 'paused'
+        };
     }
 
-    public function deleteAdGroup(int $adGroupId): bool
-    {
-        $adGroup = VkAdsAdGroup::findOrFail($adGroupId);
 
-        $this->apiService->makeAuthenticatedRequest($adGroup->campaign->account, 'adgroups.delete', [
-            'adgroup_id' => $adGroup->vk_ad_group_id,
-        ]);
-
-        return $adGroup->delete();
-    }
-
-    /**
-     * Получить группы объявлений с полной информацией об учете
-     */
-    public function getAdGroupsWithAccounting(array $filters = []): Collection
-    {
-        return VkAdsAdGroup::with([
-            'campaign.account.organization',
-            'campaign.account.contract.counterparty',
-            'orderItem.customerOrder',
-            'product',
-            'statistics',
-        ])->when($filters, function ($query, $filters) {
-            // Применяем фильтры
-        })->get();
-    }
 }
