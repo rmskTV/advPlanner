@@ -20,7 +20,7 @@ return new class extends Migration
 
             // Основная информация
             $table->string('name');
-            $table->enum('status', ['active', 'paused', 'deleted', 'archived']);
+            $table->string('status');
 
             // Креативы
             $table->foreignId('primary_creative_id')
@@ -36,12 +36,12 @@ return new class extends Migration
 
             // Специфичные настройки для instream
             $table->boolean('is_instream')->default(false);
-            $table->enum('instream_position', ['preroll', 'midroll', 'postroll'])->nullable();
+            $table->string('instream_position')->nullable();
             $table->boolean('skippable')->default(true);
             $table->integer('skip_offset')->nullable(); // секунды до возможности пропустить
 
             // Статус модерации
-            $table->enum('moderation_status', ['pending', 'approved', 'rejected', 'reviewing']);
+            $table->string('moderation_status');
             $table->text('moderation_comment')->nullable();
             $table->timestamp('moderated_at')->nullable();
 

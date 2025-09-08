@@ -76,7 +76,7 @@ class VkAdsAccountService
             $vkClients = $this->apiService->makeAuthenticatedRequest($agencyAccount, 'agency/clients');
             $clients = [];
 
-            Log::info("Found VK clients", ['count' => count($vkClients)]);
+            Log::info("Found VK clients", ['count' => count($vkClients), 'list' => $vkClients]);
 
             foreach ($vkClients as $vkClient) {
                 $accountData = $vkClient['user']['account'] ?? [];

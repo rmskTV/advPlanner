@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 use Modules\VkAds\app\Services\VkAdsAccountService;
 use Modules\VkAds\app\Services\VkAdsCampaignService;
 use Modules\VkAds\app\Services\VkAdsAdGroupService;
+use Modules\VkAds\app\Services\VkAdsAdService;
 use Modules\VkAds\app\Models\VkAdsAccount;
 
 class SyncVkAdsCommand extends Command
@@ -16,7 +17,8 @@ class SyncVkAdsCommand extends Command
     public function handle(
         VkAdsAccountService $accountService,
         VkAdsCampaignService $campaignService,
-        VkAdsAdGroupService $adGroupService
+        VkAdsAdGroupService $adGroupService,
+        VkAdsAdService $adService // ДОБАВЛЕНО
     ): int {
         $this->info('=== Синхронизация VK Ads ===');
 
@@ -46,7 +48,7 @@ class SyncVkAdsCommand extends Command
                     $this->line("  ✓ Данные аккаунта обновлены");
 
                     if (!$this->option('test')) {
-                        // ИСПРАВЛЕНО: сначала кампании, потом группы
+                        // Синхронизируем кампании
                         $campaigns = $campaignService->syncAllCampaigns($account);
                         $this->line("  ✓ Синхронизировано кампаний: " . $campaigns->count());
 
@@ -54,11 +56,13 @@ class SyncVkAdsCommand extends Command
                         if ($campaigns->isNotEmpty()) {
                             $adGroups = $adGroupService->syncAdGroupsForCampaigns($account, $campaigns);
                             $this->line("  ✓ Синхронизировано групп объявлений: " . $adGroups->count());
-                        }
 
-                        // Синхронизируем креативы (если доступны)
-                        $creatives = $accountService->syncCreatives($account);
-                        $this->line("  ✓ Синхронизировано креативов: " . count($creatives));
+                            // ДОБАВЛЕНО: синхронизируем объявления для всех групп
+                            if ($adGroups->isNotEmpty()) {
+                                $ads = $adService->syncAdsForAdGroups($account, $adGroups);
+                                $this->line("  ✓ Синхронизировано объявлений: " . $ads->count());
+                            }
+                        }
                     }
 
                 } catch (\Exception $e) {

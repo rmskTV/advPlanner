@@ -28,20 +28,20 @@ class VkAdsApiService
     {
         $token = $this->getValidTokenForAccount($account);
 
-        // ИСПРАВЛЕНО: правильные endpoints VK Ads API
+        // Правильные endpoints VK Ads API
         $endpointMap = [
-            'ad_plans' => 'ad_plans.json',           // список кампаний
-            'ad_groups' => 'ad_groups.json',         // группы объявлений
-            'ads' => 'ads.json',                     // объявления
-            'creatives' => 'creatives.json',         // креативы
-            'agency/clients' => 'agency/clients.json', // клиенты агентства
+            'ad_plans' => 'ad_plans.json',
+            'ad_groups' => 'ad_groups.json',
+            'ads' => 'ads.json',
+            'banners' => 'banners.json',
+            'creatives' => 'creatives.json',
+            'agency/clients' => 'agency/clients.json',
         ];
 
-        // Для индивидуальных запросов (например ad_plans/123.json) используем как есть
         $actualEndpoint = $endpointMap[$endpoint] ?? $endpoint;
         $url = $this->baseUrl . $actualEndpoint;
 
-        // ИСПРАВЛЕНО: account_id добавляем только для списочных запросов
+        // Для индивидуальных запросов (например ad_plans/123.json) не добавляем account_id
         $isIndividualRequest = str_contains($endpoint, '/') && str_contains($endpoint, '.json');
         $isAgencyClientsRequest = $endpoint === 'agency/clients';
 
@@ -49,11 +49,145 @@ class VkAdsApiService
             $params['account_id'] = $account->vk_account_id;
         }
 
-        Log::info('Making VK Ads API request', [
+        // ДОБАВЛЕНО: проверяем, нужна ли пагинация
+        $allItems = [];
+        $offset = 0;
+        $limit = $params['limit'] ?? 100; // VK Ads API обычно поддерживает до 100 элементов за запрос
+        $maxIterations = 50; // Защита от бесконечного цикла
+        $iteration = 0;
+
+        do {
+            $iteration++;
+            $currentParams = array_merge($params, [
+                'offset' => $offset,
+                'limit' => $limit
+            ]);
+
+            Log::info('Making VK Ads API request', [
+                'url' => $url,
+                'endpoint' => $endpoint,
+                'is_individual' => $isIndividualRequest,
+                'account_id' => $account->vk_account_id,
+                'params' => $currentParams,
+                'iteration' => $iteration,
+                'offset' => $offset
+            ]);
+
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $token,
+                'Content-Type' => 'application/json'
+            ])->timeout(30)->get($url, $currentParams);
+
+            Log::info('VK Ads API response', [
+                'status' => $response->status(),
+                'body_preview' => substr($response->body(), 0, 300) . '...',
+                'iteration' => $iteration
+            ]);
+
+            if ($response->status() === 401) {
+                Log::info('Token expired, refreshing...');
+                $token = $this->unactivateTokenForAccount($account);
+                $response = Http::withHeaders([
+                    'Authorization' => 'Bearer ' . $token,
+                    'Content-Type' => 'application/json'
+                ])->get($url, $currentParams);
+            }
+
+            if (!$response->successful()) {
+                throw new \Exception("VK Ads API error: {$response->status()} - {$response->body()}");
+            }
+
+            $data = $response->json();
+
+            if (isset($data['error'])) {
+                throw new \Exception("VK Ads API error: " . ($data['error']['error_msg'] ?? $data['error']['message'] ?? 'Unknown error'));
+            }
+
+            // Для индивидуальных запросов возвращаем весь объект
+            if ($isIndividualRequest) {
+                return $data;
+            }
+
+            $items = $data['items'] ?? $data['response'] ?? $data;
+            $totalCount = $data['count'] ?? count($items);
+
+            // ДОБАВЛЕНО: логирование пагинации
+            Log::info('VK Ads API pagination info', [
+                'iteration' => $iteration,
+                'current_items' => count($items),
+                'total_count' => $totalCount,
+                'offset' => $offset,
+                'collected_so_far' => count($allItems)
+            ]);
+
+            // Добавляем полученные элементы к общему списку
+            $allItems = array_merge($allItems, $items);
+
+            // Увеличиваем offset для следующей итерации
+            $offset += count($items);
+
+            // ИСПРАВЛЕНО: правильная проверка условий для продолжения пагинации
+            $hasMoreItems = count($items) === $limit && count($allItems) < $totalCount;
+
+            Log::info('VK Ads API pagination decision', [
+                'has_more_items' => $hasMoreItems,
+                'items_in_response' => count($items),
+                'limit' => $limit,
+                'total_collected' => count($allItems),
+                'total_count' => $totalCount,
+                'will_continue' => $hasMoreItems && $iteration < $maxIterations
+            ]);
+
+        } while ($hasMoreItems && $iteration < $maxIterations);
+
+        if ($iteration >= $maxIterations) {
+            Log::warning('VK Ads API pagination stopped due to max iterations limit', [
+                'endpoint' => $endpoint,
+                'max_iterations' => $maxIterations,
+                'collected_items' => count($allItems),
+                'expected_total' => $totalCount ?? 'unknown'
+            ]);
+        }
+
+        Log::info('VK Ads API pagination completed', [
+            'endpoint' => $endpoint,
+            'total_iterations' => $iteration,
+            'final_count' => count($allItems),
+            'expected_count' => $totalCount ?? 'unknown'
+        ]);
+
+        return $allItems;
+    }
+
+    /**
+     * ДОБАВЛЕНО: метод для запросов без пагинации (если нужно)
+     */
+    public function makeAuthenticatedRequestSingle(VkAdsAccount $account, string $endpoint, array $params = []): array
+    {
+        $token = $this->getValidTokenForAccount($account);
+
+        $endpointMap = [
+            'ad_plans' => 'ad_plans.json',
+            'ad_groups' => 'ad_groups.json',
+            'ads' => 'ads.json',
+            'banners' => 'banners.json',
+            'creatives' => 'creatives.json',
+            'agency/clients' => 'agency/clients.json',
+        ];
+
+        $actualEndpoint = $endpointMap[$endpoint] ?? $endpoint;
+        $url = $this->baseUrl . $actualEndpoint;
+
+        $isIndividualRequest = str_contains($endpoint, '/') && str_contains($endpoint, '.json');
+        $isAgencyClientsRequest = $endpoint === 'agency/clients';
+
+        if (!$isIndividualRequest && !$isAgencyClientsRequest) {
+            $params['account_id'] = $account->vk_account_id;
+        }
+
+        Log::info('Making single VK Ads API request', [
             'url' => $url,
             'endpoint' => $endpoint,
-            'is_individual' => $isIndividualRequest,
-            'account_id' => $account->vk_account_id,
             'params' => $params
         ]);
 
@@ -62,14 +196,8 @@ class VkAdsApiService
             'Content-Type' => 'application/json'
         ])->timeout(30)->get($url, $params);
 
-        Log::info('VK Ads API response', [
-            'status' => $response->status(),
-            'body_preview' => substr($response->body(), 0, 300) . '...'
-        ]);
-
         if ($response->status() === 401) {
-            Log::info('Token expired, refreshing...');
-            $token = $this->refreshTokenForAccount($account);
+            $token = $this->unactivateTokenForAccount($account);
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $token,
                 'Content-Type' => 'application/json'
@@ -86,15 +214,12 @@ class VkAdsApiService
             throw new \Exception("VK Ads API error: " . ($data['error']['error_msg'] ?? $data['error']['message'] ?? 'Unknown error'));
         }
 
-        // Для индивидуальных запросов возвращаем весь объект, для списков - items
         if ($isIndividualRequest) {
-            return $data; // индивидуальный объект кампании
+            return $data;
         }
 
         return $data['items'] ?? $data['response'] ?? $data;
     }
-
-
     /**
      * Основной метод для API запросов
      */
@@ -146,7 +271,7 @@ class VkAdsApiService
 
         if ($response->status() === 401) {
             Log::info('Token expired, refreshing...');
-            $token = $this->refreshTokenForAccount($account);
+            $token = $this->unactivateTokenForAccount($account);
 
             // Повторяем запрос с новым токеном
             $response = Http::withHeaders([
@@ -188,21 +313,47 @@ class VkAdsApiService
             'vk_account_id' => $account->vk_account_id
         ]);
 
-        $token = $account->getValidToken();
+        // Сначала ищем активный токен
+        $token = $account->tokens()
+            ->where('is_active', true)
+            ->orderBy('expires_at', 'desc')
+            ->first();
 
-        if ($token) {
+        if (!$token) {
+            Log::info("No token found, creating new one");
+            return $this->createTokenForAccount($account);
+        }
+
+        // Если токен еще валиден - используем его
+        if ($token->expires_at > now()) {
             Log::info("Found valid token", [
                 'token_id' => $token->id,
-                'token_type' => $token->token_type,
                 'expires_at' => $token->expires_at,
-                'is_expired' => $token->expires_at < now()
+                'minutes_until_expiry' => now()->diffInMinutes($token->expires_at)
             ]);
             return $token->access_token;
         }
 
-        Log::info("No valid token found, creating new one");
-        return $this->createTokenForAccount($account);
+        // ИСПРАВЛЕНО: если токен истек - пытаемся его обновить
+        Log::info("Token expired, attempting to refresh", [
+            'token_id' => $token->id,
+            'expired_at' => $token->expires_at
+        ]);
+
+        try {
+            return $this->refreshToken($token);
+        } catch (\Exception $e) {
+            Log::warning("Failed to refresh token, creating new one", [
+                'error' => $e->getMessage(),
+                'token_id' => $token->id
+            ]);
+
+            // Если обновление не удалось - удаляем старый токен и создаем новый
+            $token->delete();
+            return $this->createTokenForAccount($account);
+        }
     }
+
     /**
      * Создать токен для аккаунта
      */
@@ -228,16 +379,6 @@ class VkAdsApiService
     {
         Log::info("Creating agency token for account ID={$account->id}");
 
-        // ДОБАВЛЕНО: детальное логирование параметров запроса
-        Log::info("Agency token request parameters", [
-            'url' => $this->baseUrl . 'oauth2/token.json',
-            'grant_type' => 'client_credentials',
-            'client_id' => $this->clientId,
-            'client_secret_set' => !empty($this->clientSecret),
-            'client_secret_length' => strlen($this->clientSecret ?? ''),
-            'client_secret_preview' => $this->clientSecret ? substr($this->clientSecret, 0, 8) . '...' : 'NOT SET'
-        ]);
-
         if (!$this->clientId || !$this->clientSecret) {
             throw new \Exception("VK Ads credentials not configured. Check VK_ADS_CLIENT_ID and VK_ADS_CLIENT_SECRET in .env");
         }
@@ -252,60 +393,34 @@ class VkAdsApiService
 
         Log::info('Agency token response', [
             'status' => $response->status(),
-            'headers' => $response->headers(),
-            'body' => $response->body(),
-            'successful' => $response->successful()
+            'body_preview' => substr($response->body(), 0, 200)
         ]);
 
         if (!$response->successful()) {
-            // ДОБАВЛЕНО: детальное логирование ошибки
-            Log::error('Agency token creation failed - detailed info', [
-                'status' => $response->status(),
-                'reason' => $response->reason(),
-                'body' => $response->body(),
-                'headers' => $response->headers(),
-                'request_url' => $this->baseUrl . 'oauth2/token.json',
-                'client_id' => $this->clientId,
-                'client_secret_exists' => !empty($this->clientSecret),
-                'client_secret_length' => strlen($this->clientSecret ?? ''),
-            ]);
-
             throw new \Exception("Failed to get agency token: " . $response->body());
         }
 
         $data = $response->json();
 
         if (isset($data['error'])) {
-            Log::error('Agency token API error', [
-                'error' => $data['error'],
-                'full_response' => $data
-            ]);
             throw new \Exception('VK Ads agency auth error: ' . json_encode($data['error']));
         }
 
-        // ДОБАВЛЕНО: логирование успешного получения токена
-        Log::info('Agency token received successfully', [
-            'expires_in' => $data['expires_in'] ?? 'not_set',
-            'token_type' => $data['token_type'] ?? 'not_set',
-            'token_length' => strlen($data['access_token'] ?? ''),
-            'token_preview' => isset($data['access_token']) ? substr($data['access_token'], 0, 20) . '...' : 'not_set'
-        ]);
-
-        // Деактивируем старые агентские токены
-        $deactivatedCount = $account->tokens()->where('token_type', 'agency')->update(['is_active' => false]);
-        Log::info("Deactivated old agency tokens", ['count' => $deactivatedCount]);
+        // ИСПРАВЛЕНО: деактивируем старые токены перед созданием нового
+        $account->tokens()->where('token_type', 'agency')->update(['is_active' => false]);
 
         $token = VkAdsToken::create([
             'vk_ads_account_id' => $account->id,
             'access_token' => $data['access_token'],
+            'refresh_token' => $data['refresh_token'] ?? null, // ДОБАВЛЕНО: сохраняем refresh_token
             'token_type' => 'agency',
             'expires_at' => now()->addSeconds($data['expires_in'] ?? 86400),
             'is_active' => true
         ]);
 
-        Log::info('Agency token saved to database', [
+        Log::info('Agency token created successfully', [
             'token_id' => $token->id,
-            'account_id' => $account->id,
+            'has_refresh_token' => !empty($token->refresh_token),
             'expires_at' => $token->expires_at
         ]);
 
@@ -315,27 +430,13 @@ class VkAdsApiService
     /**
      * Создать клиентский токен (agency_client_credentials)
      */
-    private function createClientToken(VkAdsAccount $agencyAccount, VkAdsAccount $clientAccount): string {
+    private function createClientToken(VkAdsAccount $agencyAccount, VkAdsAccount $clientAccount): string
+    {
         Log::info("Creating client token for account {$clientAccount->vk_account_id}");
 
         if (!$clientAccount->vk_user_id) {
             throw new \Exception("Client account {$clientAccount->id} missing vk_user_id. Please sync agency clients first.");
         }
-
-        Log::info("Using client credentials", [
-            'vk_account_id' => $clientAccount->vk_account_id,
-            'vk_user_id' => $clientAccount->vk_user_id,
-            'vk_username' => $clientAccount->vk_username
-        ]);
-
-        // ДОБАВЛЕНО: детальное логирование параметров клиентского токена
-        Log::info("Client token request parameters", [
-            'url' => $this->baseUrl . 'oauth2/token.json',
-            'grant_type' => 'agency_client_credentials',
-            'client_id' => $this->clientId,
-            'client_secret_set' => !empty($this->clientSecret),
-            'agency_client_id' => $clientAccount->vk_user_id
-        ]);
 
         $response = Http::withHeaders([
             'Content-Type' => 'application/x-www-form-urlencoded'
@@ -346,16 +447,8 @@ class VkAdsApiService
             'agency_client_id' => $clientAccount->vk_user_id,
         ]);
 
-        Log::info('Client token response', [
-            'status' => $response->status(),
-            'headers' => $response->headers(),
-            'body' => $response->body(),
-            'successful' => $response->successful()
-        ]);
-
         if (!$response->successful()) {
-            Log::info('Trying with agency_client_name instead of agency_client_id');
-
+            // Пробуем с agency_client_name
             $response = Http::withHeaders([
                 'Content-Type' => 'application/x-www-form-urlencoded'
             ])->asForm()->post($this->baseUrl . 'oauth2/token.json', [
@@ -364,66 +457,96 @@ class VkAdsApiService
                 'client_secret' => $this->clientSecret,
                 'agency_client_name' => $clientAccount->vk_username,
             ]);
-
-            Log::info('Client token response (with name)', [
-                'status' => $response->status(),
-                'body' => $response->body()
-            ]);
         }
 
         if (!$response->successful()) {
-            // ДОБАВЛЕНО: детальное логирование ошибки клиентского токена
-            Log::error('Client token creation failed - detailed info', [
-                'status' => $response->status(),
-                'reason' => $response->reason(),
-                'body' => $response->body(),
-                'headers' => $response->headers(),
-                'client_account_id' => $clientAccount->id,
-                'vk_account_id' => $clientAccount->vk_account_id,
-                'vk_user_id' => $clientAccount->vk_user_id,
-                'vk_username' => $clientAccount->vk_username
-            ]);
-
             throw new \Exception("Failed to get client token for {$clientAccount->vk_account_id}: " . $response->body());
         }
 
         $data = $response->json();
 
         if (isset($data['error'])) {
-            Log::error('Client token API error', [
-                'error' => $data['error'],
-                'full_response' => $data
-            ]);
             throw new \Exception('VK Ads client auth error: ' . json_encode($data['error']));
         }
 
-        // Деактивируем старые клиентские токены
-        $deactivatedCount = $clientAccount->tokens()->update(['is_active' => false]);
-        Log::info("Deactivated old client tokens", ['count' => $deactivatedCount]);
+        // ИСПРАВЛЕНО: деактивируем старые токены перед созданием нового
+        $clientAccount->tokens()->update(['is_active' => false]);
 
         $token = VkAdsToken::create([
             'vk_ads_account_id' => $clientAccount->id,
             'access_token' => $data['access_token'],
+            'refresh_token' => $data['refresh_token'] ?? null, // ДОБАВЛЕНО: сохраняем refresh_token
             'token_type' => 'client',
             'expires_at' => now()->addSeconds($data['expires_in'] ?? 86400),
             'is_active' => true
         ]);
 
-        Log::info('Client token saved to database', [
+        Log::info('Client token created successfully', [
             'token_id' => $token->id,
-            'client_account_id' => $clientAccount->id,
-            'vk_account_id' => $clientAccount->vk_account_id,
+            'has_refresh_token' => !empty($token->refresh_token),
             'expires_at' => $token->expires_at
         ]);
 
         return $token->access_token;
     }
 
-    private function refreshTokenForAccount(VkAdsAccount $account): string
+    private function unactivateTokenForAccount(VkAdsAccount $account): string
     {
         $account->tokens()->update(['is_active' => false]);
         return $this->createTokenForAccount($account);
     }
+
+    private function refreshToken(VkAdsToken $token): string
+    {
+        Log::info("Refreshing token", [
+            'token_id' => $token->id,
+            'token_type' => $token->token_type,
+            'account_id' => $token->vk_ads_account_id
+        ]);
+
+        if (!$token->refresh_token) {
+            throw new \Exception("No refresh token available for token {$token->id}");
+        }
+
+        $response = Http::withHeaders([
+            'Content-Type' => 'application/x-www-form-urlencoded'
+        ])->asForm()->post($this->baseUrl . 'oauth2/token.json', [
+            'grant_type' => 'refresh_token',
+            'refresh_token' => $token->refresh_token,
+            'client_id' => $this->clientId,
+            'client_secret' => $this->clientSecret,
+        ]);
+
+        Log::info('Token refresh response', [
+            'status' => $response->status(),
+            'body_preview' => substr($response->body(), 0, 200)
+        ]);
+
+        if (!$response->successful()) {
+            throw new \Exception("Failed to refresh token: " . $response->body());
+        }
+
+        $data = $response->json();
+
+        if (isset($data['error'])) {
+            throw new \Exception('VK Ads token refresh error: ' . json_encode($data['error']));
+        }
+
+        // ИСПРАВЛЕНО: обновляем существующий токен, а не создаем новый
+        $token->update([
+            'access_token' => $data['access_token'],
+            'refresh_token' => $data['refresh_token'] ?? $token->refresh_token, // сохраняем старый если новый не пришел
+            'expires_at' => now()->addSeconds($data['expires_in'] ?? 86400),
+        ]);
+
+        Log::info('Token refreshed successfully', [
+            'token_id' => $token->id,
+            'new_expires_at' => $token->expires_at
+        ]);
+
+        return $token->access_token;
+    }
+
 
     private function getAgencyAccount(): VkAdsAccount
     {
@@ -443,4 +566,12 @@ class VkAdsApiService
         return $agencyAccount;
     }
 
+
+    /**
+     * Проверка наличия refresh token
+     */
+    public function hasRefreshToken(): bool
+    {
+        return !empty($this->refresh_token);
+    }
 }
