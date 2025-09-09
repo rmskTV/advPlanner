@@ -562,42 +562,125 @@ class ExchangeMessageProcessor
             }
 
             $propertyName = $childNode->nodeName;
+            $propertyValue = $this->parsePropertyValue($childNode);
 
-            // Табличные части
-            if ($childNode->hasChildNodes() && $this->isTabularSection($childNode)) {
-                $object['tabular_sections'][$propertyName] = $this->parseTabularSection($xpath, $childNode);
+            // ИСПРАВЛЕНИЕ: Специальная обработка для известных табличных частей
+            if ($this->isKnownTabularSection($propertyName, $propertyValue)) {
+                $object['tabular_sections'][$propertyName] = $this->parseTabularSectionFromProperty($propertyValue);
+
+                Log::debug('Parsed known tabular section', [
+                    'object_type' => $object['type'],
+                    'section_name' => $propertyName,
+                    'rows_count' => count($object['tabular_sections'][$propertyName])
+                ]);
             } else {
                 // Обычные свойства
-                $object['properties'][$propertyName] = $this->parsePropertyValue($childNode);
+                $object['properties'][$propertyName] = $propertyValue;
             }
         }
+
+        Log::debug('Parsed object details', [
+            'object_type' => $object['type'],
+            'properties_count' => count($object['properties']),
+            'tabular_sections_count' => count($object['tabular_sections']),
+            'tabular_sections_names' => array_keys($object['tabular_sections'])
+        ]);
 
         return $object;
     }
 
-    private function parseTabularSection(DOMXPath $xpath, \DOMNode $tabularNode): array
+    /**
+     * Проверка, является ли свойство известной табличной частью
+     */
+    private function isKnownTabularSection(string $propertyName, $propertyValue): bool
     {
-        $rows = [];
+        // Список известных табличных частей
+        $knownTabularSections = [
+            'Услуги',
+            'Товары',
+            'КонтактнаяИнформация',
+            'ДополнительныеРеквизиты',
+            'Материалы',
+            'Продукция',
+        ];
 
-        foreach ($tabularNode->childNodes as $rowNode) {
-            if ($rowNode->nodeType !== XML_ELEMENT_NODE) {
-                continue;
-            }
-
-            $row = [];
-            foreach ($rowNode->childNodes as $cellNode) {
-                if ($cellNode->nodeType !== XML_ELEMENT_NODE) {
-                    continue;
-                }
-
-                $row[$cellNode->nodeName] = $this->parsePropertyValue($cellNode);
-            }
-
-            $rows[] = $row;
+        // Проверяем имя и структуру
+        if (!in_array($propertyName, $knownTabularSections)) {
+            return false;
         }
 
-        return $rows;
+        // Проверяем что это массив со строками
+        if (!is_array($propertyValue)) {
+            return false;
+        }
+
+        // Проверяем наличие элемента "Строка" или массива строк
+        return isset($propertyValue['Строка']) || $this->isArrayOfRows($propertyValue);
     }
+
+    /**
+     * Парсинг табличной части из свойства
+     */
+    private function parseTabularSectionFromProperty($propertyValue): array
+    {
+        if (!is_array($propertyValue)) {
+            return [];
+        }
+
+        // Вариант 1: Одна строка - "Услуги":{"Строка":{...}}
+        if (isset($propertyValue['Строка'])) {
+            return [$propertyValue['Строка']];
+        }
+
+        // Вариант 2: Множественные строки - "Услуги":[{"Строка":{...}}, {"Строка":{...}}]
+        if ($this->isArrayOfRows($propertyValue)) {
+            $rows = [];
+            foreach ($propertyValue as $rowWrapper) {
+                if (is_array($rowWrapper) && isset($rowWrapper['Строка'])) {
+                    $rows[] = $rowWrapper['Строка'];
+                }
+            }
+            return $rows;
+        }
+
+        // Вариант 3: Прямой массив строк
+        return $propertyValue;
+    }
+
+    /**
+     * Проверка, является ли значение массивом строк
+     */
+    private function isArrayOfRows(array $value): bool
+    {
+        if (empty($value)) {
+            return false;
+        }
+
+        // Проверяем первый элемент
+        $firstElement = reset($value);
+
+        return is_array($firstElement) && (
+                isset($firstElement['Строка']) ||
+                $this->looksLikeTableRow($firstElement)
+            );
+    }
+
+    /**
+     * Проверка, похож ли массив на строку таблицы
+     */
+    private function looksLikeTableRow(array $data): bool
+    {
+        // Типичные поля строк табличных частей
+        $typicalRowFields = [
+            'Номенклатура', 'Количество', 'Цена', 'Сумма',
+            'ДанныеНоменклатуры', 'СуммаНДС', 'Содержание'
+        ];
+
+        $matchingFields = array_intersect(array_keys($data), $typicalRowFields);
+
+        return count($matchingFields) >= 2; // Если есть хотя бы 2 типичных поля
+    }
+
 
     private function parsePropertyValue(\DOMNode $node): mixed
     {

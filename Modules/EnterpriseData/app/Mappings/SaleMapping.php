@@ -146,33 +146,104 @@ class SaleMapping extends ObjectMapping
         $tabularSections = $object1C['tabular_sections'] ?? [];
         $servicesSection = $tabularSections['Услуги'] ?? [];
 
-        // Удаляем существующие строки для пересоздания
-        $sale->items()->delete();
+        Log::info('Processing Sale tabular sections', [
+            'sale_id' => $sale->id,
+            'services_count' => count($servicesSection),
+            'existing_items_count' => $sale->items()->count()
+        ]);
 
+        if (empty($servicesSection)) {
+            Log::info('No services in 1C data, keeping existing items', [
+                'sale_id' => $sale->id
+            ]);
+            return;
+        }
+
+        // Получаем существующие строки
+        $existingItems = $sale->items()->get()->keyBy('line_number');
+
+        // Обрабатываем строки из 1С
         foreach ($servicesSection as $index => $serviceRow) {
-            $this->createSaleItem($sale, $serviceRow, $index + 1);
+            $lineNumber = $index + 1;
+
+            if ($existingItems->has($lineNumber)) {
+                // Обновляем существующую строку
+                $this->updateSaleItem($existingItems[$lineNumber], $serviceRow, $lineNumber);
+            } else {
+                // Создаем новую строку
+                $this->createSaleItem($sale, $serviceRow, $lineNumber);
+            }
+        }
+
+        // Логируем информацию о "лишних" строках без автоматического удаления
+        $incomingLineNumbers = range(1, count($servicesSection));
+        $extraItems = $existingItems->filter(function ($item) use ($incomingLineNumbers) {
+            return !in_array($item->line_number, $incomingLineNumbers);
+        });
+
+        if ($extraItems->count() > 0) {
+            Log::warning('Found extra items not present in 1C data', [
+                'sale_id' => $sale->id,
+                'extra_items_count' => $extraItems->count(),
+                'extra_line_numbers' => $extraItems->pluck('line_number')->toArray()
+            ]);
+        }
+
+        $extraItems->map(function ($item) {$item->delete();})->toArray();
+    }
+
+    /**
+     * Обновление существующей строки реализации
+     */
+    private function updateSaleItem(SaleItem $item, array $serviceRow, int $lineNumber): void
+    {
+        $this->fillSaleItemData($item, $serviceRow, $lineNumber);
+
+        if ($item->isDirty()) {
+            $item->save();
+
+            Log::debug('Updated SaleItem', [
+                'item_id' => $item->id,
+                'line_number' => $lineNumber,
+                'changes' => $item->getChanges()
+            ]);
         }
     }
 
     /**
-     * Создание строки реализации
+     * Создание новой строки реализации
      */
     private function createSaleItem(Sale $sale, array $serviceRow, int $lineNumber): void
     {
-        $item = new SaleItem;
+        $item = new SaleItem();
         $item->sale_id = $sale->id;
+
+        $this->fillSaleItemData($item, $serviceRow, $lineNumber);
+        $item->save();
+
+        Log::debug('Created SaleItem', [
+            'sale_id' => $sale->id,
+            'line_number' => $lineNumber,
+            'product_guid' => $item->product_guid_1c
+        ]);
+    }
+
+    /**
+     * Заполнение данных строки реализации
+     */
+    private function fillSaleItemData(SaleItem $item, array $serviceRow, int $lineNumber): void
+    {
         $item->line_number = $lineNumber;
         $item->line_identifier = $serviceRow['ИдентификаторСтроки'] ?? null;
 
         // Номенклатура
         $productData = $serviceRow['Номенклатура'] ?? [];
-        if (! empty($productData)) {
+        if (!empty($productData)) {
             $item->product_guid_1c = $productData['Ссылка'] ?? null;
             $item->product_name = $productData['Наименование'] ?? null;
 
-            // Единица измерения из данных номенклатуры
             $unitData = $productData['ЕдиницаИзмерения'] ?? [];
-            if (! empty($unitData)) {
+            if (!empty($unitData)) {
                 $item->unit_guid_1c = $unitData['Ссылка'] ?? null;
                 $unitClassifierData = $unitData['ДанныеКлассификатора'] ?? [];
                 $item->unit_name = $unitClassifierData['Наименование'] ?? null;
@@ -193,9 +264,6 @@ class SaleMapping extends ObjectMapping
         $item->income_account = $serviceRow['СчетДоходов'] ?? null;
         $item->expense_account = $serviceRow['СчетРасходов'] ?? null;
         $item->vat_account = $serviceRow['СчетУчетаНДСПоРеализации'] ?? null;
-
-        $item->save();
-
     }
 
     public function mapTo1C(Model $laravelModel): array

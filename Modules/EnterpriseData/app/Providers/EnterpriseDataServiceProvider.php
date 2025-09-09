@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
 use Modules\EnterpriseData\app\Console\Commands\AnalyzeObjectStructureCommand;
+use Modules\EnterpriseData\app\Console\Commands\CleanupDuplicatesCommand;
 use Modules\EnterpriseData\app\Console\Commands\CleanupExchangeLogsCommand;
 use Modules\EnterpriseData\app\Console\Commands\ExchangeStatusCommand;
 use Modules\EnterpriseData\app\Console\Commands\InspectFileCommand;
@@ -86,6 +87,7 @@ class EnterpriseDataServiceProvider extends ServiceProvider
                 ShowMappingsCommand::class,
                 AnalyzeObjectStructureCommand::class,
                 ShowUnmappedObjectsCommand::class,
+                CleanupDuplicatesCommand::class,
             ]);
         }
     }
