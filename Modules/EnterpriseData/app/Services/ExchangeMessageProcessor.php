@@ -555,96 +555,48 @@ class ExchangeMessageProcessor
             'tabular_sections' => [],
         ];
 
-        // Парсинг свойств объекта
+        // Парсинг свойств объекта - ПРОСТАЯ ЛОГИКА
         foreach ($objectNode->childNodes as $childNode) {
             if ($childNode->nodeType !== XML_ELEMENT_NODE) {
                 continue;
             }
 
             $propertyName = $childNode->nodeName;
-            $propertyValue = $this->parsePropertyValue($childNode);
 
-            // ИСПРАВЛЕНИЕ: Специальная обработка для известных табличных частей
-            if ($this->isKnownTabularSection($propertyName, $propertyValue)) {
-                $object['tabular_sections'][$propertyName] = $this->parseTabularSectionFromProperty($propertyValue);
-
-                Log::debug('Parsed known tabular section', [
-                    'object_type' => $object['type'],
-                    'section_name' => $propertyName,
-                    'rows_count' => count($object['tabular_sections'][$propertyName])
-                ]);
+            // Табличные части (старая проверка)
+            if ($childNode->hasChildNodes() && $this->isTabularSection($childNode)) {
+                $object['tabular_sections'][$propertyName] = $this->parseTabularSection($xpath, $childNode);
             } else {
                 // Обычные свойства
-                $object['properties'][$propertyName] = $propertyValue;
+                $object['properties'][$propertyName] = $this->parsePropertyValue($childNode);
             }
         }
-
-        Log::debug('Parsed object details', [
-            'object_type' => $object['type'],
-            'properties_count' => count($object['properties']),
-            'tabular_sections_count' => count($object['tabular_sections']),
-            'tabular_sections_names' => array_keys($object['tabular_sections'])
-        ]);
 
         return $object;
     }
 
-    /**
-     * Проверка, является ли свойство известной табличной частью
-     */
-    private function isKnownTabularSection(string $propertyName, $propertyValue): bool
+    private function parseTabularSection(DOMXPath $xpath, \DOMNode $tabularNode): array
     {
-        // Список известных табличных частей
-        $knownTabularSections = [
-            'Услуги',
-            'Товары',
-            'КонтактнаяИнформация',
-            'ДополнительныеРеквизиты',
-            'Материалы',
-            'Продукция',
-        ];
+        $rows = [];
 
-        // Проверяем имя и структуру
-        if (!in_array($propertyName, $knownTabularSections)) {
-            return false;
-        }
-
-        // Проверяем что это массив со строками
-        if (!is_array($propertyValue)) {
-            return false;
-        }
-
-        // Проверяем наличие элемента "Строка" или массива строк
-        return isset($propertyValue['Строка']) || $this->isArrayOfRows($propertyValue);
-    }
-
-    /**
-     * Парсинг табличной части из свойства
-     */
-    private function parseTabularSectionFromProperty($propertyValue): array
-    {
-        if (!is_array($propertyValue)) {
-            return [];
-        }
-
-        // Вариант 1: Одна строка - "Услуги":{"Строка":{...}}
-        if (isset($propertyValue['Строка'])) {
-            return [$propertyValue['Строка']];
-        }
-
-        // Вариант 2: Множественные строки - "Услуги":[{"Строка":{...}}, {"Строка":{...}}]
-        if ($this->isArrayOfRows($propertyValue)) {
-            $rows = [];
-            foreach ($propertyValue as $rowWrapper) {
-                if (is_array($rowWrapper) && isset($rowWrapper['Строка'])) {
-                    $rows[] = $rowWrapper['Строка'];
-                }
+        foreach ($tabularNode->childNodes as $rowNode) {
+            if ($rowNode->nodeType !== XML_ELEMENT_NODE) {
+                continue;
             }
-            return $rows;
+
+            $row = [];
+            foreach ($rowNode->childNodes as $cellNode) {
+                if ($cellNode->nodeType !== XML_ELEMENT_NODE) {
+                    continue;
+                }
+
+                $row[$cellNode->nodeName] = $this->parsePropertyValue($cellNode);
+            }
+
+            $rows[] = $row;
         }
 
-        // Вариант 3: Прямой массив строк
-        return $propertyValue;
+        return $rows;
     }
 
     /**
@@ -747,8 +699,6 @@ class ExchangeMessageProcessor
 
     private function isTabularSection(\DOMNode $node): bool
     {
-        // Проверка, является ли узел табличной частью
-        // Табличная часть обычно содержит повторяющиеся элементы
         $childElementNames = [];
         foreach ($node->childNodes as $child) {
             if ($child->nodeType === XML_ELEMENT_NODE) {
@@ -756,7 +706,8 @@ class ExchangeMessageProcessor
             }
         }
 
-        return count($childElementNames) > 1 && count(array_unique($childElementNames)) === 1;
+        // ИСПРАВЛЕНИЕ: Табличная часть если есть элементы "Строка"
+        return in_array('Строка', $childElementNames);
     }
 
     private function formatValueForXml(mixed $value): string

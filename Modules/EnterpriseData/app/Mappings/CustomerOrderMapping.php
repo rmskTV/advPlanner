@@ -116,113 +116,84 @@ class CustomerOrderMapping extends ObjectMapping
         $tabularSections = $object1C['tabular_sections'] ?? [];
         $servicesSection = $tabularSections['Услуги'] ?? [];
 
-        if ( count($servicesSection) === 0){
-            Log::info('Processing CustomerOrder tabular sections', [
-                'order_id' => $order->id,
-                'order' => $order,
-                'object' => $object1C,
-                'services_count' => count($servicesSection),
-                'existing_items_count' => $order->items()->count()
-            ]);
-        }
-        else{
-            Log::info('Processing CustomerOrder tabular sections', [
-                'order_id' => $order->id,
-                'services_count' => count($servicesSection),
-                'existing_items_count' => $order->items()->count()
-            ]);
-        }
+        Log::info('Processing CustomerOrder tabular sections', [
+            'order_id' => $order->id,
+            'services_count' => count($servicesSection)
+        ]);
 
         if (empty($servicesSection)) {
-            // Если в 1С нет строк, но у нас есть - возможно они были удалены
-            // Пока оставляем как есть, не удаляем автоматически
-            Log::info('No services in 1C data, keeping existing items', [
-                'order_id' => $order->id
-            ]);
+            Log::info('No services in tabular sections', ['order_id' => $order->id]);
             return;
         }
 
-        // Получаем существующие строки
-        $existingItems = $order->items()->get()->keyBy('line_number');
-
-        // Обрабатываем строки из 1С
+        // ПРОСТОЙ АЛГОРИТМ: Проходим каждую строку и обновляем по line_number
         foreach ($servicesSection as $index => $serviceRow) {
             $lineNumber = $index + 1;
+            $this->upsertOrderItem($order, $serviceRow, $lineNumber);
+        }
+    }
 
-            if ($existingItems->has($lineNumber)) {
-                // Обновляем существующую строку
-                $this->updateOrderItem($existingItems[$lineNumber], $serviceRow, $lineNumber);
-            } else {
-                // Создаем новую строку
-                $this->createOrderItem($order, $serviceRow, $lineNumber);
+    /**
+     * Обновление или создание строки заказа по номеру строки
+     */
+    private function upsertOrderItem(CustomerOrder $order, array $serviceRow, int $lineNumber): void
+    {
+        Log::debug('Upserting order item', [
+            'order_id' => $order->id,
+            'line_number' => $lineNumber,
+            'service_row_keys' => array_keys($serviceRow)
+        ]);
+
+        // Находим или создаем строку по customer_order_id + line_number
+        $item = CustomerOrderItem::updateOrCreate(
+            [
+                'customer_order_id' => $order->id,
+                'line_number' => $lineNumber
+            ],
+            $this->getOrderItemData($serviceRow, $lineNumber)
+        );
+
+        Log::info($item->wasRecentlyCreated ? 'Created CustomerOrderItem' : 'Updated CustomerOrderItem', [
+            'order_id' => $order->id,
+            'item_id' => $item->id,
+            'line_number' => $lineNumber,
+            'product_guid' => $item->product_guid_1c,
+            'product_name' => $item->product_name,
+            'amount' => $item->amount,
+            'was_created' => $item->wasRecentlyCreated
+        ]);
+    }
+
+    /**
+     * Получение данных для строки заказа
+     */
+    private function getOrderItemData(array $serviceRow, int $lineNumber): array
+    {
+        $data = ['line_number' => $lineNumber];
+
+        // Номенклатура - проверяем оба варианта
+        $productData = $serviceRow['ДанныеНоменклатуры'] ?? $serviceRow['Номенклатура'] ?? [];
+        if (!empty($productData)) {
+            $data['product_guid_1c'] = $productData['Ссылка'] ?? null;
+            $data['product_name'] = $productData['Наименование'] ?? $productData['НаименованиеПолное'] ?? null;
+
+            // Единица измерения
+            $unitData = $productData['ЕдиницаИзмерения'] ?? [];
+            if (!empty($unitData)) {
+                $data['unit_guid_1c'] = $unitData['Ссылка'] ?? null;
+                $unitClassifierData = $unitData['ДанныеКлассификатора'] ?? [];
+                $data['unit_name'] = $unitClassifierData['Наименование'] ?? null;
             }
         }
 
-        // Проверяем строки которые есть у нас, но нет в 1С
-        $incomingLineNumbers = range(1, count($servicesSection));
-        $extraItems = $existingItems->filter(function ($item) use ($incomingLineNumbers) {
-            return !in_array($item->line_number, $incomingLineNumbers);
-        });
+        // Простые поля
+        $data['quantity'] = $serviceRow['Количество'] ?? null;
+        $data['price'] = $serviceRow['Цена'] ?? null;
+        $data['amount'] = $serviceRow['Сумма'] ?? null;
+        $data['vat_amount'] = $serviceRow['СуммаНДС'] ?? null;
+        $data['content'] = $serviceRow['Содержание'] ?? null;
 
-        if ($extraItems->count() > 0) {
-            Log::warning('Found extra items not present in 1C data', [
-                'order_id' => $order->id,
-                'extra_items_count' => $extraItems->count(),
-                'extra_line_numbers' => $extraItems->pluck('line_number')->toArray()
-            ]);
-
-            $extraItems->map(function ($item) {$item->delete();})->toArray();
-        }
-    }
-
-    /**
-     * Обновление существующей строки заказа
-     */
-    private function updateOrderItem(CustomerOrderItem $item, array $serviceRow, int $lineNumber): void
-    {
-        $originalData = $item->getOriginal();
-
-        // Обновляем данные
-        $this->fillOrderItemData($item, $serviceRow, $lineNumber);
-
-        // Проверяем, изменились ли данные
-        $hasChanges = $item->isDirty();
-
-        if ($hasChanges) {
-            $item->save();
-
-            Log::debug('Updated CustomerOrderItem', [
-                'item_id' => $item->id,
-                'line_number' => $lineNumber,
-                'changes' => $item->getChanges(),
-                'product_guid' => $item->product_guid_1c
-            ]);
-        } else {
-            Log::debug('CustomerOrderItem unchanged', [
-                'item_id' => $item->id,
-                'line_number' => $lineNumber
-            ]);
-        }
-    }
-
-    /**
-     * Создание новой строки заказа
-     */
-    private function createOrderItem(CustomerOrder $order, array $serviceRow, int $lineNumber): void
-    {
-        $item = new CustomerOrderItem();
-        $item->customer_order_id = $order->id;
-
-        $this->fillOrderItemData($item, $serviceRow, $lineNumber);
-        $item->save();
-
-        Log::debug('Created CustomerOrderItem', [
-            'order_id' => $order->id,
-            'line_number' => $lineNumber,
-            'product_guid' => $item->product_guid_1c,
-            'quantity' => $item->quantity,
-            'amount' => $item->amount
-        ]);
+        return $data;
     }
 
     /**

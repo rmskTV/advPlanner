@@ -148,86 +148,66 @@ class SaleMapping extends ObjectMapping
 
         Log::info('Processing Sale tabular sections', [
             'sale_id' => $sale->id,
-            'services_count' => count($servicesSection),
-            'existing_items_count' => $sale->items()->count()
+            'services_count' => count($servicesSection)
         ]);
 
         if (empty($servicesSection)) {
-            Log::info('No services in 1C data, keeping existing items', [
-                'sale_id' => $sale->id
-            ]);
             return;
         }
 
-        // Получаем существующие строки
-        $existingItems = $sale->items()->get()->keyBy('line_number');
-
-        // Обрабатываем строки из 1С
+        // Простой алгоритм: обновляем по line_number
         foreach ($servicesSection as $index => $serviceRow) {
             $lineNumber = $index + 1;
-
-            if ($existingItems->has($lineNumber)) {
-                // Обновляем существующую строку
-                $this->updateSaleItem($existingItems[$lineNumber], $serviceRow, $lineNumber);
-            } else {
-                // Создаем новую строку
-                $this->createSaleItem($sale, $serviceRow, $lineNumber);
-            }
+            $this->upsertSaleItem($sale, $serviceRow, $lineNumber);
         }
+    }
 
-        // Логируем информацию о "лишних" строках без автоматического удаления
-        $incomingLineNumbers = range(1, count($servicesSection));
-        $extraItems = $existingItems->filter(function ($item) use ($incomingLineNumbers) {
-            return !in_array($item->line_number, $incomingLineNumbers);
-        });
-
-        if ($extraItems->count() > 0) {
-            Log::warning('Found extra items not present in 1C data', [
+    private function upsertSaleItem(Sale $sale, array $serviceRow, int $lineNumber): void
+    {
+        $item = SaleItem::updateOrCreate(
+            [
                 'sale_id' => $sale->id,
-                'extra_items_count' => $extraItems->count(),
-                'extra_line_numbers' => $extraItems->pluck('line_number')->toArray()
-            ]);
-        }
+                'line_number' => $lineNumber
+            ],
+            $this->getSaleItemData($serviceRow, $lineNumber)
+        );
 
-        $extraItems->map(function ($item) {$item->delete();})->toArray();
-    }
-
-    /**
-     * Обновление существующей строки реализации
-     */
-    private function updateSaleItem(SaleItem $item, array $serviceRow, int $lineNumber): void
-    {
-        $this->fillSaleItemData($item, $serviceRow, $lineNumber);
-
-        if ($item->isDirty()) {
-            $item->save();
-
-            Log::debug('Updated SaleItem', [
-                'item_id' => $item->id,
-                'line_number' => $lineNumber,
-                'changes' => $item->getChanges()
-            ]);
-        }
-    }
-
-    /**
-     * Создание новой строки реализации
-     */
-    private function createSaleItem(Sale $sale, array $serviceRow, int $lineNumber): void
-    {
-        $item = new SaleItem();
-        $item->sale_id = $sale->id;
-
-        $this->fillSaleItemData($item, $serviceRow, $lineNumber);
-        $item->save();
-
-        Log::debug('Created SaleItem', [
+        Log::info($item->wasRecentlyCreated ? 'Created SaleItem' : 'Updated SaleItem', [
             'sale_id' => $sale->id,
+            'item_id' => $item->id,
             'line_number' => $lineNumber,
-            'product_guid' => $item->product_guid_1c
+            'was_created' => $item->wasRecentlyCreated
         ]);
     }
 
+    private function getSaleItemData(array $serviceRow, int $lineNumber): array
+    {
+        $data = [
+            'line_number' => $lineNumber,
+            'line_identifier' => $serviceRow['ИдентификаторСтроки'] ?? null
+        ];
+
+        // Номенклатура
+        $productData = $serviceRow['Номенклатура'] ?? [];
+        if (!empty($productData)) {
+            $data['product_guid_1c'] = $productData['Ссылка'] ?? null;
+            $data['product_name'] = $productData['Наименование'] ?? null;
+        }
+
+        // Простые поля
+        $data['quantity'] = $serviceRow['Количество'] ?? null;
+        $data['price'] = $serviceRow['Цена'] ?? null;
+        $data['amount'] = $serviceRow['Сумма'] ?? null;
+        $data['vat_amount'] = $serviceRow['СуммаНДС'] ?? null;
+        $data['content'] = $serviceRow['Содержание'] ?? null;
+        $data['service_type'] = $serviceRow['ТипУслуги'] ?? null;
+        $data['income_account'] = $serviceRow['СчетДоходов'] ?? null;
+        $data['expense_account'] = $serviceRow['СчетРасходов'] ?? null;
+        $data['vat_account'] = $serviceRow['СчетУчетаНДСПоРеализации'] ?? null;
+
+        return $data;
+    }
+    
     /**
      * Заполнение данных строки реализации
      */

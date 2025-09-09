@@ -66,7 +66,7 @@ class VkAdsAdGroupService
                 ], [
                     'vk_ads_account_id' => $account->id,
                     'vk_ads_campaign_id' => $campaign->id,
-                    'customer_order_item_id' => null,
+                    //'customer_order_item_id' => null,
                     'name' => $vkAdGroup['name'],
                     'status' => $this->mapVkStatus($vkAdGroup['status'] ?? 'active'),
                     'bid' => $vkAdGroup['bid'] ?? null,
