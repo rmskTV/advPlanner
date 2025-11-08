@@ -194,13 +194,19 @@ class ContactInfoParser
             return null;
         }
 
+        // ИСПРАВЛЕНИЕ: Очищаем от поврежденных UTF-8 символов
+        $phone = mb_convert_encoding($phone, 'UTF-8', 'UTF-8');
+
+        // Убираем невалидные UTF-8 последовательности
+        $phone = filter_var($phone, FILTER_SANITIZE_STRING, FILTER_FLAG_STRIP_HIGH);
+
         // Убираем лишние пробелы
         $phone = preg_replace('/\s+/', ' ', trim($phone));
 
         // Ограничиваем длину
         $result = strlen($phone) > 50 ? substr($phone, 0, 50) : $phone;
 
-        return ! empty($result) ? $result : null;
+        return !empty($result) ? $result : null;
     }
 
     /**
