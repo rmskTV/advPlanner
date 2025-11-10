@@ -118,11 +118,12 @@ class CustomerOrderMapping extends ObjectMapping
 
         Log::info('Processing CustomerOrder tabular sections', [
             'order_id' => $order->id,
-            'services_count' => count($servicesSection)
+            'services_count' => count($servicesSection),
         ]);
 
         if (empty($servicesSection)) {
             Log::info('No services in tabular sections', ['order_id' => $order->id]);
+
             return;
         }
 
@@ -141,14 +142,14 @@ class CustomerOrderMapping extends ObjectMapping
         Log::debug('Upserting order item', [
             'order_id' => $order->id,
             'line_number' => $lineNumber,
-            'service_row_keys' => array_keys($serviceRow)
+            'service_row_keys' => array_keys($serviceRow),
         ]);
 
         // Находим или создаем строку по customer_order_id + line_number
         $item = CustomerOrderItem::updateOrCreate(
             [
                 'customer_order_id' => $order->id,
-                'line_number' => $lineNumber
+                'line_number' => $lineNumber,
             ],
             $this->getOrderItemData($serviceRow, $lineNumber)
         );
@@ -160,7 +161,7 @@ class CustomerOrderMapping extends ObjectMapping
             'product_guid' => $item->product_guid_1c,
             'product_name' => $item->product_name,
             'amount' => $item->amount,
-            'was_created' => $item->wasRecentlyCreated
+            'was_created' => $item->wasRecentlyCreated,
         ]);
     }
 
@@ -173,13 +174,13 @@ class CustomerOrderMapping extends ObjectMapping
 
         // Номенклатура - проверяем оба варианта
         $productData = $serviceRow['ДанныеНоменклатуры'] ?? $serviceRow['Номенклатура'] ?? [];
-        if (!empty($productData)) {
+        if (! empty($productData)) {
             $data['product_guid_1c'] = $productData['Ссылка'] ?? null;
             $data['product_name'] = $productData['Наименование'] ?? $productData['НаименованиеПолное'] ?? null;
 
             // Единица измерения
             $unitData = $productData['ЕдиницаИзмерения'] ?? [];
-            if (!empty($unitData)) {
+            if (! empty($unitData)) {
                 $data['unit_guid_1c'] = $unitData['Ссылка'] ?? null;
                 $unitClassifierData = $unitData['ДанныеКлассификатора'] ?? [];
                 $data['unit_name'] = $unitClassifierData['Наименование'] ?? null;
@@ -205,13 +206,13 @@ class CustomerOrderMapping extends ObjectMapping
 
         // Данные номенклатуры
         $productData = $serviceRow['ДанныеНоменклатуры'] ?? $serviceRow['Номенклатура'] ?? [];
-        if (!empty($productData)) {
+        if (! empty($productData)) {
             $item->product_guid_1c = $productData['Ссылка'] ?? null;
             $item->product_name = $productData['Наименование'] ?? null;
 
             // Единица измерения из данных номенклатуры
             $unitData = $productData['ЕдиницаИзмерения'] ?? [];
-            if (!empty($unitData)) {
+            if (! empty($unitData)) {
                 $item->unit_guid_1c = $unitData['Ссылка'] ?? null;
                 $unitClassifierData = $unitData['ДанныеКлассификатора'] ?? [];
                 $item->unit_name = $unitClassifierData['Наименование'] ?? null;

@@ -17,7 +17,7 @@ return new class extends Migration
             $table->dropColumn([
                 'primary_creative_id', 'headline', 'description', 'call_to_action',
                 'display_url', 'final_url', 'is_instream', 'instream_position',
-                'skippable', 'skip_offset', 'moderation_comment', 'moderated_at'
+                'skippable', 'skip_offset', 'moderation_comment', 'moderated_at',
             ]);
         });
 
@@ -62,7 +62,7 @@ return new class extends Migration
             // Удаляем новые поля
             $table->dropColumn([
                 'content', 'delivery', 'issues', 'moderation_reasons',
-                'textblocks', 'urls', 'ord_marker', 'created_at_vk', 'updated_at_vk'
+                'textblocks', 'urls', 'ord_marker', 'created_at_vk', 'updated_at_vk',
             ]);
         });
 

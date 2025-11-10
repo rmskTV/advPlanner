@@ -612,9 +612,9 @@ class ExchangeMessageProcessor
         $firstElement = reset($value);
 
         return is_array($firstElement) && (
-                isset($firstElement['Строка']) ||
-                $this->looksLikeTableRow($firstElement)
-            );
+            isset($firstElement['Строка']) ||
+            $this->looksLikeTableRow($firstElement)
+        );
     }
 
     /**
@@ -625,14 +625,13 @@ class ExchangeMessageProcessor
         // Типичные поля строк табличных частей
         $typicalRowFields = [
             'Номенклатура', 'Количество', 'Цена', 'Сумма',
-            'ДанныеНоменклатуры', 'СуммаНДС', 'Содержание'
+            'ДанныеНоменклатуры', 'СуммаНДС', 'Содержание',
         ];
 
         $matchingFields = array_intersect(array_keys($data), $typicalRowFields);
 
         return count($matchingFields) >= 2; // Если есть хотя бы 2 типичных поля
     }
-
 
     private function parsePropertyValue(\DOMNode $node): mixed
     {

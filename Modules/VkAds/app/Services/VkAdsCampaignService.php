@@ -3,9 +3,9 @@
 namespace Modules\VkAds\app\Services;
 
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Log;
 use Modules\VkAds\app\Models\VkAdsAccount;
 use Modules\VkAds\app\Models\VkAdsCampaign;
-use Illuminate\Support\Facades\Log;
 
 class VkAdsCampaignService
 {
@@ -26,9 +26,9 @@ class VkAdsCampaignService
     public function getCampaignDetails(VkAdsAccount $account, int $campaignId): ?array
     {
         try {
-            Log::info("Getting campaign details", [
+            Log::info('Getting campaign details', [
                 'campaign_id' => $campaignId,
-                'account_id' => $account->id
+                'account_id' => $account->id,
             ]);
 
             // ИСПРАВЛЕНО: запрашиваем все нужные поля
@@ -36,22 +36,23 @@ class VkAdsCampaignService
                 $account,
                 "ad_plans/{$campaignId}.json",
                 [
-                    'fields' => 'id,name,status,objective,autobidding_mode,budget_limit,budget_limit_day,max_price,priced_goal,date_start,date_end,package_id,selling_proposition,price'
+                    'fields' => 'id,name,status,objective,autobidding_mode,budget_limit,budget_limit_day,max_price,priced_goal,date_start,date_end,package_id,selling_proposition,price',
                 ]
             );
 
-            Log::info("Received campaign details", [
+            Log::info('Received campaign details', [
                 'campaign_id' => $campaignId,
                 'name' => $campaignDetails['name'] ?? 'N/A',
                 'status' => $campaignDetails['status'] ?? 'N/A',
                 'objective' => $campaignDetails['objective'] ?? 'N/A',
-                'autobidding_mode' => $campaignDetails['autobidding_mode'] ?? 'N/A'
+                'autobidding_mode' => $campaignDetails['autobidding_mode'] ?? 'N/A',
             ]);
 
             return $campaignDetails;
 
         } catch (\Exception $e) {
-            Log::warning("Failed to get campaign details for {$campaignId}: " . $e->getMessage());
+            Log::warning("Failed to get campaign details for {$campaignId}: ".$e->getMessage());
+
             return null;
         }
     }
@@ -59,15 +60,15 @@ class VkAdsCampaignService
     public function syncAllCampaigns(VkAdsAccount $account): Collection
     {
         try {
-            Log::info("Syncing campaigns for account", [
+            Log::info('Syncing campaigns for account', [
                 'account_id' => $account->id,
                 'vk_account_id' => $account->vk_account_id,
-                'account_type' => $account->account_type
+                'account_type' => $account->account_type,
             ]);
 
             // 1. Получаем список кампаний
             $vkCampaignsList = $this->apiService->makeAuthenticatedRequest($account, 'ad_plans');
-            Log::info("Received campaigns list from VK", ['count' => count($vkCampaignsList)]);
+            Log::info('Received campaigns list from VK', ['count' => count($vkCampaignsList)]);
 
             $syncedCampaigns = [];
 
@@ -78,14 +79,14 @@ class VkAdsCampaignService
 
                     if ($campaignDetails) {
                         // ДОБАВЛЕНО: логирование данных перед сохранением
-                        Log::info("Processing campaign data", [
+                        Log::info('Processing campaign data', [
                             'campaign_id' => $campaignDetails['id'],
                             'priced_goal_type' => gettype($campaignDetails['priced_goal'] ?? null),
-                            'priced_goal_value' => $campaignDetails['priced_goal'] ?? null
+                            'priced_goal_value' => $campaignDetails['priced_goal'] ?? null,
                         ]);
 
                         $campaign = VkAdsCampaign::updateOrCreate([
-                            'vk_campaign_id' => $campaignDetails['id']
+                            'vk_campaign_id' => $campaignDetails['id'],
                         ], [
                             'vk_ads_account_id' => $account->id,
                             'name' => $campaignDetails['name'],
@@ -115,7 +116,7 @@ class VkAdsCampaignService
 
                         $syncedCampaigns[] = $campaign;
 
-                        Log::info("Synced campaign", [
+                        Log::info('Synced campaign', [
                             'id' => $campaign->id,
                             'vk_campaign_id' => $campaign->vk_campaign_id,
                             'name' => $campaign->name,
@@ -123,32 +124,33 @@ class VkAdsCampaignService
                             'objective' => $campaign->objective,
                             'autobidding_mode' => $campaign->autobidding_mode,
                             'budget_limit_day' => $campaign->budget_limit_day,
-                            'priced_goal_saved' => !empty($campaign->priced_goal)
+                            'priced_goal_saved' => ! empty($campaign->priced_goal),
                         ]);
                     }
 
                 } catch (\Exception $e) {
-                    Log::warning("Failed to sync campaign {$campaignItem['id']}: " . $e->getMessage());
+                    Log::warning("Failed to sync campaign {$campaignItem['id']}: ".$e->getMessage());
 
                     // ДОБАВЛЕНО: логирование стека ошибки для диагностики
-                    Log::debug("Campaign sync error details", [
+                    Log::debug('Campaign sync error details', [
                         'campaign_id' => $campaignItem['id'],
-                        'error_trace' => $e->getTraceAsString()
+                        'error_trace' => $e->getTraceAsString(),
                     ]);
                 }
             }
 
-            Log::info("Successfully synced campaigns", ['count' => count($syncedCampaigns)]);
+            Log::info('Successfully synced campaigns', ['count' => count($syncedCampaigns)]);
 
         } catch (\Exception $e) {
-            Log::warning("Failed to sync campaigns for account {$account->id}: " . $e->getMessage());
+            Log::warning("Failed to sync campaigns for account {$account->id}: ".$e->getMessage());
         }
 
         return $this->getCampaigns($account);
     }
+
     private function mapVkStatus($vkStatus): string
     {
-        return match($vkStatus) {
+        return match ($vkStatus) {
             1, 'active' => 'active',
             0, 'paused' => 'paused',
             'deleted' => 'deleted',
@@ -158,7 +160,7 @@ class VkAdsCampaignService
 
     private function parseVkDate($vkDate): ?string
     {
-        if (!$vkDate) {
+        if (! $vkDate) {
             return null;
         }
 
@@ -177,6 +179,4 @@ class VkAdsCampaignService
 
         return null;
     }
-
-
 }

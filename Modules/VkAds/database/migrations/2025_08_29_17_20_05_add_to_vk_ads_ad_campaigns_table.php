@@ -14,12 +14,12 @@ return new class extends Migration
                 ->comment('Режим автоматических ставок');
 
             // Бюджетные ограничения (если еще не добавлены)
-            if (!Schema::hasColumn('vk_ads_campaigns', 'budget_limit')) {
+            if (! Schema::hasColumn('vk_ads_campaigns', 'budget_limit')) {
                 $table->decimal('budget_limit', 15, 2)->nullable()->after('autobidding_mode')
                     ->comment('Общий лимит бюджета (в рублях)');
             }
 
-            if (!Schema::hasColumn('vk_ads_campaigns', 'budget_limit_day')) {
+            if (! Schema::hasColumn('vk_ads_campaigns', 'budget_limit_day')) {
                 $table->decimal('budget_limit_day', 15, 2)->nullable()->after('budget_limit')
                     ->comment('Дневной лимит бюджета (в рублях)');
             }
@@ -29,7 +29,7 @@ return new class extends Migration
                 ->comment('Максимальная цена (в рублях)');
 
             // Цель кампании (если еще не добавлена)
-            if (!Schema::hasColumn('vk_ads_campaigns', 'objective')) {
+            if (! Schema::hasColumn('vk_ads_campaigns', 'objective')) {
                 $table->string('objective')->nullable()->after('max_price')
                     ->comment('Цель кампании (leadads, website_conversions, etc.)');
             }
@@ -53,7 +53,7 @@ return new class extends Migration
                 'budget_limit_day',
                 'max_price',
                 'objective',
-                'priced_goal'
+                'priced_goal',
             ]);
         });
     }

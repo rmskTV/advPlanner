@@ -148,7 +148,7 @@ class SaleMapping extends ObjectMapping
 
         Log::info('Processing Sale tabular sections', [
             'sale_id' => $sale->id,
-            'services_count' => count($servicesSection)
+            'services_count' => count($servicesSection),
         ]);
 
         if (empty($servicesSection)) {
@@ -167,7 +167,7 @@ class SaleMapping extends ObjectMapping
         $item = SaleItem::updateOrCreate(
             [
                 'sale_id' => $sale->id,
-                'line_number' => $lineNumber
+                'line_number' => $lineNumber,
             ],
             $this->getSaleItemData($serviceRow, $lineNumber)
         );
@@ -176,7 +176,7 @@ class SaleMapping extends ObjectMapping
             'sale_id' => $sale->id,
             'item_id' => $item->id,
             'line_number' => $lineNumber,
-            'was_created' => $item->wasRecentlyCreated
+            'was_created' => $item->wasRecentlyCreated,
         ]);
     }
 
@@ -184,12 +184,12 @@ class SaleMapping extends ObjectMapping
     {
         $data = [
             'line_number' => $lineNumber,
-            'line_identifier' => $serviceRow['ИдентификаторСтроки'] ?? null
+            'line_identifier' => $serviceRow['ИдентификаторСтроки'] ?? null,
         ];
 
         // Номенклатура
         $productData = $serviceRow['Номенклатура'] ?? [];
-        if (!empty($productData)) {
+        if (! empty($productData)) {
             $data['product_guid_1c'] = $productData['Ссылка'] ?? null;
             $data['product_name'] = $productData['Наименование'] ?? null;
         }
@@ -207,7 +207,7 @@ class SaleMapping extends ObjectMapping
 
         return $data;
     }
-    
+
     /**
      * Заполнение данных строки реализации
      */
@@ -218,12 +218,12 @@ class SaleMapping extends ObjectMapping
 
         // Номенклатура
         $productData = $serviceRow['Номенклатура'] ?? [];
-        if (!empty($productData)) {
+        if (! empty($productData)) {
             $item->product_guid_1c = $productData['Ссылка'] ?? null;
             $item->product_name = $productData['Наименование'] ?? null;
 
             $unitData = $productData['ЕдиницаИзмерения'] ?? [];
-            if (!empty($unitData)) {
+            if (! empty($unitData)) {
                 $item->unit_guid_1c = $unitData['Ссылка'] ?? null;
                 $unitClassifierData = $unitData['ДанныеКлассификатора'] ?? [];
                 $item->unit_name = $unitClassifierData['Наименование'] ?? null;

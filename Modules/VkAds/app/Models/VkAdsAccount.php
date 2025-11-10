@@ -14,7 +14,9 @@ class VkAdsAccount extends CatalogObject
     protected $fillable = [
         'vk_account_id', 'vk_user_id', 'vk_username',
         'account_name', 'account_type', 'account_status',
-        'organization_id', 'contract_id', 'balance', 'currency', 'last_sync_at'
+        'counterparty_id', 'contract_id',
+        'balance', 'currency', 'access_roles', 'can_view_budget',
+        'last_sync_at', 'sync_enabled',
     ];
 
     protected $casts = [
@@ -64,9 +66,9 @@ class VkAdsAccount extends CatalogObject
 
     public function getValidToken(): ?VkAdsToken
     {
-        Log::info("Looking for valid token", [
+        Log::info('Looking for valid token', [
             'account_id' => $this->id,
-            'account_type' => $this->account_type
+            'account_type' => $this->account_type,
         ]);
 
         $token = $this->tokens()
@@ -75,27 +77,27 @@ class VkAdsAccount extends CatalogObject
             ->first();
 
         if ($token) {
-            Log::info("Found valid token", [
+            Log::info('Found valid token', [
                 'token_id' => $token->id,
                 'token_type' => $token->token_type,
                 'expires_at' => $token->expires_at,
-                'minutes_until_expiry' => now()->diffInMinutes($token->expires_at)
+                'minutes_until_expiry' => now()->diffInMinutes($token->expires_at),
             ]);
         } else {
             // ДОБАВЛЕНО: логирование всех токенов для диагностики
             $allTokens = $this->tokens()->get();
-            Log::info("No valid token found", [
+            Log::info('No valid token found', [
                 'account_id' => $this->id,
                 'total_tokens' => $allTokens->count(),
-                'tokens_info' => $allTokens->map(function($t) {
+                'tokens_info' => $allTokens->map(function ($t) {
                     return [
                         'id' => $t->id,
                         'type' => $t->token_type,
                         'active' => $t->is_active,
                         'expires_at' => $t->expires_at,
-                        'is_expired' => $t->expires_at < now()
+                        'is_expired' => $t->expires_at < now(),
                     ];
-                })
+                }),
             ]);
         }
 

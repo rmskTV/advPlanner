@@ -32,8 +32,9 @@ class CleanupDuplicatesCommand extends Command
         if ($orderId) {
             // Очистка конкретного заказа
             $order = CustomerOrder::find($orderId);
-            if (!$order) {
+            if (! $order) {
                 $this->error("Заказ с ID {$orderId} не найден");
+
                 return self::FAILURE;
             }
 
@@ -85,7 +86,7 @@ class CleanupDuplicatesCommand extends Command
 
                 $itemsToDelete = $items->slice(1);
 
-                if (!$isDryRun) {
+                if (! $isDryRun) {
                     foreach ($itemsToDelete as $item) {
                         $item->delete();
                         $duplicatesRemoved++;
@@ -115,7 +116,7 @@ class CleanupDuplicatesCommand extends Command
 
                 $itemsToDelete = $items->slice(1);
 
-                if (!$isDryRun) {
+                if (! $isDryRun) {
                     foreach ($itemsToDelete as $item) {
                         $item->delete();
                         $duplicatesRemoved++;

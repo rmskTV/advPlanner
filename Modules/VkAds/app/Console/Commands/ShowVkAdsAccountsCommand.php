@@ -8,6 +8,7 @@ use Modules\VkAds\app\Models\VkAdsAccount;
 class ShowVkAdsAccountsCommand extends Command
 {
     protected $signature = 'vk-ads:show-accounts';
+
     protected $description = 'Показать все синхронизированные VK Ads аккаунты';
 
     public function handle(): int
@@ -19,10 +20,11 @@ class ShowVkAdsAccountsCommand extends Command
 
         if ($accounts->isEmpty()) {
             $this->warn('Нет синхронизированных аккаунтов');
+
             return self::SUCCESS;
         }
 
-        $this->info("=== VK Ads Аккаунты ===");
+        $this->info('=== VK Ads Аккаунты ===');
 
         $agencyAccounts = $accounts->where('account_type', 'agency');
         $clientAccounts = $accounts->where('account_type', 'client');
@@ -32,8 +34,8 @@ class ShowVkAdsAccountsCommand extends Command
             foreach ($agencyAccounts as $account) {
                 $this->line("   ID: {$account->id} | VK ID: {$account->vk_account_id} | {$account->account_name}");
                 $this->line("   Статус: {$account->account_status} | Баланс: {$account->balance} {$account->currency}");
-                $this->line("   Последняя синхронизация: " . ($account->last_sync_at ? $account->last_sync_at->format('Y-m-d H:i:s') : 'Никогда'));
-                $this->line("");
+                $this->line('   Последняя синхронизация: '.($account->last_sync_at ? $account->last_sync_at->format('Y-m-d H:i:s') : 'Никогда'));
+                $this->line('');
             }
         }
 
@@ -42,12 +44,12 @@ class ShowVkAdsAccountsCommand extends Command
             foreach ($clientAccounts as $account) {
                 $this->line("   ID: {$account->id} | VK ID: {$account->vk_account_id} | {$account->account_name}");
                 $this->line("   Статус: {$account->account_status} | Баланс: {$account->balance} {$account->currency}");
-                $this->line("   Последняя синхронизация: " . ($account->last_sync_at ? $account->last_sync_at->format('Y-m-d H:i:s') : 'Никогда'));
+                $this->line('   Последняя синхронизация: '.($account->last_sync_at ? $account->last_sync_at->format('Y-m-d H:i:s') : 'Никогда'));
 
                 if ($account->contract) {
                     $this->line("   Договор: {$account->contract->number}");
                 }
-                $this->line("");
+                $this->line('');
             }
         }
 

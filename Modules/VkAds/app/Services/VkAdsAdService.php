@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
 use Modules\VkAds\app\Models\VkAdsAccount;
 use Modules\VkAds\app\Models\VkAdsAd;
-use Modules\VkAds\app\Models\VkAdsAdGroup;
 
 class VkAdsAdService
 {
@@ -34,27 +33,28 @@ class VkAdsAdService
     {
         try {
             if ($adGroups->isEmpty()) {
-                Log::info("No ad groups to sync ads for");
+                Log::info('No ad groups to sync ads for');
+
                 // ИСПРАВЛЕНО: возвращаем пустую Eloquent Collection
-                return new Collection();
+                return new Collection;
             }
 
             $adGroupIds = $adGroups->pluck('vk_ad_group_id')->toArray();
 
-            Log::info("Syncing ads for ad groups", [
+            Log::info('Syncing ads for ad groups', [
                 'account_id' => $account->id,
-                'ad_group_ids' => $adGroupIds
+                'ad_group_ids' => $adGroupIds,
             ]);
 
             // Запрашиваем объявления (banners) согласно VK Ads API
             $vkAds = $this->apiService->makeAuthenticatedRequest($account, 'banners', [
                 'ad_group_id__in' => implode(',', $adGroupIds),
-                'fields' => 'id,name,status,ad_group_id,content,delivery,issues,moderation_status,moderation_reasons,textblocks,urls,ord_marker,created,updated'
+                'fields' => 'id,name,status,ad_group_id,content,delivery,issues,moderation_status,moderation_reasons,textblocks,urls,ord_marker,created,updated',
             ]);
 
-            Log::info("Received ads from VK", [
+            Log::info('Received ads from VK', [
                 'count' => count($vkAds),
-                'sample_fields' => !empty($vkAds) ? array_keys($vkAds[0]) : []
+                'sample_fields' => ! empty($vkAds) ? array_keys($vkAds[0]) : [],
             ]);
 
             // ИСПРАВЛЕНО: используем массив для сбора объектов, затем создаем Eloquent Collection
@@ -65,16 +65,17 @@ class VkAdsAdService
                     // Ищем группу объявлений
                     $adGroup = $adGroups->firstWhere('vk_ad_group_id', $vkAd['ad_group_id'] ?? null);
 
-                    if (!$adGroup) {
-                        Log::warning("Ad group not found for ad", [
+                    if (! $adGroup) {
+                        Log::warning('Ad group not found for ad', [
                             'ad_id' => $vkAd['id'],
-                            'ad_group_id' => $vkAd['ad_group_id'] ?? 'missing'
+                            'ad_group_id' => $vkAd['ad_group_id'] ?? 'missing',
                         ]);
+
                         continue;
                     }
 
                     $ad = VkAdsAd::updateOrCreate([
-                        'vk_ad_id' => $vkAd['id']
+                        'vk_ad_id' => $vkAd['id'],
                     ], [
                         'vk_ads_ad_group_id' => $adGroup->id,
                         'name' => $vkAd['name'],
@@ -95,30 +96,32 @@ class VkAdsAdService
                     // ИСПРАВЛЕНО: добавляем в массив
                     $syncedAds[] = $ad;
 
-                    Log::info("Synced ad", [
+                    Log::info('Synced ad', [
                         'vk_ad_id' => $vkAd['id'],
                         'name' => $vkAd['name'],
                         'ad_group_id' => $adGroup->id,
                         'status' => $ad->status,
                         'delivery' => $ad->delivery,
-                        'moderation_status' => $ad->moderation_status
+                        'moderation_status' => $ad->moderation_status,
                     ]);
 
                 } catch (\Exception $e) {
-                    Log::warning("Failed to sync ad {$vkAd['id']}: " . $e->getMessage());
+                    Log::warning("Failed to sync ad {$vkAd['id']}: ".$e->getMessage());
                 }
             }
 
             // ИСПРАВЛЕНО: создаем Eloquent Collection из массива
             $result = new Collection($syncedAds);
 
-            Log::info("Successfully synced ads", ['count' => $result->count()]);
+            Log::info('Successfully synced ads', ['count' => $result->count()]);
+
             return $result;
 
         } catch (\Exception $e) {
-            Log::warning("Failed to sync ads for ad groups: " . $e->getMessage());
+            Log::warning('Failed to sync ads for ad groups: '.$e->getMessage());
+
             // ИСПРАВЛЕНО: возвращаем пустую Eloquent Collection
-            return new Collection();
+            return new Collection;
         }
     }
 
@@ -127,7 +130,7 @@ class VkAdsAdService
      */
     private function mapVkStatus($vkStatus): string
     {
-        return match($vkStatus) {
+        return match ($vkStatus) {
             'active' => VkAdsAd::STATUS_ACTIVE,
             'deleted' => VkAdsAd::STATUS_DELETED,
             'blocked' => VkAdsAd::STATUS_BLOCKED,
@@ -140,7 +143,7 @@ class VkAdsAdService
      */
     private function mapDeliveryStatus($vkDelivery): string
     {
-        return match($vkDelivery) {
+        return match ($vkDelivery) {
             'pending' => VkAdsAd::DELIVERY_PENDING,
             'delivering' => VkAdsAd::DELIVERY_DELIVERING,
             'not_delivering' => VkAdsAd::DELIVERY_NOT_DELIVERING,
@@ -153,7 +156,7 @@ class VkAdsAdService
      */
     private function mapModerationStatus($vkStatus): string
     {
-        return match($vkStatus) {
+        return match ($vkStatus) {
             'pending' => VkAdsAd::MODERATION_PENDING,
             'allowed' => VkAdsAd::MODERATION_ALLOWED,
             'banned' => VkAdsAd::MODERATION_BANNED,
@@ -166,7 +169,7 @@ class VkAdsAdService
      */
     private function parseVkDateTime($vkDateTime): ?\Carbon\Carbon
     {
-        if (!$vkDateTime) {
+        if (! $vkDateTime) {
             return null;
         }
 
@@ -178,6 +181,7 @@ class VkAdsAdService
             return \Carbon\Carbon::parse($vkDateTime);
         } catch (\Exception $e) {
             Log::warning("Failed to parse VK datetime: {$vkDateTime}");
+
             return null;
         }
     }

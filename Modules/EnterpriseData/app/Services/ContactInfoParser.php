@@ -206,7 +206,7 @@ class ContactInfoParser
         // Ограничиваем длину
         $result = strlen($phone) > 50 ? substr($phone, 0, 50) : $phone;
 
-        return !empty($result) ? $result : null;
+        return ! empty($result) ? $result : null;
     }
 
     /**

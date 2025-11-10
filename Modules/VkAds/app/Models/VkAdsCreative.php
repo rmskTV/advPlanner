@@ -13,7 +13,7 @@ class VkAdsCreative extends CatalogObject
     protected $fillable = [
         'vk_creative_id', 'vk_ads_account_id', 'name', 'description',
         'creative_type', 'format', 'video_file_id', 'image_file_id',
-        'width', 'height', 'duration'
+        'width', 'height', 'duration',
     ];
 
     protected $casts = [
@@ -21,6 +21,7 @@ class VkAdsCreative extends CatalogObject
     ];
 
     const TYPE_VIDEO = 'video';
+
     const TYPE_IMAGE = 'image';
 
     public function account(): BelongsTo

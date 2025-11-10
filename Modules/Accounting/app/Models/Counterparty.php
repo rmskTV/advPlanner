@@ -137,4 +137,21 @@ class Counterparty extends CatalogObject
     {
         $this->update(['last_sync_at' => now()]);
     }
+
+    public function sanitizeName(): string
+    {
+        $input = $this->full_name ?? $this->name;
+
+        // Декодируем HTML entities
+        $input = html_entity_decode($input, ENT_QUOTES, 'UTF-8');
+
+        // Разрешенные символы: кириллица, цифры, пробелы, дефисы и: — & # , . ; ! ? ' ` + * № / : | _ % ° « » " ( )
+        // Удаляем все остальные символы, кроме разрешенных
+        $input = preg_replace('/[^\p{Cyrillic}\p{Latin}0-9\s\-—&#,.;!?\`\'\*\+№\/:\|_%°«»"()$$$$]/u', '', $input);
+
+        // Ограничиваем длину
+        $input = mb_substr($input, 0, 255);
+
+        return trim($input);
+    }
 }

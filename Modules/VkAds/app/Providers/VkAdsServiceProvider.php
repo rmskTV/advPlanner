@@ -9,7 +9,6 @@ use Modules\VkAds\app\Services\VkAdsAccountService;
 use Modules\VkAds\app\Services\VkAdsAdGroupService;
 use Modules\VkAds\app\Services\VkAdsApiService;
 use Modules\VkAds\app\Services\VkAdsCampaignService;
-use Modules\VkAds\app\Services\VkAdsStatisticsService;
 use Modules\VkAds\Providers\RouteServiceProvider;
 use Nwidart\Modules\Traits\PathNamespace;
 use RecursiveDirectoryIterator;
@@ -55,10 +54,10 @@ class VkAdsServiceProvider extends ServiceProvider
                 \Modules\VkAds\app\Console\Commands\TestVkAdsConnectionCommand::class,
                 \Modules\VkAds\app\Console\Commands\ShowVkAdsAccountsCommand::class,
                 \Modules\VkAds\app\Console\Commands\TestVkAdsEndpointsCommand::class,
+                \Modules\VkAds\app\Console\Commands\CreateVkAdsAccountCommand::class,
             ]);
         }
     }
-
 
     /**
      * Register command Schedules.

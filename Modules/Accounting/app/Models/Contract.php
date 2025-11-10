@@ -121,6 +121,11 @@ class Contract extends CatalogObject
         return $this->belongsTo(Organization::class);
     }
 
+    public function counterparty(): BelongsTo
+    {
+        return $this->belongsTo(Counterparty::class, 'counterparty_guid_1c', 'guid_1c');
+    }
+
     /**
      * Связь с заказами клиентов (если будет создана модель)
      */

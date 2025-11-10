@@ -11,7 +11,7 @@ class VkAdsAd extends CatalogObject
         'vk_ad_id', 'vk_ads_ad_group_id', 'name', 'status',
         'content', 'delivery', 'issues', 'moderation_status', 'moderation_reasons',
         'textblocks', 'urls', 'ord_marker', 'created_at_vk', 'updated_at_vk',
-        'last_sync_at'
+        'last_sync_at',
     ];
 
     protected $casts = [
@@ -27,15 +27,21 @@ class VkAdsAd extends CatalogObject
 
     // ОБНОВЛЕНО: константы согласно фактическим значениям VK Ads API
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_DELETED = 'deleted';
+
     public const STATUS_BLOCKED = 'blocked';
 
     public const DELIVERY_PENDING = 'pending';
+
     public const DELIVERY_DELIVERING = 'delivering';
+
     public const DELIVERY_NOT_DELIVERING = 'not_delivering';
 
     public const MODERATION_PENDING = 'pending';
+
     public const MODERATION_ALLOWED = 'allowed';
+
     public const MODERATION_BANNED = 'banned';
 
     public function adGroup(): BelongsTo
@@ -69,7 +75,7 @@ class VkAdsAd extends CatalogObject
      */
     public function getPrimaryUrl(): ?string
     {
-        if (!$this->urls || !is_array($this->urls)) {
+        if (! $this->urls || ! is_array($this->urls)) {
             return null;
         }
 
@@ -86,7 +92,7 @@ class VkAdsAd extends CatalogObject
      */
     public function getHeadline(): ?string
     {
-        if (!$this->textblocks || !is_array($this->textblocks)) {
+        if (! $this->textblocks || ! is_array($this->textblocks)) {
             return null;
         }
 
@@ -107,7 +113,7 @@ class VkAdsAd extends CatalogObject
      */
     public function getDescription(): ?string
     {
-        if (!$this->textblocks || !is_array($this->textblocks)) {
+        if (! $this->textblocks || ! is_array($this->textblocks)) {
             return null;
         }
 

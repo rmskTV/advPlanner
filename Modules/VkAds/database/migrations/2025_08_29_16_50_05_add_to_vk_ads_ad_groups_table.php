@@ -52,7 +52,7 @@ return new class extends Migration
                 'budget_limit_day',
                 'max_price',
                 'uniq_shows_limit',
-                'uniq_shows_period'
+                'uniq_shows_period',
             ]);
         });
     }

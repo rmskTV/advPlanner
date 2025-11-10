@@ -3,13 +3,14 @@
 namespace Modules\VkAds\app\Console\Commands;
 
 use Illuminate\Console\Command;
-use Modules\VkAds\app\Services\VkAdsApiService;
-use Modules\VkAds\app\Services\VkAdsAccountService;
 use Modules\VkAds\app\Models\VkAdsAccount;
+use Modules\VkAds\app\Services\VkAdsAccountService;
+use Modules\VkAds\app\Services\VkAdsApiService;
 
 class TestVkAdsConnectionCommand extends Command
 {
     protected $signature = 'vk-ads:test-connection {account-id=1}';
+
     protected $description = 'Тестирование подключения к VK Ads API';
 
     public function handle(VkAdsApiService $apiService, VkAdsAccountService $accountService): int
@@ -35,10 +36,10 @@ class TestVkAdsConnectionCommand extends Command
             if ($account->isAgency()) {
                 // Для агентского аккаунта тестируем получение клиентов
                 $clients = $apiService->makeAuthenticatedRequest($account, 'agency/clients');
-                $this->info("   ✓ Получено клиентов агентства: " . count($clients));
+                $this->info('   ✓ Получено клиентов агентства: '.count($clients));
 
                 // ИСПРАВЛЕНО: правильная обработка структуры данных
-                if (!empty($clients)) {
+                if (! empty($clients)) {
                     $this->line('3. Клиенты агентства:');
                     foreach (array_slice($clients, 0, 5) as $client) {
                         $accountData = $client['user']['account'] ?? [];
@@ -54,13 +55,13 @@ class TestVkAdsConnectionCommand extends Command
             } else {
                 // Для клиентского аккаунта тестируем получение кампаний
                 $campaigns = $apiService->makeAuthenticatedRequest($account, 'campaigns');
-                $this->info("   ✓ Получено кампаний: " . count($campaigns));
+                $this->info('   ✓ Получено кампаний: '.count($campaigns));
             }
 
             return self::SUCCESS;
 
         } catch (\Exception $e) {
-            $this->error('Ошибка подключения: ' . $e->getMessage());
+            $this->error('Ошибка подключения: '.$e->getMessage());
 
             if ($this->option('verbose')) {
                 $this->line('Детали ошибки:');
