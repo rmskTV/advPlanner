@@ -10,7 +10,7 @@ class VkAdsAd extends CatalogObject
     protected $fillable = [
         'vk_ad_id', 'vk_ads_ad_group_id', 'name', 'status',
         'content', 'delivery', 'issues', 'moderation_status', 'moderation_reasons',
-        'textblocks', 'urls', 'ord_marker', 'created_at_vk', 'updated_at_vk',
+        'textblocks', 'urls', 'ord_marker', 'created_at_vk', 'updated_at_vk', 'vk_data',
         'last_sync_at',
     ];
 
@@ -23,6 +23,7 @@ class VkAdsAd extends CatalogObject
         'created_at_vk' => 'datetime',
         'updated_at_vk' => 'datetime',
         'last_sync_at' => 'datetime',
+        'vk_data' => 'array',
     ];
 
     // ОБНОВЛЕНО: константы согласно фактическим значениям VK Ads API

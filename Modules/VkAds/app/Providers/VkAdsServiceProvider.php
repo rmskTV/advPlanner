@@ -55,6 +55,9 @@ class VkAdsServiceProvider extends ServiceProvider
                 \Modules\VkAds\app\Console\Commands\ShowVkAdsAccountsCommand::class,
                 \Modules\VkAds\app\Console\Commands\TestVkAdsEndpointsCommand::class,
                 \Modules\VkAds\app\Console\Commands\CreateVkAdsAccountCommand::class,
+                \Modules\VkAds\app\Console\Commands\CreateVkAdsCampaignCommand::class,
+                \Modules\VkAds\app\Console\Commands\RevokeVkTokens::class,
+
             ]);
         }
     }

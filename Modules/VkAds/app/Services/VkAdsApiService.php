@@ -41,6 +41,7 @@ class VkAdsApiService
             'banners' => 'banners.json',
             'creatives' => 'creatives.json',
             'agency/clients' => 'agency/clients.json',
+            'packages' => 'packages.json',
         ];
 
         $actualEndpoint = $endpointMap[$endpoint] ?? $endpoint;
@@ -130,7 +131,7 @@ class VkAdsApiService
         // Существующая логика пагинации...
         $allItems = [];
         $offset = 0;
-        $limit = $params['limit'] ?? 100; // VK Ads API обычно поддерживает до 100 элементов за запрос
+        $limit = $params['limit'] ?? 50; // VK Ads API обычно поддерживает до 100 элементов за запрос
         $maxIterations = 50; // Защита от бесконечного цикла
         $iteration = 0;
 
@@ -480,5 +481,48 @@ class VkAdsApiService
     public function hasRefreshToken(): bool
     {
         return ! empty($this->refresh_token);
+    }
+
+    /**
+     * Удалить все токены пользователя через VK Ads API
+     */
+    public function revokeAllTokens(VkAdsAccount $account): bool
+    {
+        try {
+            $response = Http::withHeaders([
+                'Content-Type' => 'application/x-www-form-urlencoded',
+            ])->asForm()->post($this->baseUrl.'oauth2/token/delete.json', [
+                'client_id' => $this->clientId,
+                'client_secret' => $this->clientSecret,
+                'user_id' => $account->vk_user_id, // или 'username' => $account->vk_username
+            ]);
+
+            if ($response->successful()) {
+                Log::info('All tokens revoked via VK API', [
+                    'account_id' => $account->id,
+                    'vk_user_id' => $account->vk_user_id,
+                ]);
+
+                // Также очищаем локальную базу
+                $account->tokens()->delete();
+
+                return true;
+            }
+
+            Log::error('Failed to revoke tokens via VK API', [
+                'status' => $response->status(),
+                'response' => $response->body(),
+            ]);
+
+            return false;
+
+        } catch (\Exception $e) {
+            Log::error('Exception while revoking tokens', [
+                'error' => $e->getMessage(),
+                'account_id' => $account->id,
+            ]);
+
+            return false;
+        }
     }
 }

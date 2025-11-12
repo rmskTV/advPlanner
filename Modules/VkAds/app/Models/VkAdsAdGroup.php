@@ -15,7 +15,7 @@ class VkAdsAdGroup extends CatalogObject
         // ДОБАВЛЕНО: новые поля
         'age_restrictions', 'autobidding_mode', 'budget_limit', 'budget_limit_day',
         'max_price', 'uniq_shows_limit', 'uniq_shows_period',
-        'last_sync_at',
+        'last_sync_at', 'vk_data',
     ];
 
     protected $casts = [
@@ -26,6 +26,7 @@ class VkAdsAdGroup extends CatalogObject
         'max_price' => 'decimal:2',
         'uniq_shows_limit' => 'integer',
         'last_sync_at' => 'datetime',
+        'vk_data' => 'array',
     ];
 
     public function account(): BelongsTo

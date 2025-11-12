@@ -42,7 +42,7 @@ class VkAdsAdGroupService
             // ИСПРАВЛЕНО: запрашиваем все нужные поля для групп объявлений
             $vkAdGroups = $this->apiService->makeAuthenticatedRequest($account, 'ad_groups', [
                 'ad_plan_id__in' => implode(',', $campaignIds),
-                'fields' => 'id,name,status,ad_plan_id,targetings,age_restrictions,autobidding_mode,budget_limit,budget_limit_day,max_price,uniq_shows_limit,uniq_shows_period',
+                'fields' => 'id,name,package_id,status,ad_plan_id,targetings,age_restrictions,autobidding_mode,budget_limit,budget_limit_day,max_price,uniq_shows_limit,uniq_shows_period',
             ]);
 
             Log::info('Received ad groups from VK', [
@@ -82,7 +82,7 @@ class VkAdsAdGroupService
                     'max_price' => $vkAdGroup['max_price'] ?? null,
                     'uniq_shows_limit' => $vkAdGroup['uniq_shows_limit'] ?? null,
                     'uniq_shows_period' => $vkAdGroup['uniq_shows_period'] ?? null,
-
+                    'vk_data' => $vkAdGroup,
                     'last_sync_at' => now(),
                 ]);
 

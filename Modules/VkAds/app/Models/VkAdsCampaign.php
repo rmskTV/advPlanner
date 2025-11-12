@@ -15,7 +15,7 @@ class VkAdsCampaign extends CatalogObject
         // ДОБАВЛЕНО: новые поля
         'autobidding_mode', 'budget_limit', 'budget_limit_day', 'max_price',
         'objective', 'priced_goal',
-        'daily_budget', 'total_budget', 'start_date', 'end_date', 'last_sync_at',
+        'daily_budget', 'total_budget', 'start_date', 'end_date', 'last_sync_at', 'vk_data',
     ];
 
     protected $casts = [
@@ -28,6 +28,7 @@ class VkAdsCampaign extends CatalogObject
         'end_date' => 'date',
         'last_sync_at' => 'datetime',
         'priced_goal' => 'array',
+        'vk_data' => 'array',
     ];
 
     public function account(): BelongsTo

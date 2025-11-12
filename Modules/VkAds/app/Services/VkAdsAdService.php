@@ -90,6 +90,7 @@ class VkAdsAdService
                         'ord_marker' => $vkAd['ord_marker'] ?? null,
                         'created_at_vk' => $this->parseVkDateTime($vkAd['created'] ?? null),
                         'updated_at_vk' => $this->parseVkDateTime($vkAd['updated'] ?? null),
+                        'vk_data' => $vkAd,
                         'last_sync_at' => now(),
                     ]);
 
