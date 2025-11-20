@@ -1,0 +1,30 @@
+{
+    "name": "nwidart/mediahills",
+    "description": "",
+    "authors": [
+        {
+            "name": "Nicolas Widart",
+            "email": "n.widart@gmail.com"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {
+
+            }
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\MediaHills\\": "app/",
+            "Modules\\MediaHills\\Database\\Factories\\": "database/factories/",
+            "Modules\\MediaHills\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\MediaHills\\Tests\\": "tests/"
+        }
+    }
+}

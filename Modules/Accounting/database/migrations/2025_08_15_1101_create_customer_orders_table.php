@@ -76,6 +76,11 @@ return new class extends Migration
             $table->string('responsible_guid_1c', 36)->nullable()
                 ->comment('GUID ответственного в 1С');
 
+            $table->string('responsible_name')->nullable()
+                ->comment('Имя ответственного в 1С');
+
+            $table->string('comment')->nullable()
+                ->comment('Комментарий');
             // Системные поля
             $table->boolean('deletion_mark')->default(false)
                 ->comment('Пометка удаления');

@@ -1,0 +1,11 @@
+{
+    "name": "MediaHills",
+    "alias": "mediahills",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\MediaHills\\Providers\\MediaHillsServiceProvider"
+    ],
+    "files": []
+}

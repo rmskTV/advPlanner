@@ -54,7 +54,9 @@ class CustomerOrder extends Document
         'delivery_address',
         'organization_bank_account_guid_1c',
         'responsible_guid_1c',
+        'responsible_name',
         'deletion_mark',
+        'comment',
         'last_sync_at',
     ];
 

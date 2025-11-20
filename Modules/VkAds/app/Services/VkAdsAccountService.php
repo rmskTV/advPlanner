@@ -37,6 +37,7 @@ class VkAdsAccountService
         // Проверяем существующие кабинеты для этого контрагента
         $existingAccounts = VkAdsAccount::where('counterparty_id', $contract->counterparty->id)
             ->where('account_type', 'client')
+            ->whereNot('status', 'deleted')
             ->get();
 
         // 1. Если есть кабинет с этим же договором - ничего не делаем
@@ -276,13 +277,17 @@ class VkAdsAccountService
 
                 // ИСПРАВЛЕНО: сохраняем и account_id и user_id
                 $client = VkAdsAccount::updateOrCreate([
-                    'vk_account_id' => $accountData['id'] ?? $userData['id'],
+                    'vk_user_id' => $userData['id'],
                 ], [
+                    'vk_account_id' => $accountData['id'],
                     'vk_user_id' => $userData['id'], // ДОБАВЛЕНО: ID пользователя для токенов
                     'vk_username' => $userData['username'], // ДОБАВЛЕНО: username для токенов
                     'account_name' => $userData['client_username'] ?? 'Client '.($accountData['id'] ?? $userData['id']),
                     'account_type' => 'client',
-                    'account_status' => $this->mapVkAccountStatus($vkClient['status'] ?? 'active'),
+                    'account_status' => str_ends_with($userData['username'] ?? '', 'deleted')
+                        ? 'deleted'
+                        : $this->mapVkAccountStatus($accountData['status'] ?? 'active'),
+
                     'balance' => isset($accountData['balance']) ? (float) $accountData['balance'] : 0,
                     'currency' => $accountData['currency'] ?? 'RUB',
                     'last_sync_at' => now(),

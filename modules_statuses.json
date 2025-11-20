@@ -9,5 +9,6 @@
     "BroadcastingDayTemplates": true,
     "EnterpriseData": true,
     "Accounting": true,
-    "VkAds": true
+    "VkAds": true,
+    "MediaHills": true
 }

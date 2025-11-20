@@ -99,10 +99,12 @@ class CustomerOrderMapping extends ObjectMapping
         $responsibleData = $properties['ОбщиеСвойстваОбъектовФормата']['Ответственный'] ?? [];
         if (! empty($responsibleData)) {
             $order->responsible_guid_1c = $responsibleData['Ссылка'] ?? null;
+            $order->responsible_name = $responsibleData['Наименование'] ?? null;
         }
 
         // Системные поля
         $order->deletion_mark = false;
+        $order->comment = $properties['ОбщиеСвойстваОбъектовФормата']['Комментарий'] ?? null;
         $order->last_sync_at = now();
 
         return $order;

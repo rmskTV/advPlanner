@@ -42,6 +42,10 @@ class VkAdsApiService
             'creatives' => 'creatives.json',
             'agency/clients' => 'agency/clients.json',
             'packages' => 'packages.json',
+            'urls' => 'urls.json',
+            'content/static' => 'content/static.json',
+            'content/video' => 'content/video.json',
+            'content/html5' => 'content/html5.json',
         ];
 
         $actualEndpoint = $endpointMap[$endpoint] ?? $endpoint;
@@ -88,6 +92,7 @@ class VkAdsApiService
         Log::info('VK Ads API response', [
             'status' => $response->status(),
             'success' => $response->successful(),
+            'data' => $response->body(),
         ]);
 
         // Обработка 401
