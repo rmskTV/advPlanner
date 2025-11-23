@@ -32,7 +32,7 @@ class ProductGroupMapping extends ObjectMapping
         $group->code = $this->getFieldValue($keyProperties, 'КодВПрограмме');
 
         // Родительская группа (если есть)
-        $parentData = $keyProperties['Родитель'] ?? [];
+        $parentData = $keyProperties['Группа'] ?? [];
         if (! empty($parentData) && isset($parentData['Ссылка'])) {
             $parentGroup = ProductGroup::findByGuid1C($parentData['Ссылка']);
             $group->parent_id = $parentGroup?->id;

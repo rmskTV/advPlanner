@@ -1,0 +1,30 @@
+{
+    "name": "nwidart/bitrix24",
+    "description": "",
+    "authors": [
+        {
+            "name": "Nicolas Widart",
+            "email": "n.widart@gmail.com"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {
+
+            }
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\Bitrix24\\": "app/",
+            "Modules\\Bitrix24\\Database\\Factories\\": "database/factories/",
+            "Modules\\Bitrix24\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\Bitrix24\\Tests\\": "tests/"
+        }
+    }
+}

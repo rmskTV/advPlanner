@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Modules\VkAds\Http\Controllers\VkAdsController;
+use Modules\Bitrix24\Http\Controllers\Bitrix24Controller;
 
 /*
 |--------------------------------------------------------------------------
@@ -15,4 +15,5 @@ use Modules\VkAds\Http\Controllers\VkAdsController;
 */
 
 Route::group([], function () {
+    Route::resource('bitrix24', Bitrix24Controller::class)->names('bitrix24');
 });

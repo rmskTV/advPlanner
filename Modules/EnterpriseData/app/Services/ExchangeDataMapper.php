@@ -10,6 +10,7 @@ use Modules\Accounting\app\Models\Counterparty;
 use Modules\Accounting\app\Models\CounterpartyGroup;
 use Modules\Accounting\app\Models\Currency;
 use Modules\Accounting\app\Models\CustomerOrder;
+use Modules\Accounting\app\Models\ObjectChangeLog;
 use Modules\Accounting\app\Models\OrderPaymentStatus;
 use Modules\Accounting\app\Models\OrderShipmentStatus;
 use Modules\Accounting\app\Models\Organization;
@@ -209,7 +210,6 @@ class ExchangeDataMapper
                 } else {
                     $updatedIds[] = $result['model']->id;
                 }
-
                 $processedCount++;
 
             } catch (\Exception $e) {
@@ -270,6 +270,7 @@ class ExchangeDataMapper
             }
         }
 
+        ObjectChangeLog::log1CChange($modelClass,array_values($searchKeys)[0], $savedModel->id);
         return ['model' => $savedModel, 'created' => $wasCreated];
     }
 

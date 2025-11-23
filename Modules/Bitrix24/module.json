@@ -1,0 +1,11 @@
+{
+    "name": "Bitrix24",
+    "alias": "bitrix24",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Bitrix24\\Providers\\Bitrix24ServiceProvider"
+    ],
+    "files": []
+}
