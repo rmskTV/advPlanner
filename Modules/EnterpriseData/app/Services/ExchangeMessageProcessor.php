@@ -17,7 +17,7 @@ class ExchangeMessageProcessor
 {
     private const MAX_XML_SIZE = 100 * 1024 * 1024; // 100MB
 
-    private const ENTERPRISE_DATA_NAMESPACE = 'http://v8.1c.ru/edi/edi_stnd/EnterpriseData/1.11';
+    private const ENTERPRISE_DATA_NAMESPACE = 'http://v8.1c.ru/edi/edi_stnd/EnterpriseData/1.19';
 
     private const MESSAGE_NAMESPACE = 'http://www.1c.ru/SSL/Exchange/Message';
 
@@ -221,7 +221,7 @@ class ExchangeMessageProcessor
      */
     private function addAvailableVersions(DOMDocument $dom, \DOMElement $headerElement): void
     {
-        $availableVersions = config('enterprisedata.available_versions_sending', ['1.11']);
+        $availableVersions = config('enterprisedata.available_versions_sending', ['1.19']);
 
         foreach ($availableVersions as $version) {
             $this->addHeaderElement($dom, $headerElement, 'msg:AvailableVersion', $version);

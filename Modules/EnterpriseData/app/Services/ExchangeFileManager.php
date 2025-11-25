@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use League\Flysystem\Filesystem;
+use League\Flysystem\FilesystemException;
 use Modules\EnterpriseData\app\Exceptions\ExchangeFileException;
 use Modules\EnterpriseData\app\Models\ExchangeFtpConnector;
 use Modules\EnterpriseData\app\ValueObjects\FileLock;
@@ -80,39 +81,101 @@ class ExchangeFileManager
             $exchangePath = $this->getExchangePath($connector);
             $filePath = empty($exchangePath) ? $fileName : $exchangePath.'/'.$fileName;
 
-            // Проверка существования файла
-            if (! $filesystem->fileExists($filePath)) {
+            if (!$filesystem->fileExists($filePath)) {
                 throw new ExchangeFileException("File {$fileName} does not exist at path {$filePath}");
             }
 
-            // Проверка размера файла
             $fileSize = $filesystem->fileSize($filePath);
             if ($fileSize > self::MAX_FILE_SIZE) {
                 throw new ExchangeFileException("File {$fileName} exceeds maximum size limit ({$fileSize} bytes)");
             }
 
-            // Проверка расширения
-            if (! $this->isValidFileExtension($fileName)) {
+            if (!$this->isValidFileExtension($fileName)) {
                 throw new ExchangeFileException("File {$fileName} has invalid extension");
             }
 
             $content = $filesystem->read($filePath);
 
-            // Проверка на наличие вредоносного содержимого
-            $this->validateFileContent($content, $fileName);
+            // Санитизация XML перед использованием
+            $content = $this->sanitizeXmlContent($content, $fileName);
 
             return $content;
 
-        } catch (\Exception $e) {
+        } catch (FilesystemException $e) {
             Log::error('Failed to download file', [
                 'connector' => $connector->id,
                 'file' => $fileName,
                 'error' => $e->getMessage(),
-                'error_class' => get_class($e),
             ]);
-
             throw new ExchangeFileException("Failed to download file {$fileName}: ".$e->getMessage(), 0, $e);
         }
+    }
+
+    /**
+     * Безопасная обработка XML содержимого
+     */
+    private function sanitizeXmlContent(string $content, string $fileName): string
+    {
+        // Проверка на подозрительные паттерны
+        if ($this->hasXXEVulnerability($content)) {
+            // Удаляем DOCTYPE и внешние сущности
+            $content = $this->removeDoctype($content);
+
+            Log::warning('XML file contained DOCTYPE declaration, removed for security', [
+                'file' => $fileName,
+            ]);
+        }
+
+        // Валидация что это корректный XML
+        $this->validateXmlStructure($content, $fileName);
+
+        return $content;
+    }
+
+    /**
+     * Проверка на XXE уязвимости
+     */
+    private function hasXXEVulnerability(string $content): bool
+    {
+        return preg_match('/<!DOCTYPE[^>]*$$/i', $content) ||
+            preg_match('/<!ENTITY[^>]*SYSTEM/i', $content) ||
+            preg_match('/<!ENTITY[^>]*PUBLIC/i', $content);
+    }
+
+    /**
+     * Удаление DOCTYPE декларации
+     */
+    private function removeDoctype(string $content): string
+    {
+        // Удаляем DOCTYPE с внутренним DTD
+        $content = preg_replace('/<!DOCTYPE[^>]*\[.*?$$>/is', '', $content);
+        // Удаляем простой DOCTYPE
+        $content = preg_replace('/<!DOCTYPE[^>]*>/i', '', $content);
+
+        return $content;
+    }
+
+    /**
+     * Валидация структуры XML
+     */
+    private function validateXmlStructure(string $content, string $fileName): void
+    {
+        libxml_use_internal_errors(true);
+        libxml_disable_entity_loader(true); // Отключаем загрузку внешних сущностей
+
+        $xml = simplexml_load_string($content, 'SimpleXMLElement', LIBXML_NOENT | LIBXML_DTDLOAD | LIBXML_DTDATTR);
+
+        if ($xml === false) {
+            $errors = libxml_get_errors();
+            libxml_clear_errors();
+
+            throw new ExchangeFileException(
+                "File {$fileName} contains invalid XML: " .
+                ($errors[0]->message ?? 'Unknown error')
+            );
+        }
+
+        libxml_use_internal_errors(false);
     }
 
     /**

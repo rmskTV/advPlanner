@@ -14,6 +14,7 @@ use Modules\EnterpriseData\app\Console\Commands\ProcessExchangeCommand;
 use Modules\EnterpriseData\app\Console\Commands\ShowMappingsCommand;
 use Modules\EnterpriseData\app\Console\Commands\ShowUnmappedObjectsCommand;
 use Modules\EnterpriseData\app\Console\Commands\TestFtpConnectionCommand;
+use Modules\EnterpriseData\app\Mappings\ContactPersonMapping;
 use Modules\EnterpriseData\app\Mappings\ContractMapping;
 use Modules\EnterpriseData\app\Mappings\CounterpartyGroupMapping;
 use Modules\EnterpriseData\app\Mappings\CounterpartyMapping;
@@ -125,6 +126,7 @@ class EnterpriseDataServiceProvider extends ServiceProvider
             $registry->registerMapping('Справочник.НоменклатураГруппа', new ProductGroupMapping);
             $registry->registerMapping('Справочник.Номенклатура', new ProductMapping);
             $registry->registerMapping('Справочник.Договоры', new ContractMapping);
+            $registry->registerMapping('Справочник.КонтактныеЛица', new ContactPersonMapping);
             $registry->registerMapping('Документ.ЗаказКлиента', new CustomerOrderMapping);
             $registry->registerMapping('Документ.РеализацияТоваровУслуг', new SaleMapping);
 
