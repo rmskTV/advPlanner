@@ -43,7 +43,9 @@ class AccountingServiceProvider extends ServiceProvider
      */
     protected function registerCommands(): void
     {
-        // $this->commands([]);
+        $this->commands([
+            \Modules\Accounting\app\Console\Commands\FillCounterpartyResponsible::class,
+        ]);
     }
 
     /**

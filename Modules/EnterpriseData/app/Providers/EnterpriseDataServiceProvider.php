@@ -14,6 +14,7 @@ use Modules\EnterpriseData\app\Console\Commands\ProcessExchangeCommand;
 use Modules\EnterpriseData\app\Console\Commands\ShowMappingsCommand;
 use Modules\EnterpriseData\app\Console\Commands\ShowUnmappedObjectsCommand;
 use Modules\EnterpriseData\app\Console\Commands\TestFtpConnectionCommand;
+use Modules\EnterpriseData\app\Mappings\BankAccountMapping;
 use Modules\EnterpriseData\app\Mappings\ContactPersonMapping;
 use Modules\EnterpriseData\app\Mappings\ContractMapping;
 use Modules\EnterpriseData\app\Mappings\CounterpartyGroupMapping;
@@ -129,7 +130,7 @@ class EnterpriseDataServiceProvider extends ServiceProvider
             $registry->registerMapping('Справочник.КонтактныеЛица', new ContactPersonMapping);
             $registry->registerMapping('Документ.ЗаказКлиента', new CustomerOrderMapping);
             $registry->registerMapping('Документ.РеализацияТоваровУслуг', new SaleMapping);
-
+            $registry->registerMapping('Справочник.БанковскиеСчета', new BankAccountMapping());
             // Регистры состояний заказов
             $registry->registerMapping('Справочник.СостояниеОплатыЗаказа', new OrderPaymentStatusMapping);
             $registry->registerMapping('Справочник.СостояниеОтгрузкиЗаказа', new OrderShipmentStatusMapping);

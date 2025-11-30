@@ -68,8 +68,10 @@ class Counterparty extends CatalogObject
         'main_bank_account',
         'main_bank_bik',
         'main_bank_name',
+        'responsible_guid_1c',
         'is_our_company',
         'deletion_mark',
+        'is_pseudoip',
         'last_sync_at',
     ];
 
@@ -153,5 +155,23 @@ class Counterparty extends CatalogObject
         $input = mb_substr($input, 0, 255);
 
         return trim($input);
+    }
+
+    /**
+     * Связь с банковскими счетами
+     */
+    public function bankAccounts(): HasMany
+    {
+        return $this->hasMany(BankAccount::class);
+    }
+
+    /**
+     * Получить активные банковские счета
+     */
+    public function activeBankAccounts(): HasMany
+    {
+        return $this->hasMany(BankAccount::class)
+            ->where('is_active', true)
+            ->where('deletion_mark', false);
     }
 }

@@ -16,7 +16,7 @@ class ExchangeFileManager
 {
     private const LOCK_TIMEOUT = 300; // 5 минут
 
-    private const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+    private const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 
     private const ALLOWED_EXTENSIONS = ['xml'];
 

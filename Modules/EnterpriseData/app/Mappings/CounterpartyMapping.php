@@ -41,6 +41,9 @@ class CounterpartyMapping extends ObjectMapping
 
         // ИНН
         $counterparty->inn = $this->getFieldValue($keyProperties, 'ИНН');
+        $counterparty->kpp = $this->getFieldValue($keyProperties, 'КПП');
+        $counterparty->ogrn = $this->getFieldValue($keyProperties, 'РегистрационныйНомер');
+        $counterparty->is_pseudoip = $this->getFieldValue($keyProperties, 'Самозанятый') == 'true';
 
         // Группа контрагента
         $groupData = $keyProperties['Группа'] ?? [];
@@ -65,8 +68,6 @@ class CounterpartyMapping extends ObjectMapping
         // Регистрационный номер нерезидента
         $counterparty->registration_number = $this->getFieldValue($keyProperties, 'РегистрационныйНомерНерезидента');
 
-        // Обособленное подразделение
-        $counterparty->is_separate_division = $this->getBooleanFieldValue($properties, 'ОбособленноеПодразделение', false);
 
         // Обработка контактной информации из табличной части
         $contactInfo = ContactInfoParser::parseContactInfo($object1C['tabular_sections'] ?? []);

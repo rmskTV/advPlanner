@@ -15,8 +15,23 @@ class SyncChangeProcessor
     // Разрешенные типы объектов и их обработчики
     protected $allowedTypes = [
         'Modules\Accounting\app\Models\ProductGroup' => 'processProductGroup',
-        'Modules\Accounting\app\Models\Product' => 'processProduct'
+        'Modules\Accounting\app\Models\Product' => 'processProduct',
+        'Modules\Accounting\app\Models\Counterparty' => 'processCounterparty',
+        //'Modules\Accounting\app\Models\ContactPerson' => 'processContactPerson'
     ];
+
+
+    protected function processCounterparty($change)
+    {
+        $processor = new CRMSyncProcessor($this->b24Service);
+        return $processor->processCompany($change);
+    }
+
+    protected function processContactPerson($change)
+    {
+        $processor = new CRMSyncProcessor($this->b24Service);
+        return $processor->processContact($change);
+    }
 
     public function __construct(Bitrix24Service $b24Service)
     {
@@ -173,9 +188,6 @@ class SyncChangeProcessor
 
         return !empty($products['result'][0]) ? $products['result'][0]['ID'] : null;
     }
-
-
-
 
     protected function mapProductType($type): int
     {

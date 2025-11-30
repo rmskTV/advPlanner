@@ -18,6 +18,9 @@ return new class extends Migration
             $table->string('guid_1c', 36)->unique()->nullable()
                 ->comment('GUID объекта в 1С');
 
+            $table->string('responsible_guid_1c', 36)->nullable()
+                ->comment('GUID ответственного сотрудника');
+
             // Основные реквизиты
             $table->string('name', 255)->nullable()
                 ->comment('Наименование контрагента');
@@ -102,6 +105,9 @@ return new class extends Migration
             // Системные поля
             $table->boolean('is_our_company')->default(false)
                 ->comment('Наша компания');
+
+            $table->boolean('is_pseudoip')->default(false)
+                ->comment('признак самозанятого');
 
             $table->boolean('deletion_mark')->default(false)
                 ->comment('Пометка удаления');

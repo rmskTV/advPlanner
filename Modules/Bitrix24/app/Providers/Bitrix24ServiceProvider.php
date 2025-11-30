@@ -50,7 +50,11 @@ class Bitrix24ServiceProvider extends ServiceProvider
          $this->commands([
              \Modules\Bitrix24\app\Console\Commands\CreateB24CustomFields::class,
              \Modules\Bitrix24\app\Console\Commands\CreateCatalogCustomFields::class,
+             \Modules\Bitrix24\app\Console\Commands\CreateCRMCustomFields::class,
              \Modules\Bitrix24\app\Console\Commands\ProcessChanges::class,
+             \Modules\Bitrix24\app\Console\Commands\CheckCompanyFields::class,
+             \Modules\Bitrix24\app\Console\Commands\CheckRequisitePresets::class,
+             \Modules\Bitrix24\app\Console\Commands\CreateCRMReqCustomFields::class,
          ]);
     }
 
