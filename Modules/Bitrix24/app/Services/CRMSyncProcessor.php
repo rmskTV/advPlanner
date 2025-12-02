@@ -16,7 +16,7 @@ class CRMSyncProcessor
 
     // Имена кастомных полей (должны совпадать с созданными в Битрикс24)
     const REQUISITE_GUID_FIELD = 'UF_CRM_GUID_1C'; // Поле в реквизите
-    const CONTACT_GUID_FIELD = 'UF_GUID_1C';   // Поле в контакте
+    const CONTACT_GUID_FIELD = 'UF_CRM_GUID_1C';   // Поле в контакте
 
     public function __construct(Bitrix24Service $b24Service)
     {
@@ -293,7 +293,9 @@ class CRMSyncProcessor
             'COMPANY_ID' => $companyId,
             self::CONTACT_GUID_FIELD => $contact->guid_1c // Используем константу
         ];
-        // ... добавление телефонов/email ... (как в старом коде)
+        $assignedById = $this->getResponsibleUserId($contact->counterparty->responsible_guid_1c);
+        if ($assignedById) $b24Fields['ASSIGNED_BY_ID'] = $assignedById;
+
         if ($contact->phone) $b24Fields['PHONE'] = [['VALUE' => $contact->phone, 'VALUE_TYPE' => 'WORK']];
         if ($contact->email) $b24Fields['EMAIL'] = [['VALUE' => $contact->email, 'VALUE_TYPE' => 'WORK']];
 
@@ -314,6 +316,8 @@ class CRMSyncProcessor
             'POST' => $contact->position,
             self::CONTACT_GUID_FIELD => $contact->guid_1c
         ];
+        $assignedById = $this->getResponsibleUserId($contact->counterparty->responsible_guid_1c);
+        if ($assignedById) $b24Fields['ASSIGNED_BY_ID'] = $assignedById;
 
         // Логика проверки привязки к компании
         $currentContact = $this->b24Service->call('crm.contact.get', ['id' => $contactId]);

@@ -177,14 +177,14 @@ class RequisiteService
         try {
             $b24List = $this->b24Service->call('crm.requisite.bankdetail.list', [
                 'filter' => ['ENTITY_ID' => $requisiteId],
-                'select' => ['ID', 'RQ_ACC_NUM'] // Нам нужен ID и номер счета для сопоставления
+                'select' => ['ID', 'CODE']
             ]);
 
             if (!empty($b24List['result'])) {
                 foreach ($b24List['result'] as $b24Acc) {
-                    if (!empty($b24Acc['RQ_ACC_NUM'])) {
+                    if (!empty($b24Acc['CODE'])) {
                         // Создаем карту: Номер счета -> ID в Битрикс24
-                        $existingB24Accounts[$b24Acc['RQ_ACC_NUM']] = $b24Acc['ID'];
+                        $existingB24Accounts[$b24Acc['CODE']] = $b24Acc['ID'];
                     }
                 }
             }
@@ -196,7 +196,7 @@ class RequisiteService
 
         // 2. Перебираем локальные счета и решаем: создать или обновить
         foreach ($activeLocalAccounts as $localAccount) {
-            $accNum = $localAccount->account_number;
+            $accNum = $localAccount->guid_1c;
 
             if (isset($existingB24Accounts[$accNum])) {
                 // UPDATE: Счет с таким номером уже есть в Б24
@@ -234,7 +234,8 @@ class RequisiteService
             'RQ_ACC_NUM' => $account->account_number,
             'RQ_COR_ACC_NUM' => $account->bank_correspondent_account,
             'RQ_SWIFT' => $account->bank_swift,
-            'CURRENCY_ID' => 'RUB'
+            'CURRENCY_ID' => 'RUB',
+            'CODE' =>  $account->guid_1c
         ], function($value) { return !is_null($value) && $value !== ''; });
     }
 

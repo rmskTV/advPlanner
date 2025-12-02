@@ -17,7 +17,7 @@ class SyncChangeProcessor
         'Modules\Accounting\app\Models\ProductGroup' => 'processProductGroup',
         'Modules\Accounting\app\Models\Product' => 'processProduct',
         'Modules\Accounting\app\Models\Counterparty' => 'processCounterparty',
-        //'Modules\Accounting\app\Models\ContactPerson' => 'processContactPerson'
+        'Modules\Accounting\app\Models\ContactPerson' => 'processContactPerson'
     ];
 
 
@@ -50,15 +50,23 @@ class SyncChangeProcessor
                 if ($change->source !== '1C') {
                     continue; // пока обрабатываем только изменения из 1С
                 }
+                else{
+                    // Проверяем тип объекта
+                    if (!isset($this->allowedTypes[$change->entity_type])) {
+                        continue; // пропускаем неподдерживаемые типы
+                    }
+                    // Вызываем соответствующий обработчик
+                    $method = $this->allowedTypes[$change->entity_type];
 
-                // Проверяем тип объекта
-                if (!isset($this->allowedTypes[$change->entity_type])) {
-                    continue; // пропускаем неподдерживаемые типы
+                    $start = microtime(true);
+                    $this->$method($change);
+                    $elapsed = microtime(true) - $start;
+
+                    $remaining = 1 - $elapsed;
+                    if ($remaining > 0) {
+                        usleep((int) round($remaining * 1_000_000)); // usleep в микросекундах
+                    }
                 }
-
-                // Вызываем соответствующий обработчик
-                $method = $this->allowedTypes[$change->entity_type];
-                $this->$method($change);
 
             } catch (\Exception $e) {
                 Log::error("Error processing change {$change->id}: " . $e->getMessage());
