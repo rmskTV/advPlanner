@@ -4,6 +4,7 @@ namespace Modules\Bitrix24\app\Services;
 use Illuminate\Support\Facades\Log;
 use Modules\Accounting\app\Models\Counterparty;
 use Modules\Accounting\app\Models\BankAccount;
+use Modules\Accounting\app\Models\Organization;
 
 class RequisiteService
 {
@@ -36,6 +37,173 @@ class RequisiteService
         $cleanedName = trim(preg_replace('/\s+/', ' ', $cleanedName));
         $parts = explode(' ', $cleanedName);
         return ['last' => $parts[0] ?? null, 'first' => $parts[1] ?? null, 'second' => $parts[2] ?? null];
+    }
+    /**
+     * Определение пресета по ИНН
+     */
+    protected function determinePresetId(?string $inn): int
+    {
+        if (empty($inn)) return 1;
+        return (strlen($inn) === 12) ? 3 : 1; // 3 = ИП, 1 = Организация
+    }
+
+
+    /**
+     * Создание реквизита для Organization
+     */
+    public function createOrganizationRequisite(int $companyId, Organization $organization): int
+    {
+        try {
+            $presetId = $this->determinePresetId($organization->inn);
+            $requisiteFields = $this->prepareOrganizationRequisiteFields($organization);
+            $requisiteFields['ENTITY_TYPE_ID'] = 4;
+            $requisiteFields['ENTITY_ID'] = $companyId;
+            $requisiteFields['PRESET_ID'] = $presetId;
+
+            Log::info("Creating organization requisite", [
+                'company_id' => $companyId,
+                'guid_1c' => $organization->guid_1c
+            ]);
+
+            $result = $this->b24Service->call('crm.requisite.add', [
+                'fields' => $requisiteFields
+            ]);
+
+            if (empty($result['result'])) {
+                throw new \Exception("Failed to create requisite: " . json_encode($result));
+            }
+
+            $requisiteId = (int)$result['result'];
+
+            // Обработка связанных сущностей
+            $this->processOrganizationRelatedEntities($requisiteId, $organization);
+
+            Log::info("Organization requisite created", ['requisite_id' => $requisiteId]);
+
+            return $requisiteId;
+
+        } catch (\Exception $e) {
+            Log::error("Error creating organization requisite: " . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
+     * Обновление реквизита Organization
+     */
+    public function updateOrganizationRequisite(int $requisiteId, Organization $organization): void
+    {
+        try {
+            $requisiteFields = $this->prepareOrganizationRequisiteFields($organization);
+
+            Log::info("Updating organization requisite", ['requisite_id' => $requisiteId]);
+
+            $this->b24Service->call('crm.requisite.update', [
+                'id' => $requisiteId,
+                'fields' => $requisiteFields
+            ]);
+
+            // Синхронизация связанных сущностей
+            $this->processOrganizationRelatedEntities($requisiteId, $organization);
+
+            Log::info("Organization requisite updated", ['requisite_id' => $requisiteId]);
+
+        } catch (\Exception $e) {
+            Log::error("Error updating organization requisite: " . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
+     * Подготовка полей реквизита для Organization
+     */
+    protected function prepareOrganizationRequisiteFields(Organization $organization): array
+    {
+        $isIp = (strlen($organization->inn) === 12);
+        $cleanedName = $this->cleanString($organization->name);
+        $cleanedFullName = $this->cleanString($organization->full_name);
+
+        $fields = [
+            'NAME' => $cleanedName,
+            'RQ_INN' => $organization->inn,
+            self::REQUISITE_GUID_FIELD => $organization->guid_1c,
+        ];
+
+        if (!empty($organization->kpp)) $fields['RQ_KPP'] = $organization->kpp;
+        if ($cleanedName) $fields['RQ_COMPANY_NAME'] = $cleanedName;
+        if ($cleanedFullName) $fields['RQ_COMPANY_FULL_NAME'] = $cleanedFullName;
+        if (!empty($organization->okpo)) $fields['RQ_OKPO'] = $organization->okpo;
+
+        if (!empty($organization->ogrn)) {
+            $fields[$isIp ? 'RQ_OGRNIP' : 'RQ_OGRN'] = $organization->ogrn;
+        }
+
+        if (!empty($organization->director_name)) {
+            $fields['RQ_DIRECTOR'] = $this->cleanString($organization->director_name);
+        }
+
+        if ($isIp) {
+            $fio = $this->parseFioFromFullName($organization->full_name ?? $organization->name);
+            if ($fio['last']) $fields['RQ_LAST_NAME'] = $fio['last'];
+            if ($fio['first']) $fields['RQ_FIRST_NAME'] = $fio['first'];
+            if ($fio['second']) $fields['RQ_SECOND_NAME'] = $fio['second'];
+        }
+
+        return $fields;
+    }
+
+    /**
+     * Обработка связанных сущностей для Organization
+     */
+    protected function processOrganizationRelatedEntities(int $requisiteId, Organization $organization): void
+    {
+        // Юридический адрес
+        if (!empty($organization->legal_address)) {
+            $this->syncAddress($requisiteId, $organization->legal_address, 1);
+        }
+
+        // Банковские счета - ЕДИНАЯ ЛОГИКА с Counterparty
+        $this->syncBankAccounts($requisiteId, $organization);
+    }
+    protected function syncAddress(int $requisiteId, string $address, int $typeId): void
+    {
+        $cleanedAddress = $this->cleanString($address);
+
+        if (empty($cleanedAddress)) {
+            return;
+        }
+
+        // Ищем существующий адрес
+        $existingAddress = $this->b24Service->call('crm.address.list', [
+            'filter' => [
+                'ENTITY_TYPE_ID' => 8, // Реквизит
+                'ENTITY_ID' => $requisiteId,
+                'TYPE_ID' => $typeId
+            ],
+            'select' => ['ID']
+        ]);
+
+        $addressFields = [
+            'TYPE_ID' => $typeId,
+            'ENTITY_TYPE_ID' => 8,
+            'ENTITY_ID' => $requisiteId,
+            'ADDRESS_1' => $cleanedAddress,
+        ];
+
+        try {
+            if (!empty($existingAddress['result'][0]['ID'])) {
+                $this->b24Service->call('crm.address.update', [
+                    'id' => $existingAddress['result'][0]['ID'],
+                    'fields' => $addressFields
+                ]);
+            } else {
+                $this->b24Service->call('crm.address.add', [
+                    'fields' => $addressFields
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error("Error syncing address: " . $e->getMessage());
+        }
     }
 
     /**
@@ -165,7 +333,7 @@ class RequisiteService
     /**
      * НОВЫЙ МЕТОД: Синхронизация (создание или обновление) банковских счетов
      */
-    protected function syncBankAccounts($requisiteId, Counterparty $counterparty)
+    protected function syncBankAccounts($requisiteId, Counterparty|Organization $counterparty)
     {
         $activeLocalAccounts = $counterparty->activeBankAccounts()->get();
         if ($activeLocalAccounts->isEmpty()) return;

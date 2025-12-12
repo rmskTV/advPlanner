@@ -19,6 +19,7 @@ class SyncChangeProcessor
         'Modules\Accounting\app\Models\Counterparty' => 'processCounterparty',
         'Modules\Accounting\app\Models\ContactPerson' => 'processContactPerson',
         'Modules\Accounting\app\Models\Contract' => 'processContract',
+        'Modules\Accounting\app\Models\Organization' => 'processOrganization',
     ];
 
 
@@ -294,6 +295,12 @@ class SyncChangeProcessor
         } else {
             throw new \Exception("Failed to create/update section in B24");
         }
+    }
+
+    protected function processOrganization(ObjectChangeLog $change): void
+    {
+        $processor = new OrganizationSyncProcessor($this->b24Service);
+        $processor->processOrganization($change);
     }
 
 }

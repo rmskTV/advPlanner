@@ -21,7 +21,10 @@ return new class extends Migration
                 ->comment('ID контрагента-владельца');
             $table->string('counterparty_guid_1c')->nullable()
                 ->comment('GUID контрагента из 1С');
-
+            $table->foreignId('organization_id')->nullable()
+                ->constrained('organizations')
+                ->nullOnDelete()
+                ->comment('ID организации-владельца');
             // Валюта
             $table->foreignId('currency_id')->nullable()
                 ->constrained('currencies')

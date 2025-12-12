@@ -3,6 +3,7 @@
 namespace Modules\Accounting\app\Models;
 
 use App\Models\CatalogObject;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Modules\VkAds\app\Models\VkAdsAccount;
 
@@ -115,5 +116,20 @@ class Organization extends CatalogObject
     public function vkAdsAccount(): HasOne
     {
         return $this->hasOne(VkAdsAccount::class);
+    }
+
+    public function bankAccounts(): HasMany
+    {
+        return $this->hasMany(BankAccount::class);
+    }
+
+    /**
+     * Получить активные банковские счета
+     */
+    public function activeBankAccounts(): HasMany
+    {
+        return $this->bankAccounts()
+            ->where('is_active', true)
+            ->where('deletion_mark', false);
     }
 }

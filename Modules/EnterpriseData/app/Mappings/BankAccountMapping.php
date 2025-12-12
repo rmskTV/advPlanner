@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Log;
 use Modules\Accounting\app\Models\BankAccount;
 use Modules\Accounting\app\Models\Counterparty;
 use Modules\Accounting\app\Models\Currency;
+use Modules\Accounting\app\Models\Organization;
 use Modules\EnterpriseData\app\Contracts\ObjectMapping;
 use Modules\EnterpriseData\app\ValueObjects\ValidationResult;
 
@@ -185,6 +186,26 @@ class BankAccountMapping extends ObjectMapping
                 $bankAccount->counterparty_id = $counterparty->id;
             } else {
                 Log::warning('Counterparty not found for bank account', [
+                    'account_guid' => $bankAccount->guid_1c,
+                    'counterparty_guid' => $counterpartyGuid,
+                ]);
+            }
+        }
+
+        $counterpartyData = $ownerData['ОрганизацииСсылка'] ?? [];
+
+        if (!empty($counterpartyData) && isset($counterpartyData['Ссылка'])) {
+            $counterpartyGuid = $counterpartyData['Ссылка'];
+
+            // Сохраняем GUID контрагента
+            $bankAccount->counterparty_guid_1c = $counterpartyGuid;
+
+            // Пытаемся найти контрагента и связать
+            $counterparty = Organization::findByGuid1C($counterpartyGuid);
+            if ($counterparty) {
+                $bankAccount->organization_id = $counterparty->id;
+            } else {
+                Log::warning('Organization not found for bank account', [
                     'account_guid' => $bankAccount->guid_1c,
                     'counterparty_guid' => $counterpartyGuid,
                 ]);
