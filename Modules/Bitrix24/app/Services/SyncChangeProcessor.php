@@ -17,21 +17,11 @@ class SyncChangeProcessor
         'Modules\Accounting\app\Models\ProductGroup' => 'processProductGroup',
         'Modules\Accounting\app\Models\Product' => 'processProduct',
         'Modules\Accounting\app\Models\Counterparty' => 'processCounterparty',
-        'Modules\Accounting\app\Models\ContactPerson' => 'processContactPerson'
+        'Modules\Accounting\app\Models\ContactPerson' => 'processContactPerson',
+        'Modules\Accounting\app\Models\Contract' => 'processContract',
     ];
 
 
-    protected function processCounterparty($change)
-    {
-        $processor = new CRMSyncProcessor($this->b24Service);
-        return $processor->processCompany($change);
-    }
-
-    protected function processContactPerson($change)
-    {
-        $processor = new CRMSyncProcessor($this->b24Service);
-        return $processor->processContact($change);
-    }
 
     public function __construct(Bitrix24Service $b24Service)
     {
@@ -73,6 +63,23 @@ class SyncChangeProcessor
                 $change->markError($e->getMessage());
             }
         }
+    }
+
+    protected function processCounterparty($change)
+    {
+        $processor = new CRMSyncProcessor($this->b24Service);
+        return $processor->processCompany($change);
+    }
+
+    protected function processContactPerson($change)
+    {
+        $processor = new CRMSyncProcessor($this->b24Service);
+        return $processor->processContact($change);
+    }
+    protected function processContract($change): void
+    {
+        $processor = new ContractSyncProcessor($this->b24Service);
+        $processor->processContract($change);
     }
     protected function processProduct($change)
     {

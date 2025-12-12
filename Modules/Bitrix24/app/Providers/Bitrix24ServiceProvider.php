@@ -55,6 +55,7 @@ class Bitrix24ServiceProvider extends ServiceProvider
              \Modules\Bitrix24\app\Console\Commands\CheckCompanyFields::class,
              \Modules\Bitrix24\app\Console\Commands\CheckRequisitePresets::class,
              \Modules\Bitrix24\app\Console\Commands\CreateCRMReqCustomFields::class,
+             \Modules\Bitrix24\app\Console\Commands\CreateSPAContracts::class,
          ]);
     }
 

@@ -45,6 +45,7 @@ class AccountingServiceProvider extends ServiceProvider
     {
         $this->commands([
             \Modules\Accounting\app\Console\Commands\FillCounterpartyResponsible::class,
+            \Modules\Accounting\app\Console\Commands\VkDeletePostsByOffset::class,
         ]);
     }
 
