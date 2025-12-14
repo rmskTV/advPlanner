@@ -20,6 +20,7 @@ class SyncChangeProcessor
         'Modules\Accounting\app\Models\ContactPerson' => 'processContactPerson',
         'Modules\Accounting\app\Models\Contract' => 'processContract',
         'Modules\Accounting\app\Models\Organization' => 'processOrganization',
+        'Modules\Accounting\app\Models\CustomerOrder' => 'processCustomerOrder',
     ];
 
 
@@ -297,10 +298,22 @@ class SyncChangeProcessor
         }
     }
 
+    /**
+     * @throws \Exception
+     */
     protected function processOrganization(ObjectChangeLog $change): void
     {
         $processor = new OrganizationSyncProcessor($this->b24Service);
         $processor->processOrganization($change);
+    }
+
+    /**
+     * @throws \Exception
+     */
+    protected function processCustomerOrder(ObjectChangeLog $change): void
+    {
+        $processor = new CustomerOrderSyncProcessor($this->b24Service);
+        $processor->processCustomerOrder($change);
     }
 
 }
