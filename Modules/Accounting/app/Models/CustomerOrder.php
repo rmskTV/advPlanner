@@ -120,4 +120,20 @@ class CustomerOrder extends Document
     {
         $this->update(['last_sync_at' => now()]);
     }
+
+    /**
+     * Связь с платежами через строки расшифровки
+     */
+    public function paymentItems(): HasMany
+    {
+        return $this->hasMany(PaymentItem::class, 'order_id');
+    }
+
+    /**
+     * Получить сумму оплат по заказу
+     */
+    public function getPaidAmount(): float
+    {
+        return $this->paymentItems()->sum('amount') ?? 0;
+    }
 }

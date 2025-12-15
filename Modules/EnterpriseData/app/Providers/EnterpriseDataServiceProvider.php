@@ -25,6 +25,7 @@ use Modules\EnterpriseData\app\Mappings\ObjectDeletionMapping;
 use Modules\EnterpriseData\app\Mappings\OrderPaymentStatusMapping;
 use Modules\EnterpriseData\app\Mappings\OrderShipmentStatusMapping;
 use Modules\EnterpriseData\app\Mappings\OrganizationMapping;
+use Modules\EnterpriseData\app\Mappings\PaymentMapping;
 use Modules\EnterpriseData\app\Mappings\ProductGroupMapping;
 use Modules\EnterpriseData\app\Mappings\ProductMapping;
 use Modules\EnterpriseData\app\Mappings\SaleMapping;
@@ -131,6 +132,7 @@ class EnterpriseDataServiceProvider extends ServiceProvider
             $registry->registerMapping('Документ.ЗаказКлиента', new CustomerOrderMapping);
             $registry->registerMapping('Документ.РеализацияТоваровУслуг', new SaleMapping);
             $registry->registerMapping('Справочник.БанковскиеСчета', new BankAccountMapping());
+            $registry->registerMapping('Документ.ПБДСРасчетыСКонтрагентами', new PaymentMapping);
             // Регистры состояний заказов
             $registry->registerMapping('Справочник.СостояниеОплатыЗаказа', new OrderPaymentStatusMapping);
             $registry->registerMapping('Справочник.СостояниеОтгрузкиЗаказа', new OrderShipmentStatusMapping);

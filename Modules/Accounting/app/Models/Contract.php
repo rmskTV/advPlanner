@@ -401,4 +401,12 @@ class Contract extends CatalogObject
     {
         return $this->hasOne(VkAdsAccount::class);
     }
+
+    /**
+     * Связь с платежами через строки расшифровки
+     */
+    public function paymentItems(): HasMany
+    {
+        return $this->hasMany(PaymentItem::class, 'contract_id');
+    }
 }

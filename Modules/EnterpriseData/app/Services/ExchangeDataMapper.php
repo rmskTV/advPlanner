@@ -14,6 +14,7 @@ use Modules\Accounting\app\Models\ObjectChangeLog;
 use Modules\Accounting\app\Models\OrderPaymentStatus;
 use Modules\Accounting\app\Models\OrderShipmentStatus;
 use Modules\Accounting\app\Models\Organization;
+use Modules\Accounting\app\Models\Payment;
 use Modules\Accounting\app\Models\Product;
 use Modules\Accounting\app\Models\ProductGroup;
 use Modules\Accounting\app\Models\Sale;
@@ -22,6 +23,7 @@ use Modules\Accounting\app\Models\UnitOfMeasure;
 use Modules\EnterpriseData\app\Exceptions\ExchangeMappingException;
 use Modules\EnterpriseData\app\Mappings\CustomerOrderMapping;
 use Modules\EnterpriseData\app\Mappings\ObjectDeletionMapping;
+use Modules\EnterpriseData\app\Mappings\PaymentMapping;
 use Modules\EnterpriseData\app\Mappings\SaleMapping;
 use Modules\EnterpriseData\app\Models\ExchangeFtpConnector;
 use Modules\EnterpriseData\app\Registry\ObjectMappingRegistry;
@@ -266,6 +268,11 @@ class ExchangeDataMapper
         } elseif ($model instanceof Sale) {
             $mapping = $this->mappingRegistry->getMapping($objectType);
             if ($mapping instanceof SaleMapping) {
+                $mapping->processTabularSections($savedModel, $object1C);
+            }
+        } elseif ($model instanceof Payment) {
+            $mapping = $this->mappingRegistry->getMapping($objectType);
+            if ($mapping instanceof PaymentMapping) {
                 $mapping->processTabularSections($savedModel, $object1C);
             }
         }

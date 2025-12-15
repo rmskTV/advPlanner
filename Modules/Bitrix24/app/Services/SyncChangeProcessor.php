@@ -21,6 +21,7 @@ class SyncChangeProcessor
         'Modules\Accounting\app\Models\Contract' => 'processContract',
         'Modules\Accounting\app\Models\Organization' => 'processOrganization',
         'Modules\Accounting\app\Models\CustomerOrder' => 'processCustomerOrder',
+        'Modules\Accounting\app\Models\OrderPaymentStatus' => 'processOrderPaymentStatus',
     ];
 
 
@@ -65,6 +66,12 @@ class SyncChangeProcessor
                 $change->markError($e->getMessage());
             }
         }
+    }
+
+    protected function processOrderPaymentStatus(ObjectChangeLog $change): void
+    {
+        $processor = new OrderPaymentStatusSyncProcessor($this->b24Service);
+        $processor->processPaymentStatus($change);
     }
 
     protected function processCounterparty($change)
