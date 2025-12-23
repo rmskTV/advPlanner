@@ -1,326 +1,240 @@
 <?php
+// Modules/Bitrix24/app/Services/SyncChangeProcessor.php
 
 namespace Modules\Bitrix24\app\Services;
 
 use Illuminate\Support\Facades\Log;
 use Modules\Accounting\app\Models\ObjectChangeLog;
-use Modules\Accounting\app\Models\Product;
-use Modules\Accounting\app\Models\ProductGroup;
-use Modules\Accounting\app\Models\UnitOfMeasure;
+use Modules\Bitrix24\app\Services\Processors\CompanySyncProcessor;
+use Modules\Bitrix24\app\Services\Processors\ContactSyncProcessor;
+use Modules\Bitrix24\app\Services\Processors\ContractSyncProcessor;
+use Modules\Bitrix24\app\Services\Processors\CustomerOrderSyncProcessor;
+use Modules\Bitrix24\app\Services\Processors\OrderPaymentStatusSyncProcessor;
+use Modules\Bitrix24\app\Services\Processors\OrganizationSyncProcessor;
+use Modules\Bitrix24\app\Services\Processors\ProductSyncProcessor;
 
 class SyncChangeProcessor
 {
-    protected $b24Service;
+    protected Bitrix24Service $b24Service;
+    protected bool $shouldStop = false;
+    protected int $processedCount = 0;
+    protected int $errorCount = 0;
+    protected int $skippedCount = 0;
 
-    // Разрешенные типы объектов и их обработчики
-    protected $allowedTypes = [
-        'Modules\Accounting\app\Models\ProductGroup' => 'processProductGroup',
-        'Modules\Accounting\app\Models\Product' => 'processProduct',
-        'Modules\Accounting\app\Models\Counterparty' => 'processCounterparty',
-        'Modules\Accounting\app\Models\ContactPerson' => 'processContactPerson',
-        'Modules\Accounting\app\Models\Contract' => 'processContract',
-        'Modules\Accounting\app\Models\Organization' => 'processOrganization',
-        'Modules\Accounting\app\Models\CustomerOrder' => 'processCustomerOrder',
-        'Modules\Accounting\app\Models\OrderPaymentStatus' => 'processOrderPaymentStatus',
+    // Карта типов сущностей → процессоры
+    protected array $processors = [
+        'Modules\Accounting\app\Models\Counterparty' => CompanySyncProcessor::class,
+        'Modules\Accounting\app\Models\ContactPerson' => ContactSyncProcessor::class,
+        'Modules\Accounting\app\Models\Contract' => ContractSyncProcessor::class,
+        'Modules\Accounting\app\Models\Organization' => OrganizationSyncProcessor::class,
+        'Modules\Accounting\app\Models\CustomerOrder' => CustomerOrderSyncProcessor::class,
+        'Modules\Accounting\app\Models\OrderPaymentStatus' => OrderPaymentStatusSyncProcessor::class,
+        'Modules\Accounting\app\Models\Product' => ProductSyncProcessor::class,
     ];
-
-
 
     public function __construct(Bitrix24Service $b24Service)
     {
         $this->b24Service = $b24Service;
-    }
-
-    public function process()
-    {
-        $changes = ObjectChangeLog::query()
-            ->where('status', 'pending')
-            ->get();
-
-        foreach ($changes as $change) {
-            try {
-                // Проверяем направление
-                if ($change->source !== '1C') {
-                    continue; // пока обрабатываем только изменения из 1С
-                }
-                else{
-                    // Проверяем тип объекта
-                    if (!isset($this->allowedTypes[$change->entity_type])) {
-                        continue; // пропускаем неподдерживаемые типы
-                    }
-                    // Вызываем соответствующий обработчик
-                    $method = $this->allowedTypes[$change->entity_type];
-
-                    $start = microtime(true);
-                    $this->$method($change);
-                    $elapsed = microtime(true) - $start;
-
-                    $remaining = 1 - $elapsed;
-                    if ($remaining > 0) {
-                        usleep((int) round($remaining * 1_000_000)); // usleep в микросекундах
-                    }
-                }
-
-            } catch (\Exception $e) {
-                Log::error("Error processing change {$change->id}: " . $e->getMessage());
-                $change->markError($e->getMessage());
-            }
-        }
-    }
-
-    protected function processOrderPaymentStatus(ObjectChangeLog $change): void
-    {
-        $processor = new OrderPaymentStatusSyncProcessor($this->b24Service);
-        $processor->processPaymentStatus($change);
-    }
-
-    protected function processCounterparty($change)
-    {
-        $processor = new CRMSyncProcessor($this->b24Service);
-        return $processor->processCompany($change);
-    }
-
-    protected function processContactPerson($change)
-    {
-        $processor = new CRMSyncProcessor($this->b24Service);
-        return $processor->processContact($change);
-    }
-    protected function processContract($change): void
-    {
-        $processor = new ContractSyncProcessor($this->b24Service);
-        $processor->processContract($change);
-    }
-    protected function processProduct($change)
-    {
-        $product = \Modules\Accounting\app\Models\Product::find($change->local_id);
-        if (!$product) {
-            throw new \Exception("Product not found: {$change->local_id}");
-        }
-
-        // Получаем ID секции
-        $sectionId = null;
-        if ($product->group_guid_1c) {
-            $sectionResult = $this->b24Service->call('crm.productsection.list', [
-                'filter' => ['CODE' => $product->group_guid_1c],
-                'select' => ['ID']
-            ]);
-            if (!empty($sectionResult['result'][0])) {
-                $sectionId = $sectionResult['result'][0]['ID'];
-            }
-        }
-
-        // Получаем ID пользовательских свойств
-        $propertyIds = $this->getProductPropertyIds();
-
-        // Основные поля товара
-        $b24Fields = [
-            'NAME' => html_entity_decode($product->name, ENT_QUOTES | ENT_HTML5, 'UTF-8'),
-            'CODE' => $product->code,
-            'DESCRIPTION' => html_entity_decode($product->description, ENT_QUOTES | ENT_HTML5, 'UTF-8') ?? '',
-            'SECTION_ID' => $sectionId,
-            'PRICE' => 0,
-            'CURRENCY_ID' => 'RUB',
-            'SORT' => 500,
-            'VAT_ID' => $this->mapVatRate($product->vat_rate),
-            'VAT_INCLUDED' => 'Y',
-            'MEASURE' => $this->getB24MeasureId($product->unit_guid_1c)
-        ];
-
-        // Добавляем значения пользовательских свойств
-        if (isset($propertyIds['GUID_1C'])) {
-            $b24Fields['PROPERTY_' . $propertyIds['GUID_1C']] = $product->guid_1c;
-        }
-        if (isset($propertyIds['ANALYTICS_GROUP'])) {
-            $b24Fields['PROPERTY_' . $propertyIds['ANALYTICS_GROUP']] = $product->analytics_group_name;
-        }
-        if (isset($propertyIds['ANALYTICS_GROUP_GUID'])) {
-            $b24Fields['PROPERTY_' . $propertyIds['ANALYTICS_GROUP_GUID']] = $product->analytics_group_guid_1c;
-        }
-
-        // Проверяем существование продукта по GUID
-        $existingProduct = $this->findProductByGuid($product->guid_1c, $propertyIds);
-
-        try {
-            if ($existingProduct) {
-                // Обновляем существующий товар
-                $b24Id = $existingProduct;
-                $result = $this->b24Service->call('crm.product.update', [
-                    'id' => $b24Id,
-                    'fields' => $b24Fields
-                ]);
-            } else {
-                // Создаем новый товар
-                $result = $this->b24Service->call('crm.product.add', [
-                    'fields' => $b24Fields
-                ]);
-                $b24Id = $result['result'];
-            }
-
-            if (!$b24Id) {
-                throw new \Exception("Failed to get B24 product ID");
-            }
-
-            $change->b24_id = $b24Id;
-            $change->markProcessed();
-
-            \Log::info("Processed product", [
-                'local_id' => $product->id,
-                'guid_1c' => $product->guid_1c,
-                'b24_id' => $b24Id,
-                'action' => $existingProduct ? 'update' : 'create',
-                'fields' => $b24Fields
-            ]);
-
-        } catch (\Exception $e) {
-            throw new \Exception("Error processing product {$product->id}: " . $e->getMessage());
-        }
-    }
-
-// Метод для получения ID пользовательских свойств
-    protected function getProductPropertyIds()
-    {
-        static $propertyIds = null;
-
-        if ($propertyIds === null) {
-            $properties = $this->b24Service->call('crm.product.property.list');
-            $propertyIds = [];
-
-            foreach ($properties['result'] as $property) {
-                $propertyIds[$property['CODE']] = $property['ID'];
-            }
-        }
-
-        return $propertyIds;
-    }
-
-// Метод для поиска продукта по GUID
-    protected function findProductByGuid($guid, $propertyIds)
-    {
-        if (!isset($propertyIds['GUID_1C'])) {
-            return null;
-        }
-
-        // Ищем товар по значению свойства GUID_1C
-        $filter = [
-            'PROPERTY_' . $propertyIds['GUID_1C'] => $guid
-        ];
-
-        $products = $this->b24Service->call('crm.product.list', [
-            'filter' => $filter,
-            'select' => ['ID']
-        ]);
-
-        return !empty($products['result'][0]) ? $products['result'][0]['ID'] : null;
-    }
-
-    protected function mapProductType($type): int
-    {
-        return match ($type) {
-            'service' => 2, // Услуга
-            default => 1    // Товар
-        };
-    }
-
-    protected function mapVatRate($rate): int
-    {
-        return match ($rate) {
-            'БезНДС' => 1,
-            //'Общая' => 5,
-            default => 7 // По умолчанию 5%
-        };
-    }
-
-    protected function getB24MeasureId($unitGuid1c): int
-    {
-        // Получаем единицу измерения из нашей БД
-        $unit = UnitOfMeasure::where('guid_1c', $unitGuid1c)->first();
-
-        if (!$unit) {
-            return 9; // Штука (по умолчанию)
-        }
-
-        // Маппинг кодов единиц измерения на ID в Б24
-        return match ($unit->code) {
-            '796' => 9,  // Штука
-            '006' => 1,  // Метр
-            '112' => 3,  // Литр
-            '163' => 5,  // Грамм
-            '166' => 7,  // Килограмм
-            default => 9 // Штука (по умолчанию)
-        };
-    }
-    protected function processProductGroup($change): void
-    {
-        $group = ProductGroup::find($change->local_id);
-        if (!$group) {
-            throw new \Exception("Product group not found: {$change->local_id}");
-        }
-
-        $b24Fields = [
-            'NAME' => $group->name,
-            'CODE' => $group->guid_1c,
-            'DESCRIPTION' => $group->description ?? ''
-        ];
-
-        if ($group->parent_guid_1c) {
-            // Ищем родительскую группу в Б24 по её GUID (CODE)
-            $parentResult = $this->b24Service->call('crm.productsection.list', [
-                'filter' => ['CODE' => $group->parent_guid_1c],
-                'select' => ['ID']
-            ]);
-
-            if (!empty($parentResult['result'][0])) {
-                $b24Fields['SECTION_ID'] = $parentResult['result'][0]['ID'];
-            } else {
-                Log::warning("Parent section not found in B24 for GUID: {$group->parent_guid_1c}");
-            }
-        }
-
-        // Проверяем, существует ли уже такая группа
-        $existingResult = $this->b24Service->call('crm.productsection.list', [
-            'filter' => ['CODE' => $group->guid_1c],
-            'select' => ['ID']
-        ]);
-
-        if (!empty($existingResult['result'][0])) {
-            // Обновляем существующую
-            $result = $this->b24Service->call('crm.productsection.update', [
-                'id' => $existingResult['result'][0]['ID'],
-                'fields' => $b24Fields
-            ]);
-            $b24Id = $existingResult['result'][0]['ID'];
-        } else {
-            // Создаем новую
-            $result = $this->b24Service->call('crm.productsection.add', [
-                'fields' => $b24Fields
-            ]);
-            $b24Id = $result['result'];
-        }
-
-        if ($b24Id) {
-            $change->b24_id = $b24Id;
-            $change->markProcessed();
-        } else {
-            throw new \Exception("Failed to create/update section in B24");
-        }
+        $this->registerSignalHandlers();
     }
 
     /**
-     * @throws \Exception
+     * Главный метод обработки очереди
+     *
+     * @param int|null $limit Максимальное количество записей (null = обработать всё)
+     * @param callable|null $progressCallback Коллбэк для прогресса (для команды)
      */
-    protected function processOrganization(ObjectChangeLog $change): void
+    public function process(?int $limit = null, ?callable $progressCallback = null): array
     {
-        $processor = new OrganizationSyncProcessor($this->b24Service);
-        $processor->processOrganization($change);
+        $this->resetCounters();
+
+        $chunkSize = config('bitrix24.sync.chunk_size', 100);
+        $totalProcessed = 0;
+
+        Log::info("Starting sync process", ['limit' => $limit ?? 'unlimited']);
+
+        while (!$this->shouldStop) {
+            // Получаем порцию записей с фильтрацией
+            $changes = ObjectChangeLog::readyForProcessing(
+                supportedEntityTypes: array_keys($this->processors), // ← Фильтруем на уровне БД
+                source: '1C' // ← Только из 1С
+            )
+                ->orderBy('created_at', 'asc')
+                ->limit($chunkSize)
+                ->get();
+
+            // Если записей нет - выходим
+            if ($changes->isEmpty()) {
+                Log::debug("No more changes to process");
+                break;
+            }
+
+            Log::debug("Processing chunk", ['size' => $changes->count()]);
+
+            // Обрабатываем порцию
+            foreach ($changes as $change) {
+                // Проверка лимита
+                if ($limit !== null && $totalProcessed >= $limit) {
+                    Log::info("Reached processing limit", ['limit' => $limit]);
+                    $this->shouldStop = true;
+                    break;
+                }
+
+                // Обрабатываем (фильтрация уже на уровне SQL)
+                try {
+                    $this->processChange($change);
+                    $this->processedCount++;
+                    $totalProcessed++;
+
+                    // Коллбэк для прогресс-бара
+                    if ($progressCallback) {
+                        $progressCallback($change);
+                    }
+
+                } catch (\Exception $e) {
+                    // Ошибки уже залогированы в AbstractBitrix24Processor
+                    $this->errorCount++;
+                    Log::error("Unhandled error in processor", [
+                        'change_id' => $change->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+
+                // Throttling
+                $this->throttle();
+            }
+
+            // Если обработали меньше чем chunk - значит записей больше нет
+            if ($changes->count() < $chunkSize) {
+                Log::debug("Processed last chunk");
+                break;
+            }
+
+            // Проверка на graceful shutdown
+            if ($this->shouldStop) {
+                Log::warning("Graceful shutdown initiated");
+                break;
+            }
+        }
+
+        $stats = [
+            'processed' => $this->processedCount,
+            'errors' => $this->errorCount,
+            'skipped' => $this->skippedCount,
+            'total' => $this->processedCount + $this->errorCount + $this->skippedCount
+        ];
+
+        Log::info("Sync process completed", $stats);
+
+        return $stats;
+    }
+
+
+    /**
+     * Обработка одной записи
+     */
+    protected function processChange(ObjectChangeLog $change): void
+    {
+        $processorClass = $this->processors[$change->entity_type];
+        $processor = new $processorClass($this->b24Service);
+        $processor->process($change);
     }
 
     /**
-     * @throws \Exception
+     * Throttling для соблюдения rate limits
      */
-    protected function processCustomerOrder(ObjectChangeLog $change): void
+    protected function throttle(): void
     {
-        $processor = new CustomerOrderSyncProcessor($this->b24Service);
-        $processor->processCustomerOrder($change);
+        $requestsPerSecond = config('bitrix24.sync.requests_per_second', 1);
+        $delayMicroseconds = (int)(1_000_000 / $requestsPerSecond);
+
+        usleep($delayMicroseconds);
     }
 
+    /**
+     * Разблокировка зависших записей
+     */
+    public function unlockStaleRecords(?int $minutes = null): int
+    {
+        $minutes = $minutes ?? config('bitrix24.sync.stale_timeout_minutes', 10);
+
+        $staleRecords = ObjectChangeLog::stale($minutes)->get();
+
+        if ($staleRecords->isEmpty()) {
+            return 0;
+        }
+
+        Log::warning("Found stale locked records", ['count' => $staleRecords->count()]);
+
+        foreach ($staleRecords as $record) {
+            $record->unlock();
+
+            if ($record->retry_count < ObjectChangeLog::MAX_RETRIES) {
+                $record->markRetry("Unlocked after {$minutes}min timeout");
+            } else {
+                $record->markError("Max retries exceeded after timeout");
+            }
+        }
+
+        return $staleRecords->count();
+    }
+
+    /**
+     * Регистрация обработчиков сигналов для graceful shutdown
+     */
+    protected function registerSignalHandlers(): void
+    {
+        if (!extension_loaded('pcntl')) {
+            return;
+        }
+
+        pcntl_async_signals(true);
+
+        pcntl_signal(SIGTERM, function () {
+            Log::info("Received SIGTERM, stopping gracefully...");
+            $this->shouldStop = true;
+        });
+
+        pcntl_signal(SIGINT, function () {
+            Log::info("Received SIGINT (Ctrl+C), stopping gracefully...");
+            $this->shouldStop = true;
+        });
+    }
+
+    /**
+     * Сброс счётчиков
+     */
+    protected function resetCounters(): void
+    {
+        $this->processedCount = 0;
+        $this->errorCount = 0;
+        $this->skippedCount = 0;
+        $this->shouldStop = false;
+    }
+
+    /**
+     * Получение статистики по очереди
+     */
+    public function getQueueStats(): array
+    {
+        $supportedTypes = array_keys($this->processors);
+
+        return [
+            'pending' => ObjectChangeLog::where('status', 'pending')->where('source', '1C')->count(),
+            'retry' => ObjectChangeLog::where('status', 'retry')->where('source', '1C')->count(),
+            'processing' => ObjectChangeLog::where('status', 'processing')->where('source', '1C')->count(),
+            'error' => ObjectChangeLog::where('status', 'error')->where('source', '1C')->count(),
+            'skipped' => ObjectChangeLog::where('status', 'skipped')->where('source', '1C')->count(),
+            'locked' => ObjectChangeLog::whereNotNull('locked_at')->count(),
+            'total_ready' => ObjectChangeLog::readyForProcessing($supportedTypes, '1C')->count(),
+        ];
+    }
+
+    /**
+     * Получение списка поддерживаемых типов
+     */
+    public function getSupportedTypes(): array
+    {
+        return array_keys($this->processors);
+    }
 }
