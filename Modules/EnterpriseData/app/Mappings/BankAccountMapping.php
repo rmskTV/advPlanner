@@ -71,7 +71,7 @@ class BankAccountMapping extends ObjectMapping
             'ПометкаУдаления',
             false
         );
-        $bankAccount->is_active = !$bankAccount->deletion_mark;
+        $bankAccount->is_active = ! $bankAccount->deletion_mark;
         $bankAccount->last_sync_at = now();
 
         return $bankAccount;
@@ -135,8 +135,8 @@ class BankAccountMapping extends ObjectMapping
         $accountNumber = $this->getFieldValue($keyProperties, 'НомерСчета');
         if (empty(trim($accountNumber))) {
             $warnings[] = 'Bank account number (НомерСчета) is missing';
-        } elseif (!$this->isValidAccountNumber($accountNumber)) {
-            $warnings[] = 'Bank account number format is invalid: ' . $accountNumber;
+        } elseif (! $this->isValidAccountNumber($accountNumber)) {
+            $warnings[] = 'Bank account number format is invalid: '.$accountNumber;
         }
 
         // Проверяем банк
@@ -149,8 +149,8 @@ class BankAccountMapping extends ObjectMapping
             $bik = $bankClassifierData['БИК'] ?? null;
             if (empty($bik)) {
                 $warnings[] = 'Bank BIK is missing';
-            } elseif (!$this->isValidBIK($bik)) {
-                $warnings[] = 'Bank BIK format is invalid: ' . $bik;
+            } elseif (! $this->isValidBIK($bik)) {
+                $warnings[] = 'Bank BIK format is invalid: '.$bik;
             }
         }
 
@@ -174,7 +174,7 @@ class BankAccountMapping extends ObjectMapping
         $ownerData = $keyProperties['Владелец'] ?? [];
         $counterpartyData = $ownerData['КонтрагентыСсылка'] ?? [];
 
-        if (!empty($counterpartyData) && isset($counterpartyData['Ссылка'])) {
+        if (! empty($counterpartyData) && isset($counterpartyData['Ссылка'])) {
             $counterpartyGuid = $counterpartyData['Ссылка'];
 
             // Сохраняем GUID контрагента
@@ -194,7 +194,7 @@ class BankAccountMapping extends ObjectMapping
 
         $counterpartyData = $ownerData['ОрганизацииСсылка'] ?? [];
 
-        if (!empty($counterpartyData) && isset($counterpartyData['Ссылка'])) {
+        if (! empty($counterpartyData) && isset($counterpartyData['Ссылка'])) {
             $counterpartyGuid = $counterpartyData['Ссылка'];
 
             // Сохраняем GUID контрагента
@@ -230,7 +230,7 @@ class BankAccountMapping extends ObjectMapping
         // Данные классификатора банков
         $bankClassifierData = $bankData['ДанныеКлассификатораБанков'] ?? [];
 
-        if (!empty($bankClassifierData)) {
+        if (! empty($bankClassifierData)) {
             $bankAccount->bank_name = $this->getFieldValue($bankClassifierData, 'Наименование');
             $bankAccount->bank_bik = $this->getFieldValue($bankClassifierData, 'БИК');
             $bankAccount->bank_correspondent_account = $this->getFieldValue($bankClassifierData, 'КоррСчет');
@@ -263,7 +263,7 @@ class BankAccountMapping extends ObjectMapping
 
         // Код валюты из классификатора
         $classifierData = $currencyData['ДанныеКлассификатора'] ?? [];
-        if (!empty($classifierData)) {
+        if (! empty($classifierData)) {
             $bankAccount->currency_code = $this->getFieldValue($classifierData, 'Код');
         }
     }

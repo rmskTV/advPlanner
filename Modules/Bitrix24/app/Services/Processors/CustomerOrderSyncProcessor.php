@@ -1,4 +1,5 @@
 <?php
+
 // Modules/Bitrix24/app/Services/Processors/CustomerOrderSyncProcessor.php
 
 namespace Modules\Bitrix24\app\Services\Processors;
@@ -16,16 +17,18 @@ use Modules\Bitrix24\app\Exceptions\ValidationException;
 class CustomerOrderSyncProcessor extends AbstractBitrix24Processor
 {
     const INVOICE_ENTITY_TYPE_ID = 31;
+
     const CONTRACT_ENTITY_TYPE_ID = 1064;
 
     protected array $productPropertiesCache = [];
+
     protected array $productMapCache = [];
 
     protected function syncEntity(ObjectChangeLog $change): void
     {
         $order = CustomerOrder::with(['items', 'organization'])->find($change->local_id);
 
-        if (!$order) {
+        if (! $order) {
             throw new ValidationException("CustomerOrder not found: {$change->local_id}");
         }
 
@@ -35,14 +38,14 @@ class CustomerOrderSyncProcessor extends AbstractBitrix24Processor
         // Проверка минимальной даты синхронизации
         if ($this->isOrderTooOld($order)) {
             throw new ValidationException(
-                "Order date before " . config('bitrix24.sync.min_invoice_date', '2025-11-01')
+                'Order date before '.config('bitrix24.sync.min_invoice_date', '2025-11-01')
             );
         }
 
-        Log::info("Processing customer order", [
+        Log::info('Processing customer order', [
             'guid' => $order->guid_1c,
             'number' => $order->number,
-            'date' => $order->date?->format('Y-m-d')
+            'date' => $order->date?->format('Y-m-d'),
         ]);
 
         // Разрешение зависимостей
@@ -101,7 +104,7 @@ class CustomerOrderSyncProcessor extends AbstractBitrix24Processor
         // Компания (обязательно)
         $companyId = $this->findCompanyIdByRequisiteGuid($order->counterparty_guid_1c);
 
-        if (!$companyId) {
+        if (! $companyId) {
             throw new DependencyNotReadyException(
                 "Company not synced for requisite GUID: {$order->counterparty_guid_1c}"
             );
@@ -128,10 +131,10 @@ class CustomerOrderSyncProcessor extends AbstractBitrix24Processor
         if ($order->contract_guid_1c) {
             $contractId = $this->findContractByGuid($order->contract_guid_1c);
 
-            if (!$contractId) {
-                Log::warning("Contract not found in B24", [
+            if (! $contractId) {
+                Log::warning('Contract not found in B24', [
                     'contract_guid' => $order->contract_guid_1c,
-                    'order_number' => $order->number
+                    'order_number' => $order->number,
                 ]);
             }
         }
@@ -158,13 +161,13 @@ class CustomerOrderSyncProcessor extends AbstractBitrix24Processor
     {
         $title = "Счёт №{$order->number}";
         if ($order->date) {
-            $title .= " от " . $order->date->format('d.m.Y');
+            $title .= ' от '.$order->date->format('d.m.Y');
         }
 
         $fields = [
             'title' => $title,
             'companyId' => $dependencies['company_id'],
-            'opportunity' => (float)$order->amount,
+            'opportunity' => (float) $order->amount,
             'currencyId' => 'RUB',
             'isManualOpportunity' => 'Y',
             'xmlId' => $order->guid_1c,
@@ -183,14 +186,14 @@ class CustomerOrderSyncProcessor extends AbstractBitrix24Processor
         }
 
         if ($dependencies['contract_id']) {
-            $fields['parentId' . self::CONTRACT_ENTITY_TYPE_ID] = $dependencies['contract_id'];
+            $fields['parentId'.self::CONTRACT_ENTITY_TYPE_ID] = $dependencies['contract_id'];
         }
 
         if ($dependencies['responsible_id']) {
             $fields['assignedById'] = $dependencies['responsible_id'];
         }
 
-        if (!empty($order->comment)) {
+        if (! empty($order->comment)) {
             $fields['comments'] = $this->cleanString($order->comment);
         }
 
@@ -208,12 +211,12 @@ class CustomerOrderSyncProcessor extends AbstractBitrix24Processor
         ]);
 
         if (empty($result['result']['item']['id'])) {
-            throw new \Exception("Failed to create invoice: " . json_encode($result));
+            throw new \Exception('Failed to create invoice: '.json_encode($result));
         }
 
-        $invoiceId = (int)$result['result']['item']['id'];
+        $invoiceId = (int) $result['result']['item']['id'];
 
-        Log::info("Invoice created", ['b24_id' => $invoiceId]);
+        Log::info('Invoice created', ['b24_id' => $invoiceId]);
 
         return $invoiceId;
     }
@@ -229,7 +232,7 @@ class CustomerOrderSyncProcessor extends AbstractBitrix24Processor
             'fields' => $fields,
         ]);
 
-        Log::debug("Invoice updated", ['b24_id' => $invoiceId]);
+        Log::debug('Invoice updated', ['b24_id' => $invoiceId]);
     }
 
     /**
@@ -238,7 +241,8 @@ class CustomerOrderSyncProcessor extends AbstractBitrix24Processor
     protected function syncProductRows(int $invoiceId, CustomerOrder $order): void
     {
         if ($order->items->isEmpty()) {
-            Log::debug("No items to sync for invoice", ['invoice_id' => $invoiceId]);
+            Log::debug('No items to sync for invoice', ['invoice_id' => $invoiceId]);
+
             return;
         }
 
@@ -249,8 +253,8 @@ class CustomerOrderSyncProcessor extends AbstractBitrix24Processor
                 'productName' => $this->cleanString($item->content)
                     ?: $this->cleanString($item->product_name)
                         ?: 'Товар/Услуга',
-                'quantity' => (float)$item->quantity,
-                'price' => (float)$item->price,
+                'quantity' => (float) $item->quantity,
+                'price' => (float) $item->price,
                 'discountTypeId' => 1,
                 'discountRate' => 0,
             ];
@@ -288,15 +292,15 @@ class CustomerOrderSyncProcessor extends AbstractBitrix24Processor
                 'productRows' => $productRows,
             ]);
 
-            Log::debug("Product rows synced", [
+            Log::debug('Product rows synced', [
                 'invoice_id' => $invoiceId,
-                'rows_count' => count($productRows)
+                'rows_count' => count($productRows),
             ]);
 
         } catch (\Exception $e) {
-            Log::error("Failed to sync product rows", [
+            Log::error('Failed to sync product rows', [
                 'invoice_id' => $invoiceId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
             throw $e;
         }
@@ -322,7 +326,7 @@ class CustomerOrderSyncProcessor extends AbstractBitrix24Processor
 
         return [
             'rate' => round($taxRate, 2),
-            'included' => $taxIncluded ? 'Y' : 'N'
+            'included' => $taxIncluded ? 'Y' : 'N',
         ];
     }
 
@@ -351,7 +355,7 @@ class CustomerOrderSyncProcessor extends AbstractBitrix24Processor
             'filter' => ['UF_CRM_19_GUID_1C' => $guid],
             'select' => ['id'],
             'limit' => 1,
-            'useOriginalUfNames' => 'Y'
+            'useOriginalUfNames' => 'Y',
         ]);
 
         return $response['result']['items'][0]['id'] ?? null;
@@ -367,21 +371,22 @@ class CustomerOrderSyncProcessor extends AbstractBitrix24Processor
         }
 
         $propId = $this->getProductPropertyId('GUID_1C');
-        if (!$propId) {
+        if (! $propId) {
             return null;
         }
 
         $response = $this->b24Service->call('crm.product.list', [
-            'filter' => ['PROPERTY_' . $propId => $guid],
+            'filter' => ['PROPERTY_'.$propId => $guid],
             'select' => ['ID'],
-            'limit' => 1
+            'limit' => 1,
         ]);
 
         $productId = $response['result'][0]['ID'] ?? null;
 
         if ($productId) {
-            $this->productMapCache[$guid] = (int)$productId;
-            return (int)$productId;
+            $this->productMapCache[$guid] = (int) $productId;
+
+            return (int) $productId;
         }
 
         return null;
@@ -400,7 +405,7 @@ class CustomerOrderSyncProcessor extends AbstractBitrix24Processor
             $response = $this->b24Service->call('crm.product.property.list');
 
             foreach ($response['result'] ?? [] as $property) {
-                $this->productPropertiesCache[$property['CODE']] = (int)$property['ID'];
+                $this->productPropertiesCache[$property['CODE']] = (int) $property['ID'];
             }
 
             return $this->productPropertiesCache[$code] ?? null;
@@ -414,6 +419,6 @@ class CustomerOrderSyncProcessor extends AbstractBitrix24Processor
     {
         $unit = UnitOfMeasure::where('guid_1c', $unitGuid)->first();
 
-        return $unit?->code ? (int)$unit->code : null;
+        return $unit?->code ? (int) $unit->code : null;
     }
 }

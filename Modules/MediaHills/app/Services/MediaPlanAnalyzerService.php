@@ -17,8 +17,8 @@ class MediaPlanAnalyzerService
     ) {
         // Регистрируем доступные парсеры
         $this->registerParser(new HtmlTableParser);
-        $this->registerParser(new HorizontalGridParser());
-        $this->registerParser(new CsvGridParser());
+        $this->registerParser(new HorizontalGridParser);
+        $this->registerParser(new CsvGridParser);
         // Здесь можно добавлять другие парсеры
     }
 

@@ -55,7 +55,7 @@ class ContactPerson extends Model
             $this->middle_name,
         ]);
 
-        return !empty($parts) ? implode(' ', $parts) : null;
+        return ! empty($parts) ? implode(' ', $parts) : null;
     }
 
     /**
@@ -74,14 +74,13 @@ class ContactPerson extends Model
         $short = $this->last_name ?? '';
 
         if ($this->first_name) {
-            $short .= ' ' . mb_substr($this->first_name, 0, 1) . '.';
+            $short .= ' '.mb_substr($this->first_name, 0, 1).'.';
         }
 
         if ($this->middle_name) {
-            $short .= mb_substr($this->middle_name, 0, 1) . '.';
+            $short .= mb_substr($this->middle_name, 0, 1).'.';
         }
 
         return trim($short) ?: ($this->full_name ?? 'Unknown');
     }
 }
-

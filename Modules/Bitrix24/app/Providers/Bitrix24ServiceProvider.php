@@ -36,7 +36,7 @@ class Bitrix24ServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(Bitrix24Service::class, function ($app) {
-            return new Bitrix24Service();
+            return new Bitrix24Service;
         });
         $this->app->register(EventServiceProvider::class);
         $this->app->register(RouteServiceProvider::class);
@@ -47,16 +47,16 @@ class Bitrix24ServiceProvider extends ServiceProvider
      */
     protected function registerCommands(): void
     {
-         $this->commands([
-             \Modules\Bitrix24\app\Console\Commands\CreateB24CustomFields::class,
-             \Modules\Bitrix24\app\Console\Commands\CreateCatalogCustomFields::class,
-             \Modules\Bitrix24\app\Console\Commands\CreateCRMCustomFields::class,
-             \Modules\Bitrix24\app\Console\Commands\ProcessChanges::class,
-             \Modules\Bitrix24\app\Console\Commands\CheckCompanyFields::class,
-             \Modules\Bitrix24\app\Console\Commands\CheckRequisitePresets::class,
-             \Modules\Bitrix24\app\Console\Commands\CreateCRMReqCustomFields::class,
-             \Modules\Bitrix24\app\Console\Commands\CreateSPAContracts::class,
-         ]);
+        $this->commands([
+            \Modules\Bitrix24\app\Console\Commands\CreateB24CustomFields::class,
+            \Modules\Bitrix24\app\Console\Commands\CreateCatalogCustomFields::class,
+            \Modules\Bitrix24\app\Console\Commands\CreateCRMCustomFields::class,
+            \Modules\Bitrix24\app\Console\Commands\ProcessChanges::class,
+            \Modules\Bitrix24\app\Console\Commands\CheckCompanyFields::class,
+            \Modules\Bitrix24\app\Console\Commands\CheckRequisitePresets::class,
+            \Modules\Bitrix24\app\Console\Commands\CreateCRMReqCustomFields::class,
+            \Modules\Bitrix24\app\Console\Commands\CreateSPAContracts::class,
+        ]);
     }
 
     /**
@@ -99,8 +99,8 @@ class Bitrix24ServiceProvider extends ServiceProvider
 
             foreach ($iterator as $file) {
                 if ($file->isFile() && $file->getExtension() === 'php') {
-                    $relativePath = str_replace($configPath . DIRECTORY_SEPARATOR, '', $file->getPathname());
-                    $configKey = $this->nameLower . '.' . str_replace([DIRECTORY_SEPARATOR, '.php'], ['.', ''], $relativePath);
+                    $relativePath = str_replace($configPath.DIRECTORY_SEPARATOR, '', $file->getPathname());
+                    $configKey = $this->nameLower.'.'.str_replace([DIRECTORY_SEPARATOR, '.php'], ['.', ''], $relativePath);
                     $key = ($relativePath === 'config.php') ? $this->nameLower : $configKey;
 
                     $this->publishes([$file->getPathname() => config_path($relativePath)], 'config');

@@ -34,7 +34,7 @@ class ContactPersonMapping extends ObjectMapping
 
         // 2. ФИО - разбиваем на составляющие
         $fio = $this->getFieldValue($keyProperties, 'ФИО');
-        if (!empty($fio)) {
+        if (! empty($fio)) {
             $nameParts = $this->parseFIO($fio);
             $contactPerson->last_name = $nameParts['last_name'];
             $contactPerson->first_name = $nameParts['first_name'];
@@ -46,7 +46,7 @@ class ContactPersonMapping extends ObjectMapping
         $subjectData = $keyProperties['Субъект'] ?? [];
         $counterpartyData = $subjectData['Контрагент'] ?? [];
 
-        if (!empty($counterpartyData) && isset($counterpartyData['Ссылка'])) {
+        if (! empty($counterpartyData) && isset($counterpartyData['Ссылка'])) {
             $counterpartyGuid = $counterpartyData['Ссылка'];
 
             // Сохраняем GUID контрагента
@@ -79,7 +79,7 @@ class ContactPersonMapping extends ObjectMapping
             'ПометкаУдаления',
             false
         );
-        $contactPerson->is_active = !$contactPerson->deletion_mark;
+        $contactPerson->is_active = ! $contactPerson->deletion_mark;
         $contactPerson->last_sync_at = now();
 
         return $contactPerson;
@@ -196,7 +196,7 @@ class ContactPersonMapping extends ObjectMapping
                 case 'Email':
                     $contactPerson->email = $parsedValue;
                     break;
-                // Можно добавить другие типы
+                    // Можно добавить другие типы
             }
         }
     }
@@ -227,6 +227,7 @@ class ContactPersonMapping extends ObjectMapping
                 'xml' => $xmlString,
                 'error' => $e->getMessage(),
             ]);
+
             return null;
         }
     }

@@ -1,4 +1,5 @@
 <?php
+
 // Modules/Bitrix24/app/Services/Processors/CompanySyncProcessor.php
 
 namespace Modules\Bitrix24\app\Services\Processors;
@@ -6,8 +7,6 @@ namespace Modules\Bitrix24\app\Services\Processors;
 use Illuminate\Support\Facades\Log;
 use Modules\Accounting\app\Models\Counterparty;
 use Modules\Accounting\app\Models\ObjectChangeLog;
-use Modules\Bitrix24\app\Enums\Bitrix24EntityType;
-use Modules\Bitrix24\app\Enums\Bitrix24FieldType;
 use Modules\Bitrix24\app\Exceptions\ValidationException;
 use Modules\Bitrix24\app\Services\RequisiteService;
 
@@ -25,14 +24,14 @@ class CompanySyncProcessor extends AbstractBitrix24Processor
     {
         $counterparty = Counterparty::find($change->local_id);
 
-        if (!$counterparty) {
+        if (! $counterparty) {
             throw new ValidationException("Counterparty not found: {$change->local_id}");
         }
 
         // Валидация
         $this->validateCounterparty($counterparty);
 
-        Log::info("Processing counterparty", ['guid' => $counterparty->guid_1c, 'inn' => $counterparty->inn]);
+        Log::info('Processing counterparty', ['guid' => $counterparty->guid_1c, 'inn' => $counterparty->inn]);
 
         // Ищем существующий реквизит
         $existingRequisite = $this->findRequisiteByGuid($counterparty->guid_1c);
@@ -56,7 +55,7 @@ class CompanySyncProcessor extends AbstractBitrix24Processor
         }
 
         $innLength = strlen($counterparty->inn);
-        if (!in_array($innLength, [10, 12])) {
+        if (! in_array($innLength, [10, 12])) {
             throw new ValidationException("Invalid INN length: {$innLength}");
         }
     }
@@ -66,12 +65,12 @@ class CompanySyncProcessor extends AbstractBitrix24Processor
      */
     protected function updateExisting(array $requisiteData, Counterparty $counterparty, ObjectChangeLog $change): void
     {
-        $requisiteId = (int)$requisiteData['ID'];
-        $companyId = (int)$requisiteData['ENTITY_ID'];
+        $requisiteId = (int) $requisiteData['ID'];
+        $companyId = (int) $requisiteData['ENTITY_ID'];
 
-        Log::debug("Updating existing company/requisite", [
+        Log::debug('Updating existing company/requisite', [
             'company_id' => $companyId,
-            'requisite_id' => $requisiteId
+            'requisite_id' => $requisiteId,
         ]);
 
         // Обновляем компанию-контейнер
@@ -91,7 +90,7 @@ class CompanySyncProcessor extends AbstractBitrix24Processor
      */
     protected function createNew(Counterparty $counterparty, ObjectChangeLog $change): void
     {
-        Log::debug("Creating new company/requisite");
+        Log::debug('Creating new company/requisite');
 
         // Создаём компанию-контейнер
         $companyId = $this->createCompany($counterparty);
@@ -113,16 +112,16 @@ class CompanySyncProcessor extends AbstractBitrix24Processor
         $fields = $this->prepareCompanyFields($counterparty);
 
         $result = $this->b24Service->call('crm.company.add', [
-            'fields' => $fields
+            'fields' => $fields,
         ]);
 
         if (empty($result['result'])) {
-            throw new \Exception("Failed to create company: " . json_encode($result));
+            throw new \Exception('Failed to create company: '.json_encode($result));
         }
 
-        $companyId = (int)$result['result'];
+        $companyId = (int) $result['result'];
 
-        Log::info("Company created", ['b24_id' => $companyId]);
+        Log::info('Company created', ['b24_id' => $companyId]);
 
         return $companyId;
     }
@@ -136,10 +135,10 @@ class CompanySyncProcessor extends AbstractBitrix24Processor
 
         $this->b24Service->call('crm.company.update', [
             'id' => $companyId,
-            'fields' => $fields
+            'fields' => $fields,
         ]);
 
-        Log::debug("Company updated", ['b24_id' => $companyId]);
+        Log::debug('Company updated', ['b24_id' => $companyId]);
     }
 
     /**

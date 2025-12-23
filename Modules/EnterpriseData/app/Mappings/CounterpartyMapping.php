@@ -68,7 +68,6 @@ class CounterpartyMapping extends ObjectMapping
         // Регистрационный номер нерезидента
         $counterparty->registration_number = $this->getFieldValue($keyProperties, 'РегистрационныйНомерНерезидента');
 
-
         // Обработка контактной информации из табличной части
         $contactInfo = ContactInfoParser::parseContactInfo($object1C['tabular_sections'] ?? []);
         $counterparty->phone = $contactInfo['phone'] ?? null;

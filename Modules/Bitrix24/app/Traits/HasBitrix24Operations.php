@@ -1,4 +1,5 @@
 <?php
+
 // Modules/Bitrix24/app/Traits/HasBitrix24Operations.php
 
 namespace Modules\Bitrix24\app\Traits;
@@ -30,7 +31,7 @@ trait HasBitrix24Operations
         return Cache::remember($cacheKey, 600, function () use ($guid) {
             $response = $this->b24Service->call('crm.requisite.list', [
                 'filter' => [Bitrix24FieldType::REQUISITE_GUID->value() => $guid],
-                'select' => ['ID', 'ENTITY_ID', 'ENTITY_TYPE_ID']
+                'select' => ['ID', 'ENTITY_ID', 'ENTITY_TYPE_ID'],
             ]);
 
             return $response['result'][0] ?? null;
@@ -44,7 +45,7 @@ trait HasBitrix24Operations
     {
         $requisite = $this->findRequisiteByGuid($guid);
 
-        return $requisite ? (int)$requisite['ENTITY_ID'] : null;
+        return $requisite ? (int) $requisite['ENTITY_ID'] : null;
     }
 
     /**
@@ -58,11 +59,11 @@ trait HasBitrix24Operations
             $response = $this->b24Service->call('crm.contact.list', [
                 'filter' => [Bitrix24FieldType::CONTACT_GUID->value() => $guid],
                 'select' => ['ID'],
-                'limit' => 1
+                'limit' => 1,
             ]);
 
             return isset($response['result'][0]['ID'])
-                ? (int)$response['result'][0]['ID']
+                ? (int) $response['result'][0]['ID']
                 : null;
         });
     }
@@ -75,13 +76,13 @@ trait HasBitrix24Operations
         return Cache::remember('b24:users_map', 3600, function () {
             $response = $this->b24Service->call('user.get', [
                 'select' => ['ID', Bitrix24FieldType::USER_GUID->value()],
-                'filter' => ['ACTIVE' => 'Y']
+                'filter' => ['ACTIVE' => 'Y'],
             ]);
 
             $map = [];
             foreach ($response['result'] ?? [] as $user) {
-                if (!empty($user[Bitrix24FieldType::USER_GUID->value()])) {
-                    $map[$user[Bitrix24FieldType::USER_GUID->value()]] = (int)$user['ID'];
+                if (! empty($user[Bitrix24FieldType::USER_GUID->value()])) {
+                    $map[$user[Bitrix24FieldType::USER_GUID->value()]] = (int) $user['ID'];
                 }
             }
 
@@ -119,7 +120,7 @@ trait HasBitrix24Operations
         return [
             'last' => $parts[0] ?? null,
             'first' => $parts[1] ?? null,
-            'second' => $parts[2] ?? null
+            'second' => $parts[2] ?? null,
         ];
     }
 

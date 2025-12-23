@@ -3,10 +3,9 @@
 namespace Modules\Accounting\app\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 use Modules\Accounting\app\Models\Counterparty;
 use Modules\Accounting\app\Models\CustomerOrder;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class FillCounterpartyResponsible extends Command
 {
@@ -18,8 +17,11 @@ class FillCounterpartyResponsible extends Command
     protected $description = 'Fill responsible_guid_1c for counterparties based on their recent orders';
 
     private int $processedCount = 0;
+
     private int $updatedCount = 0;
+
     private int $skippedCount = 0;
+
     private array $errors = [];
 
     public function handle(): int
@@ -40,7 +42,7 @@ class FillCounterpartyResponsible extends Command
             ->where('deletion_mark', false);
 
         // Если указаны конкретные ID
-        if (!empty($specificIds)) {
+        if (! empty($specificIds)) {
             $query->whereIn('id', $specificIds);
         }
 
@@ -48,6 +50,7 @@ class FillCounterpartyResponsible extends Command
 
         if ($totalCount === 0) {
             $this->info('✓ No counterparties found without responsible');
+
             return self::SUCCESS;
         }
 
@@ -111,6 +114,7 @@ class FillCounterpartyResponsible extends Command
             if ($isVerbose) {
                 $this->line('  ⊘ No orders found');
             }
+
             return;
         }
 
@@ -121,16 +125,17 @@ class FillCounterpartyResponsible extends Command
         // Определяем ответственного
         $selectedResponsible = $this->determineResponsible($orders, $isVerbose);
 
-        if (!$selectedResponsible) {
+        if (! $selectedResponsible) {
             $this->skippedCount++;
             if ($isVerbose) {
                 $this->line('  ⊘ Could not determine responsible');
             }
+
             return;
         }
 
         // Обновляем контрагента
-        if (!$dryRun) {
+        if (! $dryRun) {
             $counterparty->update([
                 'responsible_guid_1c' => $selectedResponsible,
             ]);
@@ -151,7 +156,7 @@ class FillCounterpartyResponsible extends Command
         foreach ($orders as $order) {
             $responsible = $order->responsible_guid_1c;
 
-            if (!isset($responsibleData[$responsible])) {
+            if (! isset($responsibleData[$responsible])) {
                 $responsibleData[$responsible] = [
                     'count' => 0,
                     'last_order_date' => $order->date,
@@ -180,7 +185,7 @@ class FillCounterpartyResponsible extends Command
         // Отфильтровываем кандидатов с максимальной частотой
         $candidates = array_filter(
             $responsibleData,
-            fn($data) => $data['count'] === $maxCount
+            fn ($data) => $data['count'] === $maxCount
         );
 
         // Если несколько кандидатов - выбираем из самого свежего заказа
@@ -205,12 +210,12 @@ class FillCounterpartyResponsible extends Command
     private function isOrderNewer(CustomerOrder $order, array $currentData): bool
     {
         // Если текущая дата null - любой заказ новее
-        if (!$currentData['last_order_date']) {
+        if (! $currentData['last_order_date']) {
             return true;
         }
 
         // Если дата заказа null - он не новее
-        if (!$order->date) {
+        if (! $order->date) {
             return false;
         }
 
@@ -249,15 +254,15 @@ class FillCounterpartyResponsible extends Command
         }
 
         // Показываем ошибки если есть
-        if (!empty($this->errors)) {
+        if (! empty($this->errors)) {
             $this->newLine();
             $this->error('Errors occurred during processing:');
             $this->table(
                 ['ID', 'Name', 'Error'],
-                array_map(fn($err) => [
+                array_map(fn ($err) => [
                     $err['counterparty_id'],
                     $err['counterparty_name'],
-                    $err['error']
+                    $err['error'],
                 ], $this->errors)
             );
         }

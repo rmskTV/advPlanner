@@ -14,9 +14,9 @@ class CheckCompanyFields extends Command
         // Получаем все пользовательские поля компании
         $fields = $b24Service->call('crm.company.userfield.list');
 
-        $this->info("Company user fields:");
+        $this->info('Company user fields:');
         foreach ($fields['result'] as $field) {
-            $this->info(sprintf("ID: %s, Name: %s, Code: %s",
+            $this->info(sprintf('ID: %s, Name: %s, Code: %s',
                 $field['ID'],
                 $field['EDIT_FORM_LABEL']['ru'] ?? 'N/A',
                 $field['FIELD_NAME']
@@ -29,7 +29,7 @@ class CheckCompanyFields extends Command
         $this->info("\n\nStandard company fields:");
         foreach ($standardFields['result'] as $fieldName => $fieldInfo) {
             if (stripos($fieldName, 'INN') !== false || stripos($fieldName, 'ИНН') !== false) {
-                $this->info(sprintf("Field: %s, Title: %s",
+                $this->info(sprintf('Field: %s, Title: %s',
                     $fieldName,
                     $fieldInfo['formLabel'] ?? $fieldInfo['title'] ?? 'N/A'
                 ));
@@ -37,4 +37,3 @@ class CheckCompanyFields extends Command
         }
     }
 }
-

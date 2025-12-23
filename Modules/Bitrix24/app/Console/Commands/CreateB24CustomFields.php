@@ -8,6 +8,7 @@ use Modules\Bitrix24\app\Services\Bitrix24Service;
 class CreateB24CustomFields extends Command
 {
     protected $signature = 'b24:create-custom-fields';
+
     protected $description = 'Create custom fields in Bitrix24';
 
     protected $b24Service;
@@ -29,24 +30,24 @@ class CreateB24CustomFields extends Command
                     'LIST_COLUMN_LABEL' => ['ru' => 'GUID 1C'],
                     'USER_TYPE_ID' => 'string',
                     'XML_ID' => 'UF_1C_GUID',
-                    'MANDATORY' => 'N'
-                ]
+                    'MANDATORY' => 'N',
+                ],
             ]);
 
             $this->info('Custom field UF_1C_GUID created successfully');
-            $this->info('Result: ' . print_r($result, true));
+            $this->info('Result: '.print_r($result, true));
 
         } catch (\Exception $e) {
-            $this->error('Error creating custom field: ' . $e->getMessage());
+            $this->error('Error creating custom field: '.$e->getMessage());
         }
     }
 }
 
-//Result: Array
-//(
+// Result: Array
+// (
 //    [result] => 267
 //    [time] => Array
-//(
+// (
 //    [start] => 1763702449
 //            [finish] => 1763702449.6243
 //            [duration] => 0.62432408332825
@@ -57,5 +58,4 @@ class CreateB24CustomFields extends Command
 //            [operating] => 0
 //        )
 //
-//)
-
+// )

@@ -1,4 +1,5 @@
 <?php
+
 // Modules/Bitrix24/app/Services/Processors/ProductSyncProcessor.php
 
 namespace Modules\Bitrix24\app\Services\Processors;
@@ -18,11 +19,11 @@ class ProductSyncProcessor extends AbstractBitrix24Processor
     {
         $product = Product::find($change->local_id);
 
-        if (!$product) {
+        if (! $product) {
             throw new ValidationException("Product not found: {$change->local_id}");
         }
 
-        Log::info("Processing product", ['guid' => $product->guid_1c, 'name' => $product->name]);
+        Log::info('Processing product', ['guid' => $product->guid_1c, 'name' => $product->name]);
 
         // Получаем ID категории (секции)
         $sectionId = $this->findSectionByGuid($product->group_guid_1c);
@@ -69,15 +70,15 @@ class ProductSyncProcessor extends AbstractBitrix24Processor
 
         // Пользовательские свойства
         if (isset($propertyIds['GUID_1C'])) {
-            $fields['PROPERTY_' . $propertyIds['GUID_1C']] = $product->guid_1c;
+            $fields['PROPERTY_'.$propertyIds['GUID_1C']] = $product->guid_1c;
         }
 
         if (isset($propertyIds['ANALYTICS_GROUP']) && $product->analytics_group_name) {
-            $fields['PROPERTY_' . $propertyIds['ANALYTICS_GROUP']] = $product->analytics_group_name;
+            $fields['PROPERTY_'.$propertyIds['ANALYTICS_GROUP']] = $product->analytics_group_name;
         }
 
         if (isset($propertyIds['ANALYTICS_GROUP_GUID']) && $product->analytics_group_guid_1c) {
-            $fields['PROPERTY_' . $propertyIds['ANALYTICS_GROUP_GUID']] = $product->analytics_group_guid_1c;
+            $fields['PROPERTY_'.$propertyIds['ANALYTICS_GROUP_GUID']] = $product->analytics_group_guid_1c;
         }
 
         return $fields;
@@ -89,16 +90,16 @@ class ProductSyncProcessor extends AbstractBitrix24Processor
     protected function createProduct(array $fields): int
     {
         $result = $this->b24Service->call('crm.product.add', [
-            'fields' => $fields
+            'fields' => $fields,
         ]);
 
         if (empty($result['result'])) {
-            throw new \Exception("Failed to create product: " . json_encode($result));
+            throw new \Exception('Failed to create product: '.json_encode($result));
         }
 
-        $productId = (int)$result['result'];
+        $productId = (int) $result['result'];
 
-        Log::info("Product created", ['b24_id' => $productId]);
+        Log::info('Product created', ['b24_id' => $productId]);
 
         return $productId;
     }
@@ -110,10 +111,10 @@ class ProductSyncProcessor extends AbstractBitrix24Processor
     {
         $this->b24Service->call('crm.product.update', [
             'id' => $productId,
-            'fields' => $fields
+            'fields' => $fields,
         ]);
 
-        Log::debug("Product updated", ['b24_id' => $productId]);
+        Log::debug('Product updated', ['b24_id' => $productId]);
     }
 
     /**
@@ -123,14 +124,14 @@ class ProductSyncProcessor extends AbstractBitrix24Processor
     {
         $propertyIds = $this->getProductPropertyIds();
 
-        if (!isset($propertyIds['GUID_1C'])) {
+        if (! isset($propertyIds['GUID_1C'])) {
             return null;
         }
 
         $response = $this->b24Service->call('crm.product.list', [
-            'filter' => ['PROPERTY_' . $propertyIds['GUID_1C'] => $guid],
+            'filter' => ['PROPERTY_'.$propertyIds['GUID_1C'] => $guid],
             'select' => ['ID'],
-            'limit' => 1
+            'limit' => 1,
         ]);
 
         return $response['result'][0]['ID'] ?? null;
@@ -141,14 +142,14 @@ class ProductSyncProcessor extends AbstractBitrix24Processor
      */
     protected function findSectionByGuid(?string $guid): ?int
     {
-        if (!$guid) {
+        if (! $guid) {
             return null;
         }
 
         $response = $this->b24Service->call('crm.productsection.list', [
             'filter' => ['CODE' => $guid],
             'select' => ['ID'],
-            'limit' => 1
+            'limit' => 1,
         ]);
 
         return $response['result'][0]['ID'] ?? null;
@@ -164,7 +165,7 @@ class ProductSyncProcessor extends AbstractBitrix24Processor
 
             $properties = [];
             foreach ($response['result'] ?? [] as $property) {
-                $properties[$property['CODE']] = (int)$property['ID'];
+                $properties[$property['CODE']] = (int) $property['ID'];
             }
 
             return $properties;
@@ -187,13 +188,13 @@ class ProductSyncProcessor extends AbstractBitrix24Processor
      */
     protected function getB24MeasureId(?string $unitGuid): int
     {
-        if (!$unitGuid) {
+        if (! $unitGuid) {
             return 9; // Штука по умолчанию
         }
 
         $unit = UnitOfMeasure::where('guid_1c', $unitGuid)->first();
 
-        if (!$unit) {
+        if (! $unit) {
             return 9;
         }
 

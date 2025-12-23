@@ -21,4 +21,3 @@ Route::group([
     Route::get('dealsw', [Bitrix24Controller::class, 'deals']);
     Route::post('webhook', [Bitrix24Controller::class, 'handleWebhook']);
 });
-

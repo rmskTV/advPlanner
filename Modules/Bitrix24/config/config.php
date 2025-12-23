@@ -28,7 +28,7 @@ return [
     'entities' => [
         'deal' => [
             'fields' => [],
-            'mapping' => []
-        ]
-    ]
+            'mapping' => [],
+        ],
+    ],
 ];

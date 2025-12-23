@@ -1,4 +1,5 @@
 <?php
+
 namespace Modules\Bitrix24\app\Console\Commands;
 
 use Illuminate\Console\Command;
@@ -7,6 +8,7 @@ use Modules\Bitrix24\app\Services\Bitrix24Service;
 class CreateCRMCustomFields extends Command
 {
     protected $signature = 'b24:create-crm-fields';
+
     protected $description = 'Create custom fields for CRM entities in B24';
 
     protected $b24Service;
@@ -29,10 +31,10 @@ class CreateCRMCustomFields extends Command
                     'LIST_COLUMN_LABEL' => ['ru' => 'GUID 1C'],
                     'USER_TYPE_ID' => 'string',
                     'XML_ID' => 'UF_GUID_1C',
-                    'MANDATORY' => 'N'
-                ]
+                    'MANDATORY' => 'N',
+                ],
             ]);
-            $this->info('Result: ' . print_r($result, true));
+            $this->info('Result: '.print_r($result, true));
 
             // Поле GUID_1C для контактов
             $this->info("\nCreating GUID_1C field for contacts:");
@@ -43,28 +45,26 @@ class CreateCRMCustomFields extends Command
                     'LIST_COLUMN_LABEL' => ['ru' => 'GUID 1C'],
                     'USER_TYPE_ID' => 'string',
                     'XML_ID' => 'UF_GUID_1C',
-                    'MANDATORY' => 'N'
-                ]
+                    'MANDATORY' => 'N',
+                ],
             ]);
-            $this->info('Result: ' . print_r($result, true));
+            $this->info('Result: '.print_r($result, true));
 
             $this->info("\nAll CRM custom fields created successfully");
 
         } catch (\Exception $e) {
-            $this->error('Error creating custom fields: ' . $e->getMessage());
+            $this->error('Error creating custom fields: '.$e->getMessage());
         }
     }
 }
 
-
-
 //
-//Creating GUID_1C field for companies:
+// Creating GUID_1C field for companies:
 //    Result: Array
-//(
+// (
 //    [result] => 269
 //    [time] => Array
-//(
+// (
 //    [start] => 1764126326
 //            [finish] => 1764126326.5244
 //            [duration] => 0.52441692352295
@@ -75,15 +75,15 @@ class CreateCRMCustomFields extends Command
 //            [operating] => 0
 //        )
 //
-//)
+// )
 //
 //
-//Creating GUID_1C field for contacts:
+// Creating GUID_1C field for contacts:
 //    Result: Array
-//(
+// (
 //    [result] => 271
 //    [time] => Array
-//(
+// (
 //    [start] => 1764126326
 //            [finish] => 1764126327.023
 //            [duration] => 1.0229609012604
@@ -94,5 +94,4 @@ class CreateCRMCustomFields extends Command
 //            [operating] => 0.14348697662354
 //        )
 //
-//)
-
+// )

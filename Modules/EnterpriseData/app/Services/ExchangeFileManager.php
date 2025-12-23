@@ -81,7 +81,7 @@ class ExchangeFileManager
             $exchangePath = $this->getExchangePath($connector);
             $filePath = empty($exchangePath) ? $fileName : $exchangePath.'/'.$fileName;
 
-            if (!$filesystem->fileExists($filePath)) {
+            if (! $filesystem->fileExists($filePath)) {
                 throw new ExchangeFileException("File {$fileName} does not exist at path {$filePath}");
             }
 
@@ -90,7 +90,7 @@ class ExchangeFileManager
                 throw new ExchangeFileException("File {$fileName} exceeds maximum size limit ({$fileSize} bytes)");
             }
 
-            if (!$this->isValidFileExtension($fileName)) {
+            if (! $this->isValidFileExtension($fileName)) {
                 throw new ExchangeFileException("File {$fileName} has invalid extension");
             }
 
@@ -170,7 +170,7 @@ class ExchangeFileManager
             libxml_clear_errors();
 
             throw new ExchangeFileException(
-                "File {$fileName} contains invalid XML: " .
+                "File {$fileName} contains invalid XML: ".
                 ($errors[0]->message ?? 'Unknown error')
             );
         }

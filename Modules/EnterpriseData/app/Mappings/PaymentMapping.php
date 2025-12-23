@@ -42,7 +42,7 @@ class PaymentMapping extends ObjectMapping
 
         // Дата документа
         $dateString = $this->getFieldValue($keyProperties, 'Дата');
-        if (!empty($dateString)) {
+        if (! empty($dateString)) {
             try {
                 $payment->date = Carbon::parse($dateString);
             } catch (\Exception $e) {
@@ -56,7 +56,7 @@ class PaymentMapping extends ObjectMapping
 
         // Организация
         $organizationData = $keyProperties['Организация'] ?? [];
-        if (!empty($organizationData) && isset($organizationData['Ссылка'])) {
+        if (! empty($organizationData) && isset($organizationData['Ссылка'])) {
             $organization = Organization::findByGuid1C($organizationData['Ссылка']);
             $payment->organization_id = $organization?->id;
             $payment->organization_guid_1c = $organizationData['Ссылка'];
@@ -64,7 +64,7 @@ class PaymentMapping extends ObjectMapping
 
         // Контрагент
         $counterpartyData = $properties['Контрагент'] ?? [];
-        if (!empty($counterpartyData) && isset($counterpartyData['Ссылка'])) {
+        if (! empty($counterpartyData) && isset($counterpartyData['Ссылка'])) {
             $counterparty = Counterparty::findByGuid1C($counterpartyData['Ссылка']);
             $payment->counterparty_id = $counterparty?->id;
             $payment->counterparty_guid_1c = $counterpartyData['Ссылка'];
@@ -81,7 +81,7 @@ class PaymentMapping extends ObjectMapping
 
         // Валюта
         $currencyData = $commonData['Валюта'] ?? [];
-        if (!empty($currencyData) && isset($currencyData['Ссылка'])) {
+        if (! empty($currencyData) && isset($currencyData['Ссылка'])) {
             $currency = Currency::findByGuid1C($currencyData['Ссылка']);
             $payment->currency_id = $currency?->id;
             $payment->currency_guid_1c = $currencyData['Ссылка'];
@@ -89,7 +89,7 @@ class PaymentMapping extends ObjectMapping
 
         // Дата выписки
         $statementDateString = $this->getFieldValue($commonData, 'ДатаВыписки');
-        if (!empty($statementDateString)) {
+        if (! empty($statementDateString)) {
             try {
                 $payment->statement_date = Carbon::parse($statementDateString);
             } catch (\Exception $e) {
@@ -102,7 +102,7 @@ class PaymentMapping extends ObjectMapping
 
         // Входящий документ
         $incomingDateString = $this->getFieldValue($commonData, 'ДатаВходящегоДокумента');
-        if (!empty($incomingDateString)) {
+        if (! empty($incomingDateString)) {
             try {
                 $payment->incoming_document_date = Carbon::parse($incomingDateString);
             } catch (\Exception $e) {
@@ -113,7 +113,7 @@ class PaymentMapping extends ObjectMapping
 
         // Банковский счет организации
         $orgBankAccountData = $commonData['БанковскийСчетОрганизации'] ?? [];
-        if (!empty($orgBankAccountData) && isset($orgBankAccountData['Ссылка'])) {
+        if (! empty($orgBankAccountData) && isset($orgBankAccountData['Ссылка'])) {
             $orgBankAccount = BankAccount::findByGuid1C($orgBankAccountData['Ссылка']);
             $payment->organization_bank_account_id = $orgBankAccount?->id;
             $payment->organization_bank_account_guid_1c = $orgBankAccountData['Ссылка'];
@@ -121,7 +121,7 @@ class PaymentMapping extends ObjectMapping
 
         // Банковский счет контрагента
         $counterpartyBankAccountData = $properties['БанковскийСчетКонтрагента'] ?? [];
-        if (!empty($counterpartyBankAccountData) && isset($counterpartyBankAccountData['Ссылка'])) {
+        if (! empty($counterpartyBankAccountData) && isset($counterpartyBankAccountData['Ссылка'])) {
             $counterpartyBankAccount = BankAccount::findByGuid1C($counterpartyBankAccountData['Ссылка']);
             $payment->counterparty_bank_account_id = $counterpartyBankAccount?->id;
             $payment->counterparty_bank_account_guid_1c = $counterpartyBankAccountData['Ссылка'];
@@ -131,7 +131,7 @@ class PaymentMapping extends ObjectMapping
         $responsibleData = $commonData['Ответственный']
             ?? $properties['ОбщиеСвойстваОбъектовФормата']['Ответственный']
             ?? [];
-        if (!empty($responsibleData)) {
+        if (! empty($responsibleData)) {
             $payment->responsible_guid_1c = $responsibleData['Ссылка'] ?? null;
             $payment->responsible_name = $responsibleData['Наименование'] ?? null;
         }
@@ -155,7 +155,7 @@ class PaymentMapping extends ObjectMapping
         Log::info('Processing Payment tabular sections', [
             'payment_id' => $payment->id,
             'payment_guid' => $payment->guid_1c,
-            'found_details' => !empty($detailsData),
+            'found_details' => ! empty($detailsData),
             'details_keys' => $detailsData ? array_keys($detailsData) : null,
         ]);
 
@@ -165,6 +165,7 @@ class PaymentMapping extends ObjectMapping
                 'object1C_keys' => array_keys($object1C),
                 'properties_keys' => isset($object1C['properties']) ? array_keys($object1C['properties']) : null,
             ]);
+
             return;
         }
 
@@ -181,6 +182,7 @@ class PaymentMapping extends ObjectMapping
                 'payment_id' => $payment->id,
                 'detailsData' => json_encode($detailsData, JSON_UNESCAPED_UNICODE),
             ]);
+
             return;
         }
 
@@ -199,18 +201,21 @@ class PaymentMapping extends ObjectMapping
         // Вариант 1: В properties (для JSON)
         if (isset($object1C['properties']['РасшифровкаПлатежа'])) {
             Log::info('Found РасшифровкаПлатежа in properties');
+
             return $object1C['properties']['РасшифровкаПлатежа'];
         }
 
         // Вариант 2: На верхнем уровне (возможно для XML)
         if (isset($object1C['РасшифровкаПлатежа'])) {
             Log::info('Found РасшифровкаПлатежа at top level');
+
             return $object1C['РасшифровкаПлатежа'];
         }
 
         // Вариант 3: В tabular_sections (как у заказов)
         if (isset($object1C['tabular_sections']['РасшифровкаПлатежа'])) {
             Log::info('Found РасшифровкаПлатежа in tabular_sections');
+
             return $object1C['tabular_sections']['РасшифровкаПлатежа'];
         }
 
@@ -219,6 +224,7 @@ class PaymentMapping extends ObjectMapping
         foreach ($properties as $key => $value) {
             if (stripos($key, 'расшифровка') !== false || stripos($key, 'rashifrovka') !== false) {
                 Log::info("Found payment details with alternative key: {$key}");
+
                 return $value;
             }
         }
@@ -227,10 +233,12 @@ class PaymentMapping extends ObjectMapping
         $found = $this->recursiveFind($object1C, 'РасшифровкаПлатежа');
         if ($found) {
             Log::info('Found РасшифровкаПлатежа via recursive search');
+
             return $found;
         }
 
         Log::warning('РасшифровкаПлатежа not found anywhere');
+
         return null;
     }
 
@@ -270,6 +278,7 @@ class PaymentMapping extends ObjectMapping
             Log::info('РасшифровкаПлатежа is already an array of rows', [
                 'count' => count($detailsData),
             ]);
+
             return $detailsData;
         }
 
@@ -277,27 +286,31 @@ class PaymentMapping extends ObjectMapping
         if (isset($detailsData['Строка'])) {
             $strokaData = $detailsData['Строка'];
 
-            if (!is_array($strokaData)) {
+            if (! is_array($strokaData)) {
                 Log::warning('Строка is not an array', [
                     'type' => gettype($strokaData),
                 ]);
+
                 return [];
             }
 
             // Если это ассоциативный массив - один объект
             if ($this->isAssociativeArray($strokaData)) {
                 Log::info('Found single row in Строка');
+
                 return [$strokaData];
             }
 
             // Массив объектов
             Log::info('Found multiple rows in Строка', ['count' => count($strokaData)]);
+
             return $strokaData;
         }
 
         // ВАРИАНТ 3: Один объект без обертки (ассоциативный массив)
         if ($this->isAssociativeArray($detailsData) && isset($detailsData['Заказ'])) {
             Log::info('РасшифровкаПлатежа is a single row object');
+
             return [$detailsData];
         }
 
@@ -308,6 +321,7 @@ class PaymentMapping extends ObjectMapping
 
         return [];
     }
+
     /**
      * Проверка, является ли массив ассоциативным (объектом)
      */
@@ -316,6 +330,7 @@ class PaymentMapping extends ObjectMapping
         if (empty($array)) {
             return false;
         }
+
         return array_keys($array) !== range(0, count($array) - 1);
     }
 
@@ -358,7 +373,7 @@ class PaymentMapping extends ObjectMapping
 
         // Заказ клиента
         $orderData = $row['Заказ']['ЗаказКлиента'] ?? [];
-        if (!empty($orderData) && isset($orderData['Ссылка'])) {
+        if (! empty($orderData) && isset($orderData['Ссылка'])) {
             $order = CustomerOrder::findByGuid1C($orderData['Ссылка']);
             $data['order_id'] = $order?->id;
             $data['order_guid_1c'] = $orderData['Ссылка'];
@@ -371,7 +386,7 @@ class PaymentMapping extends ObjectMapping
 
         // Статья ДДС
         $cashFlowData = $row['СтатьяДДС'] ?? [];
-        if (!empty($cashFlowData)) {
+        if (! empty($cashFlowData)) {
             $data['cash_flow_item_guid_1c'] = $cashFlowData['Ссылка'] ?? null;
             $data['cash_flow_item_code'] = $cashFlowData['КодВПрограмме'] ?? null;
             $data['cash_flow_item_name'] = $cashFlowData['Наименование'] ?? null;
@@ -379,10 +394,10 @@ class PaymentMapping extends ObjectMapping
 
         // Данные взаиморасчетов
         $settlementData = $row['ДанныеВзаиморасчетов'] ?? [];
-        if (!empty($settlementData)) {
+        if (! empty($settlementData)) {
             // Договор
             $contractData = $settlementData['Договор'] ?? [];
-            if (!empty($contractData) && isset($contractData['Ссылка'])) {
+            if (! empty($contractData) && isset($contractData['Ссылка'])) {
                 $contract = Contract::findByGuid1C($contractData['Ссылка']);
                 $data['contract_id'] = $contract?->id;
                 $data['contract_guid_1c'] = $contractData['Ссылка'];
@@ -390,7 +405,7 @@ class PaymentMapping extends ObjectMapping
 
             // Валюта взаиморасчетов
             $currencyData = $settlementData['ВалютаВзаиморасчетов'] ?? [];
-            if (!empty($currencyData) && isset($currencyData['Ссылка'])) {
+            if (! empty($currencyData) && isset($currencyData['Ссылка'])) {
                 $currency = Currency::findByGuid1C($currencyData['Ссылка']);
                 $data['settlement_currency_id'] = $currency?->id;
                 $data['settlement_currency_guid_1c'] = $currencyData['Ссылка'];
@@ -404,7 +419,7 @@ class PaymentMapping extends ObjectMapping
 
         // Вид расчетов расширенный
         $extendedTypeData = $row['ВидРасчетовРасширенный'] ?? [];
-        if (!empty($extendedTypeData)) {
+        if (! empty($extendedTypeData)) {
             $data['payment_type_extended'] = $extendedTypeData['ВидРасчетовСПокупателямиПоставщиками'] ?? null;
         }
 

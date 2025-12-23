@@ -1,4 +1,5 @@
 <?php
+
 namespace Modules\Bitrix24\app\Services;
 
 use Illuminate\Http\Client\ConnectionException;
@@ -7,6 +8,7 @@ use Illuminate\Support\Facades\Http;
 class Bitrix24Service
 {
     protected string $webhookUrl;
+
     protected int $timeout = 30; // дефолтное значение
 
     public function __construct()
@@ -22,7 +24,7 @@ class Bitrix24Service
     public function call($method, $params = [])
     {
         return Http::timeout($this->timeout)
-            ->post($this->webhookUrl . $method, $params)
+            ->post($this->webhookUrl.$method, $params)
             ->json();
     }
 

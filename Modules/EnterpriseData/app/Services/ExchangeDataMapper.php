@@ -277,7 +277,8 @@ class ExchangeDataMapper
             }
         }
 
-        ObjectChangeLog::log1CChange($modelClass,array_values($searchKeys)[0], $savedModel->id);
+        ObjectChangeLog::log1CChange($modelClass, array_values($searchKeys)[0], $savedModel->id);
+
         return ['model' => $savedModel, 'created' => $wasCreated];
     }
 

@@ -8,6 +8,7 @@ use Modules\Bitrix24\app\Services\Bitrix24Service;
 class CheckRequisitePresets extends Command
 {
     protected $signature = 'b24:check-requisite-presets';
+
     protected $description = 'Check available requisite presets';
 
     public function handle(Bitrix24Service $b24Service)
@@ -15,10 +16,10 @@ class CheckRequisitePresets extends Command
         // Получаем все шаблоны реквизитов
         $presets = $b24Service->call('crm.requisite.preset.list');
 
-        $this->info("Available requisite presets:");
+        $this->info('Available requisite presets:');
         foreach ($presets['result'] as $preset) {
             $this->info(sprintf(
-                "ID: %s, Name: %s, Country: %s, Entity: %s, XML_ID: %s",
+                'ID: %s, Name: %s, Country: %s, Entity: %s, XML_ID: %s',
                 $preset['ID'],
                 $preset['NAME'],
                 $preset['COUNTRY_ID'],

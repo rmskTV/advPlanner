@@ -1,4 +1,5 @@
 <?php
+
 // Modules/Bitrix24/app/Services/Processors/AbstractBitrix24Processor.php
 
 namespace Modules\Bitrix24\app\Services\Processors;
@@ -29,8 +30,9 @@ abstract class AbstractBitrix24Processor
     public function process(ObjectChangeLog $change): void
     {
         // Блокируем запись
-        if (!$change->lock()) {
+        if (! $change->lock()) {
             Log::warning('Failed to lock change', ['id' => $change->id]);
+
             return;
         }
 
@@ -48,7 +50,7 @@ abstract class AbstractBitrix24Processor
             Log::info('Entity synced successfully', [
                 'change_id' => $change->id,
                 'entity_type' => $change->entity_type,
-                'b24_id' => $change->b24_id
+                'b24_id' => $change->b24_id,
             ]);
 
         } catch (ValidationException $e) {
@@ -57,7 +59,7 @@ abstract class AbstractBitrix24Processor
 
             Log::warning('Entity skipped due to validation', [
                 'change_id' => $change->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
         } catch (DependencyNotReadyException $e) {
@@ -70,14 +72,14 @@ abstract class AbstractBitrix24Processor
                 Log::info('Dependency not ready, will retry', [
                     'change_id' => $change->id,
                     'retry_count' => $change->retry_count,
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
                 ]);
             } else {
-                $change->markError("Max retries exceeded: " . $e->getMessage());
+                $change->markError('Max retries exceeded: '.$e->getMessage());
 
                 Log::error('Max retries exceeded', [
                     'change_id' => $change->id,
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
                 ]);
             }
 
@@ -91,14 +93,14 @@ abstract class AbstractBitrix24Processor
                 Log::warning('Retryable error occurred', [
                     'change_id' => $change->id,
                     'retry_count' => $change->retry_count,
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
                 ]);
             } else {
                 $change->markError($e->getMessage());
 
                 Log::error('Non-retryable error', [
                     'change_id' => $change->id,
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
                 ]);
             }
 
@@ -114,10 +116,10 @@ abstract class AbstractBitrix24Processor
                     'change_id' => $change->id,
                     'retry_count' => $change->retry_count,
                     'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
+                    'trace' => $e->getTraceAsString(),
                 ]);
             } else {
-                $change->markError("Max retries exceeded: " . $e->getMessage());
+                $change->markError('Max retries exceeded: '.$e->getMessage());
             }
         } finally {
             // Всегда снимаем блокировку

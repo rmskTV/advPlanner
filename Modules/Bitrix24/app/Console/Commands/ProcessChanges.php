@@ -1,4 +1,5 @@
 <?php
+
 // Modules/Bitrix24/app/Console/Commands/ProcessChanges.php
 
 namespace Modules\Bitrix24\app\Console\Commands;
@@ -21,6 +22,7 @@ class ProcessChanges extends Command
         // Показать статистику
         if ($this->option('stats')) {
             $this->displayStats($processor);
+
             return self::SUCCESS;
         }
 
@@ -33,7 +35,7 @@ class ProcessChanges extends Command
         }
 
         // Получаем лимит
-        $limit = $this->option('limit') ? (int)$this->option('limit') : null;
+        $limit = $this->option('limit') ? (int) $this->option('limit') : null;
 
         // Показываем сколько записей в очереди
         $totalReady = ObjectChangeLog::readyForProcessing()->count();
@@ -43,6 +45,7 @@ class ProcessChanges extends Command
 
         if ($totalReady === 0) {
             $this->info('✅ Nothing to process');
+
             return self::SUCCESS;
         }
 
@@ -52,7 +55,7 @@ class ProcessChanges extends Command
 
         try {
             // Запускаем обработку с коллбэком для прогресс-бара
-            $stats = $processor->process($limit, function($change) use ($progressBar) {
+            $stats = $processor->process($limit, function ($change) use ($progressBar) {
                 $progressBar->advance();
             });
 
@@ -76,7 +79,8 @@ class ProcessChanges extends Command
         } catch (\Exception $e) {
             $progressBar->finish();
             $this->newLine(2);
-            $this->error('❌ Sync failed: ' . $e->getMessage());
+            $this->error('❌ Sync failed: '.$e->getMessage());
+
             return self::FAILURE;
         }
     }

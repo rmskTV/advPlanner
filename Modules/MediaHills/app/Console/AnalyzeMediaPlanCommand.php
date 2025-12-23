@@ -214,7 +214,7 @@ class AnalyzeMediaPlanCommand extends Command
      */
     private function getMediaPlanFiles(string $path): array
     {
-        if (!File::exists($path)) {
+        if (! File::exists($path)) {
             return [];
         }
 
@@ -222,6 +222,7 @@ class AnalyzeMediaPlanCommand extends Command
 
         return array_filter($files, function ($file) {
             $ext = strtolower($file->getExtension());
+
             return in_array($ext, ['html', 'htm', 'xlsx', 'xls', 'mht', 'mhtml', 'csv']);
         });
     }

@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Modules\VkAds\Http\Controllers\VkAdsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -14,5 +13,4 @@ use Modules\VkAds\Http\Controllers\VkAdsController;
 |
 */
 
-Route::group([], function () {
-});
+Route::group([], function () {});

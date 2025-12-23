@@ -1,6 +1,7 @@
 <?php
 
 namespace Modules\Bitrix24\app\Enums;
+
 enum Bitrix24FieldType
 {
     case REQUISITE_GUID;
@@ -10,7 +11,7 @@ enum Bitrix24FieldType
 
     public function value(): string
     {
-        return match($this) {
+        return match ($this) {
             self::REQUISITE_GUID => 'UF_CRM_GUID_1C',
             self::CONTACT_GUID => 'UF_CRM_GUID_1C',
             self::USER_GUID => 'UF_USR_1C_GUID',
@@ -20,6 +21,6 @@ enum Bitrix24FieldType
 
     public static function contractField(string $suffix): string
     {
-        return self::CONTRACT_GUID_PREFIX->value() . $suffix;
+        return self::CONTRACT_GUID_PREFIX->value().$suffix;
     }
 }

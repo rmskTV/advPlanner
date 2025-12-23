@@ -1,4 +1,5 @@
 <?php
+
 // Modules/Bitrix24/app/Enums/SyncStatus.php
 
 namespace Modules\Bitrix24\app\Enums;

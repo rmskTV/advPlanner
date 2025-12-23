@@ -1,4 +1,5 @@
 <?php
+
 // Modules/Bitrix24/app/Exceptions/RateLimitException.php
 
 namespace Modules\Bitrix24\app\Exceptions;

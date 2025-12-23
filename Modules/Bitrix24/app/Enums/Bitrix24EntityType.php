@@ -1,4 +1,5 @@
 <?php
+
 // Modules/Bitrix24/app/Enums/Bitrix24EntityType.php
 
 namespace Modules\Bitrix24\app\Enums;
@@ -13,7 +14,7 @@ enum Bitrix24EntityType: int
 
     public function name(): string
     {
-        return match($this) {
+        return match ($this) {
             self::CONTACT => 'Contact',
             self::COMPANY => 'Company',
             self::ADDRESS => 'Address',

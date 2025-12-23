@@ -1,4 +1,5 @@
 <?php
+
 // Modules/Bitrix24/app/Services/Processors/ContractSyncProcessor.php
 
 namespace Modules\Bitrix24\app\Services\Processors;
@@ -7,27 +8,27 @@ use Illuminate\Support\Facades\Log;
 use Modules\Accounting\app\Models\ContactPerson;
 use Modules\Accounting\app\Models\Contract;
 use Modules\Accounting\app\Models\ObjectChangeLog;
-use Modules\Bitrix24\app\Enums\Bitrix24FieldType;
 use Modules\Bitrix24\app\Exceptions\DependencyNotReadyException;
 use Modules\Bitrix24\app\Exceptions\ValidationException;
 
 class ContractSyncProcessor extends AbstractBitrix24Processor
 {
     const SPA_ID = 1064;
+
     const SPA_FIELD_ID = 19;
 
     protected function syncEntity(ObjectChangeLog $change): void
     {
         $contract = Contract::find($change->local_id);
 
-        if (!$contract) {
+        if (! $contract) {
             throw new ValidationException("Contract not found: {$change->local_id}");
         }
 
         // Валидация зависимостей
         $this->validateDependencies($contract);
 
-        Log::info("Processing contract", ['guid' => $contract->guid_1c, 'number' => $contract->number]);
+        Log::info('Processing contract', ['guid' => $contract->guid_1c, 'number' => $contract->number]);
 
         // Получаем зависимости
         $dependencies = $this->resolveDependencies($contract);
@@ -71,7 +72,7 @@ class ContractSyncProcessor extends AbstractBitrix24Processor
         // Компания (обязательно)
         $companyId = $this->findCompanyIdByRequisiteGuid($contract->counterparty_guid_1c);
 
-        if (!$companyId) {
+        if (! $companyId) {
             throw new DependencyNotReadyException(
                 "Company not synced for requisite GUID: {$contract->counterparty_guid_1c}"
             );
@@ -106,7 +107,7 @@ class ContractSyncProcessor extends AbstractBitrix24Processor
     {
         $title = "Договор №{$contract->number}";
         if ($contract->date) {
-            $title .= " от " . $contract->date->format('d.m.Y');
+            $title .= ' от '.$contract->date->format('d.m.Y');
         }
 
         $fields = [
@@ -128,7 +129,7 @@ class ContractSyncProcessor extends AbstractBitrix24Processor
             $fields['assignedById'] = $dependencies['responsible_id'];
         }
 
-        return array_filter($fields, fn($value) => $value !== null);
+        return array_filter($fields, fn ($value) => $value !== null);
     }
 
     /**
@@ -139,16 +140,16 @@ class ContractSyncProcessor extends AbstractBitrix24Processor
         $result = $this->b24Service->call('crm.item.add', [
             'entityTypeId' => self::SPA_ID,
             'fields' => $fields,
-            'useOriginalUfNames' => 'Y'
+            'useOriginalUfNames' => 'Y',
         ]);
 
         if (empty($result['result']['item']['id'])) {
-            throw new \Exception("Failed to create contract: " . json_encode($result));
+            throw new \Exception('Failed to create contract: '.json_encode($result));
         }
 
-        $contractId = (int)$result['result']['item']['id'];
+        $contractId = (int) $result['result']['item']['id'];
 
-        Log::info("Contract created", ['b24_id' => $contractId]);
+        Log::info('Contract created', ['b24_id' => $contractId]);
 
         return $contractId;
     }
@@ -162,10 +163,10 @@ class ContractSyncProcessor extends AbstractBitrix24Processor
             'entityTypeId' => self::SPA_ID,
             'id' => $contractId,
             'fields' => $fields,
-            'useOriginalUfNames' => 'Y'
+            'useOriginalUfNames' => 'Y',
         ]);
 
-        Log::debug("Contract updated", ['b24_id' => $contractId]);
+        Log::debug('Contract updated', ['b24_id' => $contractId]);
     }
 
     /**
@@ -180,7 +181,7 @@ class ContractSyncProcessor extends AbstractBitrix24Processor
             'filter' => [$guidFieldName => $guid],
             'select' => ['id'],
             'limit' => 1,
-            'useOriginalUfNames' => 'Y'
+            'useOriginalUfNames' => 'Y',
         ]);
 
         return $response['result']['items'][0]['id'] ?? null;
@@ -191,6 +192,6 @@ class ContractSyncProcessor extends AbstractBitrix24Processor
      */
     protected function getFieldName(string $suffix): string
     {
-        return "UF_CRM_" . self::SPA_FIELD_ID . "_{$suffix}";
+        return 'UF_CRM_'.self::SPA_FIELD_ID."_{$suffix}";
     }
 }

@@ -2,18 +2,20 @@
 
 namespace Modules\MediaHills\app\Parsers;
 
+use Illuminate\Support\Facades\Log;
 use Modules\MediaHills\app\Contracts\MediaPlanParserInterface;
 use Modules\MediaHills\app\DTOs\PlacementData;
-use Illuminate\Support\Facades\Log;
 
 class CsvGridParser implements MediaPlanParserInterface
 {
     private array $datesMap = [];
+
     private ?string $channelName = null;
 
     public function supports(string $filePath): bool
     {
         $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+
         return $extension === 'csv';
     }
 
@@ -32,14 +34,14 @@ class CsvGridParser implements MediaPlanParserInterface
         $rows = $this->readCsvFile($filePath);
 
         if (empty($rows)) {
-            throw new \Exception("CSV файл пустой или не читается");
+            throw new \Exception('CSV файл пустой или не читается');
         }
 
         // Первая строка - заголовок
         $headerRow = $rows[0];
 
         // Извлекаем название канала (первая ячейка)
-        $this->channelName = !empty($headerRow[0]) ? trim($headerRow[0]) : 'Неизвестный канал';
+        $this->channelName = ! empty($headerRow[0]) ? trim($headerRow[0]) : 'Неизвестный канал';
         Log::info("Определен канал: {$this->channelName}");
 
         // Извлекаем даты из заголовка
@@ -69,7 +71,7 @@ class CsvGridParser implements MediaPlanParserInterface
         $content = file_get_contents($filePath);
 
         // Проверяем BOM и убираем
-        $bom = pack('H*','EFBBBF');
+        $bom = pack('H*', 'EFBBBF');
         if (str_starts_with($content, $bom)) {
             $content = substr($content, 3);
         }
@@ -77,7 +79,7 @@ class CsvGridParser implements MediaPlanParserInterface
         // Определяем кодировку
         $encoding = mb_detect_encoding($content, ['UTF-8', 'Windows-1251', 'CP1251'], true);
 
-        if (!$encoding) {
+        if (! $encoding) {
             // По умолчанию пробуем Windows-1251
             $encoding = 'Windows-1251';
         }
@@ -112,10 +114,10 @@ class CsvGridParser implements MediaPlanParserInterface
             $rows[] = $row;
         }
 
-        Log::info("Прочитано строк из CSV: " . count($rows));
+        Log::info('Прочитано строк из CSV: '.count($rows));
 
         // DEBUG: показываем первые 3 строки
-        Log::debug("Первые строки CSV:", array_slice($rows, 0, 3));
+        Log::debug('Первые строки CSV:', array_slice($rows, 0, 3));
 
         return $rows;
     }
@@ -128,10 +130,10 @@ class CsvGridParser implements MediaPlanParserInterface
      */
     private function extractDates(array $headerRow): void
     {
-        Log::info("Заголовок CSV:", ['header' => $headerRow]);
+        Log::info('Заголовок CSV:', ['header' => $headerRow]);
 
         // ИЗВЛЕКАЕМ НАЗВАНИЕ КАНАЛА из первой ячейки
-        if (!empty($headerRow[0]) && empty($this->channelName)) {
+        if (! empty($headerRow[0]) && empty($this->channelName)) {
             $this->channelName = trim($headerRow[0]);
             Log::info("Найден канал из заголовка: {$this->channelName}");
         }
@@ -183,11 +185,11 @@ class CsvGridParser implements MediaPlanParserInterface
         }
 
         if (empty($dates)) {
-            throw new \Exception("Даты не найдены в заголовке CSV");
+            throw new \Exception('Даты не найдены в заголовке CSV');
         }
 
         $lastDate = end($dates);
-        Log::info("Найдено дат: " . count($this->datesMap) .
+        Log::info('Найдено дат: '.count($this->datesMap).
             " (с {$dates[0]} по {$lastDate})");
     }
 
@@ -211,7 +213,6 @@ class CsvGridParser implements MediaPlanParserInterface
             'дек' => 12, 'декабря' => 12,
         ];
     }
-
 
     /**
      * Угадывание месяца из порядка дат
@@ -247,30 +248,32 @@ class CsvGridParser implements MediaPlanParserInterface
             }
 
             // Если нет времени или это не время - может быть строка канала
-            if (empty($timeSlot) || !str_contains($timeSlot, ':')) {
+            if (empty($timeSlot) || ! str_contains($timeSlot, ':')) {
                 // Проверяем: это канал или пустая программа
                 if (mb_strtoupper($programName) === $programName && mb_strlen($programName) < 30) {
                     $currentChannel = $programName;
 
-                    if (!$this->channelName) {
+                    if (! $this->channelName) {
                         $this->channelName = $currentChannel;
                         Log::info("Найден канал: {$currentChannel}");
                     }
                 }
+
                 continue;
             }
 
             // Парсим время
             $time = $this->parseTime($timeSlot);
 
-            if (!$time) {
+            if (! $time) {
                 Log::warning("Не удалось распарсить время: {$timeSlot} для программы: {$programName}");
+
                 continue;
             }
 
             // Парсим размещения по датам
             foreach ($this->datesMap as $colIndex => $date) {
-                if (!isset($row[$colIndex])) {
+                if (! isset($row[$colIndex])) {
                     continue;
                 }
 
@@ -295,7 +298,7 @@ class CsvGridParser implements MediaPlanParserInterface
             }
         }
 
-        Log::info("Найдено размещений: " . count($placements));
+        Log::info('Найдено размещений: '.count($placements));
 
         return $placements;
     }
@@ -308,6 +311,7 @@ class CsvGridParser implements MediaPlanParserInterface
         // Формат: "5:25:00", "22:30:00", "19:02:00"
         if (preg_match('/^(\d{1,2}):(\d{2})/', $value, $matches)) {
             $hour = str_pad($matches[1], 2, '0', STR_PAD_LEFT);
+
             return "{$hour}:{$matches[2]}";
         }
 

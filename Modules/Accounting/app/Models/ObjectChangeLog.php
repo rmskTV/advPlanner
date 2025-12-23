@@ -1,4 +1,5 @@
 <?php
+
 // Modules/Accounting/app/Models/ObjectChangeLog.php
 
 namespace Modules\Accounting\app\Models;
@@ -20,7 +21,7 @@ class ObjectChangeLog extends Model
         'b24_id',
         'error',
         'source',
-        'sent_at'
+        'sent_at',
     ];
 
     protected $casts = [
@@ -34,6 +35,7 @@ class ObjectChangeLog extends Model
 
     // Константы для источников
     const SOURCE_B24 = 'B24';
+
     const SOURCE_1C = '1C';
 
     public static function logB24Change($entityType, $b24Id, $localId)
@@ -44,7 +46,7 @@ class ObjectChangeLog extends Model
             'b24_id' => $b24Id,
             'local_id' => $localId,
             'status' => SyncStatus::PENDING,
-            'received_at' => now()
+            'received_at' => now(),
         ]);
     }
 
@@ -56,9 +58,10 @@ class ObjectChangeLog extends Model
             '1c_id' => $oneСId,
             'local_id' => $localId,
             'status' => SyncStatus::PENDING,
-            'received_at' => now()
+            'received_at' => now(),
         ]);
     }
+
     /**
      * Пометить как обработанный
      */
@@ -159,7 +162,7 @@ class ObjectChangeLog extends Model
         }
 
         // Фильтр по типам сущностей (если указан)
-        if ($supportedEntityTypes !== null && !empty($supportedEntityTypes)) {
+        if ($supportedEntityTypes !== null && ! empty($supportedEntityTypes)) {
             $query->whereIn('entity_type', $supportedEntityTypes);
         }
 

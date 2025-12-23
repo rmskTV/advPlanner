@@ -1,4 +1,5 @@
 <?php
+
 // Modules/Bitrix24/app/Services/Processors/OrganizationSyncProcessor.php
 
 namespace Modules\Bitrix24\app\Services\Processors;
@@ -6,7 +7,6 @@ namespace Modules\Bitrix24\app\Services\Processors;
 use Illuminate\Support\Facades\Log;
 use Modules\Accounting\app\Models\ObjectChangeLog;
 use Modules\Accounting\app\Models\Organization;
-use Modules\Bitrix24\app\Enums\Bitrix24FieldType;
 use Modules\Bitrix24\app\Exceptions\ValidationException;
 use Modules\Bitrix24\app\Services\RequisiteService;
 
@@ -24,14 +24,14 @@ class OrganizationSyncProcessor extends AbstractBitrix24Processor
     {
         $organization = Organization::find($change->local_id);
 
-        if (!$organization) {
+        if (! $organization) {
             throw new ValidationException("Organization not found: {$change->local_id}");
         }
 
         // Валидация
         $this->validateOrganization($organization);
 
-        Log::info("Processing organization", ['guid' => $organization->guid_1c, 'inn' => $organization->inn]);
+        Log::info('Processing organization', ['guid' => $organization->guid_1c, 'inn' => $organization->inn]);
 
         // Ищем реквизит по GUID
         $requisiteData = $this->findRequisiteByGuid($organization->guid_1c);
@@ -68,12 +68,12 @@ class OrganizationSyncProcessor extends AbstractBitrix24Processor
      */
     protected function updateExisting(array $requisiteData, Organization $organization, ObjectChangeLog $change): void
     {
-        $requisiteId = (int)$requisiteData['ID'];
-        $companyId = (int)$requisiteData['ENTITY_ID'];
+        $requisiteId = (int) $requisiteData['ID'];
+        $companyId = (int) $requisiteData['ENTITY_ID'];
 
-        Log::debug("Updating existing My Company", [
+        Log::debug('Updating existing My Company', [
             'company_id' => $companyId,
-            'requisite_id' => $requisiteId
+            'requisite_id' => $requisiteId,
         ]);
 
         // Обновляем компанию
@@ -93,12 +93,12 @@ class OrganizationSyncProcessor extends AbstractBitrix24Processor
      */
     protected function linkAndUpdate(array $myCompanyData, Organization $organization, ObjectChangeLog $change): void
     {
-        $companyId = (int)$myCompanyData['company_id'];
+        $companyId = (int) $myCompanyData['company_id'];
         $requisiteId = $myCompanyData['requisite_id'] ?? null;
 
-        Log::debug("Linking to existing My Company", [
+        Log::debug('Linking to existing My Company', [
             'company_id' => $companyId,
-            'requisite_id' => $requisiteId
+            'requisite_id' => $requisiteId,
         ]);
 
         // Обновляем компанию
@@ -123,7 +123,7 @@ class OrganizationSyncProcessor extends AbstractBitrix24Processor
      */
     protected function createNew(Organization $organization, ObjectChangeLog $change): void
     {
-        Log::debug("Creating new My Company");
+        Log::debug('Creating new My Company');
 
         // Создаём компанию
         $companyId = $this->createMyCompany($organization);
@@ -146,16 +146,16 @@ class OrganizationSyncProcessor extends AbstractBitrix24Processor
         $fields['IS_MY_COMPANY'] = 'Y';
 
         $result = $this->b24Service->call('crm.company.add', [
-            'fields' => $fields
+            'fields' => $fields,
         ]);
 
         if (empty($result['result'])) {
-            throw new \Exception("Failed to create My Company: " . json_encode($result));
+            throw new \Exception('Failed to create My Company: '.json_encode($result));
         }
 
-        $companyId = (int)$result['result'];
+        $companyId = (int) $result['result'];
 
-        Log::info("My Company created", ['b24_id' => $companyId]);
+        Log::info('My Company created', ['b24_id' => $companyId]);
 
         return $companyId;
     }
@@ -169,10 +169,10 @@ class OrganizationSyncProcessor extends AbstractBitrix24Processor
 
         $this->b24Service->call('crm.company.update', [
             'id' => $companyId,
-            'fields' => $fields
+            'fields' => $fields,
         ]);
 
-        Log::debug("My Company updated", ['b24_id' => $companyId]);
+        Log::debug('My Company updated', ['b24_id' => $companyId]);
     }
 
     /**
@@ -211,7 +211,7 @@ class OrganizationSyncProcessor extends AbstractBitrix24Processor
         // Получаем все "Мои компании"
         $companies = $this->b24Service->call('crm.company.list', [
             'filter' => ['IS_MY_COMPANY' => 'Y'],
-            'select' => ['ID', 'TITLE']
+            'select' => ['ID', 'TITLE'],
         ]);
 
         if (empty($companies['result'])) {
@@ -220,21 +220,21 @@ class OrganizationSyncProcessor extends AbstractBitrix24Processor
 
         // Для каждой компании ищем реквизит с нужным ИНН
         foreach ($companies['result'] as $company) {
-            $companyId = (int)$company['ID'];
+            $companyId = (int) $company['ID'];
 
             $requisites = $this->b24Service->call('crm.requisite.list', [
                 'filter' => [
                     'ENTITY_TYPE_ID' => 4,
                     'ENTITY_ID' => $companyId,
-                    'RQ_INN' => $inn
+                    'RQ_INN' => $inn,
                 ],
-                'select' => ['ID', 'RQ_INN']
+                'select' => ['ID', 'RQ_INN'],
             ]);
 
-            if (!empty($requisites['result'][0])) {
+            if (! empty($requisites['result'][0])) {
                 return [
                     'company_id' => $companyId,
-                    'requisite_id' => (int)$requisites['result'][0]['ID']
+                    'requisite_id' => (int) $requisites['result'][0]['ID'],
                 ];
             }
         }

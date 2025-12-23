@@ -1,4 +1,5 @@
 <?php
+
 namespace Modules\Bitrix24\app\Console\Commands;
 
 use Illuminate\Console\Command;
@@ -7,6 +8,7 @@ use Modules\Bitrix24\app\Services\Bitrix24Service;
 class CreateCRMReqCustomFields extends Command
 {
     protected $signature = 'b24:create-crm-req-fields';
+
     protected $description = 'Create custom fields for CRM entities in B24';
 
     protected $b24Service;
@@ -36,28 +38,27 @@ class CreateCRMReqCustomFields extends Command
                     'SHOW_IN_LIST' => 'N',  // Не показывать в списке
                     // 'EDIT_IN_LIST' => 'N', // Можно запретить редактирование в списке
                     // 'IS_SEARCHABLE' => 'Y' // Если нужно искать реквизит по этому полю через API фильтры, лучше явно указать Y
-                ]
+                ],
             ]);
-            $this->info('Result: ' . print_r($result, true));
+            $this->info('Result: '.print_r($result, true));
             // ------------------
-
 
             $this->info("\nAll CRM custom fields created successfully");
 
         } catch (\Exception $e) {
-            $this->error('Error creating custom fields: ' . $e->getMessage());
+            $this->error('Error creating custom fields: '.$e->getMessage());
         }
     }
 }
 
 //
 //
-//Creating GUID_1C field for requisites:
+// Creating GUID_1C field for requisites:
 //    Result: Array
-//(
+// (
 //    [result] => 283
 //    [time] => Array
-//(
+// (
 //    [start] => 1764304174
 //            [finish] => 1764304174.4461
 //            [duration] => 0.44609498977661
@@ -68,4 +69,4 @@ class CreateCRMReqCustomFields extends Command
 //            [operating] => 0.16982913017273
 //        )
 //
-//)
+// )

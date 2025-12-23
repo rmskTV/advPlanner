@@ -1,4 +1,5 @@
 <?php
+
 // Modules/Bitrix24/app/Services/SyncChangeProcessor.php
 
 namespace Modules\Bitrix24\app\Services;
@@ -16,9 +17,13 @@ use Modules\Bitrix24\app\Services\Processors\ProductSyncProcessor;
 class SyncChangeProcessor
 {
     protected Bitrix24Service $b24Service;
+
     protected bool $shouldStop = false;
+
     protected int $processedCount = 0;
+
     protected int $errorCount = 0;
+
     protected int $skippedCount = 0;
 
     // Карта типов сущностей → процессоры
@@ -41,8 +46,8 @@ class SyncChangeProcessor
     /**
      * Главный метод обработки очереди
      *
-     * @param int|null $limit Максимальное количество записей (null = обработать всё)
-     * @param callable|null $progressCallback Коллбэк для прогресса (для команды)
+     * @param  int|null  $limit  Максимальное количество записей (null = обработать всё)
+     * @param  callable|null  $progressCallback  Коллбэк для прогресса (для команды)
      */
     public function process(?int $limit = null, ?callable $progressCallback = null): array
     {
@@ -51,9 +56,9 @@ class SyncChangeProcessor
         $chunkSize = config('bitrix24.sync.chunk_size', 100);
         $totalProcessed = 0;
 
-        Log::info("Starting sync process", ['limit' => $limit ?? 'unlimited']);
+        Log::info('Starting sync process', ['limit' => $limit ?? 'unlimited']);
 
-        while (!$this->shouldStop) {
+        while (! $this->shouldStop) {
             // Получаем порцию записей с фильтрацией
             $changes = ObjectChangeLog::readyForProcessing(
                 supportedEntityTypes: array_keys($this->processors), // ← Фильтруем на уровне БД
@@ -65,17 +70,17 @@ class SyncChangeProcessor
 
             // Если записей нет - выходим
             if ($changes->isEmpty()) {
-                Log::debug("No more changes to process");
+                Log::debug('No more changes to process');
                 break;
             }
 
-            Log::debug("Processing chunk", ['size' => $changes->count()]);
+            Log::debug('Processing chunk', ['size' => $changes->count()]);
 
             // Обрабатываем порцию
             foreach ($changes as $change) {
                 // Проверка лимита
                 if ($limit !== null && $totalProcessed >= $limit) {
-                    Log::info("Reached processing limit", ['limit' => $limit]);
+                    Log::info('Reached processing limit', ['limit' => $limit]);
                     $this->shouldStop = true;
                     break;
                 }
@@ -94,9 +99,9 @@ class SyncChangeProcessor
                 } catch (\Exception $e) {
                     // Ошибки уже залогированы в AbstractBitrix24Processor
                     $this->errorCount++;
-                    Log::error("Unhandled error in processor", [
+                    Log::error('Unhandled error in processor', [
                         'change_id' => $change->id,
-                        'error' => $e->getMessage()
+                        'error' => $e->getMessage(),
                     ]);
                 }
 
@@ -106,13 +111,13 @@ class SyncChangeProcessor
 
             // Если обработали меньше чем chunk - значит записей больше нет
             if ($changes->count() < $chunkSize) {
-                Log::debug("Processed last chunk");
+                Log::debug('Processed last chunk');
                 break;
             }
 
             // Проверка на graceful shutdown
             if ($this->shouldStop) {
-                Log::warning("Graceful shutdown initiated");
+                Log::warning('Graceful shutdown initiated');
                 break;
             }
         }
@@ -121,14 +126,13 @@ class SyncChangeProcessor
             'processed' => $this->processedCount,
             'errors' => $this->errorCount,
             'skipped' => $this->skippedCount,
-            'total' => $this->processedCount + $this->errorCount + $this->skippedCount
+            'total' => $this->processedCount + $this->errorCount + $this->skippedCount,
         ];
 
-        Log::info("Sync process completed", $stats);
+        Log::info('Sync process completed', $stats);
 
         return $stats;
     }
-
 
     /**
      * Обработка одной записи
@@ -146,7 +150,7 @@ class SyncChangeProcessor
     protected function throttle(): void
     {
         $requestsPerSecond = config('bitrix24.sync.requests_per_second', 1);
-        $delayMicroseconds = (int)(1_000_000 / $requestsPerSecond);
+        $delayMicroseconds = (int) (1_000_000 / $requestsPerSecond);
 
         usleep($delayMicroseconds);
     }
@@ -164,7 +168,7 @@ class SyncChangeProcessor
             return 0;
         }
 
-        Log::warning("Found stale locked records", ['count' => $staleRecords->count()]);
+        Log::warning('Found stale locked records', ['count' => $staleRecords->count()]);
 
         foreach ($staleRecords as $record) {
             $record->unlock();
@@ -172,7 +176,7 @@ class SyncChangeProcessor
             if ($record->retry_count < ObjectChangeLog::MAX_RETRIES) {
                 $record->markRetry("Unlocked after {$minutes}min timeout");
             } else {
-                $record->markError("Max retries exceeded after timeout");
+                $record->markError('Max retries exceeded after timeout');
             }
         }
 
@@ -184,19 +188,19 @@ class SyncChangeProcessor
      */
     protected function registerSignalHandlers(): void
     {
-        if (!extension_loaded('pcntl')) {
+        if (! extension_loaded('pcntl')) {
             return;
         }
 
         pcntl_async_signals(true);
 
         pcntl_signal(SIGTERM, function () {
-            Log::info("Received SIGTERM, stopping gracefully...");
+            Log::info('Received SIGTERM, stopping gracefully...');
             $this->shouldStop = true;
         });
 
         pcntl_signal(SIGINT, function () {
-            Log::info("Received SIGINT (Ctrl+C), stopping gracefully...");
+            Log::info('Received SIGINT (Ctrl+C), stopping gracefully...');
             $this->shouldStop = true;
         });
     }

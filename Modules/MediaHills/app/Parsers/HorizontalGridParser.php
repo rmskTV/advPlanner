@@ -2,20 +2,22 @@
 
 namespace Modules\MediaHills\app\Parsers;
 
+use DOMDocument;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Modules\MediaHills\app\Contracts\MediaPlanParserInterface;
 use Modules\MediaHills\app\DTOs\PlacementData;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\File;
-use DOMDocument;
 
 class HorizontalGridParser implements MediaPlanParserInterface
 {
     private array $datesMap = [];
+
     private ?string $channelName = null;
 
     public function supports(string $filePath): bool
     {
         $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+
         return in_array($extension, ['mht', 'mhtml']);
     }
 
@@ -26,22 +28,22 @@ class HorizontalGridParser implements MediaPlanParserInterface
         // Извлекаем и очищаем HTML из MHT
         $htmlContent = $this->extractHtmlFromMht($filePath);
 
-        if (!$htmlContent) {
-            throw new \Exception("Не удалось извлечь HTML из MHT файла");
+        if (! $htmlContent) {
+            throw new \Exception('Не удалось извлечь HTML из MHT файла');
         }
 
         // Парсим HTML напрямую через DOMDocument
         $rows = $this->parseHtmlTable($htmlContent);
 
         if (empty($rows)) {
-            throw new \Exception("Не удалось извлечь таблицу из HTML");
+            throw new \Exception('Не удалось извлечь таблицу из HTML');
         }
 
         // Ищем заголовок календаря
         $headerRowIndex = $this->findCalendarHeader($rows);
 
         if ($headerRowIndex === null) {
-            throw new \Exception("Не найдена заголовочная строка календаря");
+            throw new \Exception('Не найдена заголовочная строка календаря');
         }
 
         // Извлекаем даты
@@ -71,15 +73,16 @@ class HorizontalGridParser implements MediaPlanParserInterface
         $content = File::get($filePath);
 
         // Находим boundary
-        if (!preg_match('/boundary="([^"]+)"/', $content, $matches)) {
-            Log::error("Не найден MIME boundary в MHT");
+        if (! preg_match('/boundary="([^"]+)"/', $content, $matches)) {
+            Log::error('Не найден MIME boundary в MHT');
+
             return null;
         }
 
         $boundary = $matches[1];
 
         // Разделяем на части
-        $parts = explode('--' . $boundary, $content);
+        $parts = explode('--'.$boundary, $content);
 
         foreach ($parts as $part) {
             // Ищем HTML секцию
@@ -102,16 +105,17 @@ class HorizontalGridParser implements MediaPlanParserInterface
                     }
 
                     // Убираем концевые маркеры
-                    $html = preg_replace('/--' . preg_quote($boundary, '/') . '.*$/s', '', $html);
+                    $html = preg_replace('/--'.preg_quote($boundary, '/').'.*$/s', '', $html);
 
-                    Log::info("HTML извлечен из MHT (" . strlen($html) . " байт, кодировка: {$encoding})");
+                    Log::info('HTML извлечен из MHT ('.strlen($html)." байт, кодировка: {$encoding})");
 
                     return $html;
                 }
             }
         }
 
-        Log::error("HTML секция не найдена в MHT");
+        Log::error('HTML секция не найдена в MHT');
+
         return null;
     }
 
@@ -124,13 +128,13 @@ class HorizontalGridParser implements MediaPlanParserInterface
         $html = $this->cleanHtml($html);
 
         // Создаем DOMDocument
-        $dom = new DOMDocument();
+        $dom = new DOMDocument;
 
         // Отключаем ошибки для невалидного HTML
         libxml_use_internal_errors(true);
 
         // Загружаем HTML (указываем кодировку)
-        $dom->loadHTML('<?xml encoding="utf-8" ?>' . $html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        $dom->loadHTML('<?xml encoding="utf-8" ?>'.$html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
 
         libxml_clear_errors();
 
@@ -138,7 +142,7 @@ class HorizontalGridParser implements MediaPlanParserInterface
         $tables = $dom->getElementsByTagName('table');
 
         if ($tables->length === 0) {
-            throw new \Exception("Таблица не найдена в HTML");
+            throw new \Exception('Таблица не найдена в HTML');
         }
 
         // Берем первую таблицу
@@ -170,7 +174,7 @@ class HorizontalGridParser implements MediaPlanParserInterface
             $rowIndex++;
         }
 
-        Log::info("Извлечено строк из HTML таблицы: " . count($rows));
+        Log::info('Извлечено строк из HTML таблицы: '.count($rows));
 
         return $rows;
     }
@@ -219,6 +223,7 @@ class HorizontalGridParser implements MediaPlanParserInterface
             // Если нашли много дат - это заголовок
             if ($dateCount >= 3) {
                 Log::info("Найден заголовок календаря в строке $index (дат: $dateCount)");
+
                 return $index;
             }
         }
@@ -249,10 +254,10 @@ class HorizontalGridParser implements MediaPlanParserInterface
         }
 
         if (empty($dates)) {
-            throw new \Exception("Даты не найдены в заголовке");
+            throw new \Exception('Даты не найдены в заголовке');
         }
 
-        Log::info("Найдено дат: " . count($this->datesMap) .
+        Log::info('Найдено дат: '.count($this->datesMap).
             " (с {$dates[0]} по {$dates[array_key_last($dates)]})");
     }
 
@@ -277,11 +282,11 @@ class HorizontalGridParser implements MediaPlanParserInterface
             foreach (range('A', 'F') as $col) {
                 $value = trim($row[$col] ?? '');
 
-                if (!empty($value) && !str_contains($value, '&')) {
+                if (! empty($value) && ! str_contains($value, '&')) {
                     if (str_contains($value, ':')) {
                         $timeSlot = $value;
                     } else {
-                        $programName .= ($programName ? ' ' : '') . $value;
+                        $programName .= ($programName ? ' ' : '').$value;
                     }
                 }
             }
@@ -294,18 +299,20 @@ class HorizontalGridParser implements MediaPlanParserInterface
             if (empty($timeSlot)) {
                 $currentChannel = $programName;
 
-                if (!$this->channelName) {
+                if (! $this->channelName) {
                     $this->channelName = $currentChannel;
                     Log::info("Найден канал: {$currentChannel}");
                 }
+
                 continue;
             }
 
             // Парсим время
             $time = $this->parseTime($timeSlot);
 
-            if (!$time) {
+            if (! $time) {
                 Log::warning("Не удалось распарсить время: {$timeSlot}");
+
                 continue;
             }
 
@@ -332,7 +339,7 @@ class HorizontalGridParser implements MediaPlanParserInterface
             }
         }
 
-        Log::info("Найдено размещений: " . count($placements));
+        Log::info('Найдено размещений: '.count($placements));
 
         return $placements;
     }
@@ -345,6 +352,7 @@ class HorizontalGridParser implements MediaPlanParserInterface
         // Формат: "5:25:00", "22:30:00"
         if (preg_match('/^(\d{1,2}):(\d{2})/', $value, $matches)) {
             $hour = str_pad($matches[1], 2, '0', STR_PAD_LEFT);
+
             return "{$hour}:{$matches[2]}";
         }
 

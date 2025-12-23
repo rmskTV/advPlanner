@@ -17,7 +17,7 @@ class HtmlTableParser implements MediaPlanParserInterface
     {
         $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
 
-        if (!in_array($ext, ['htm', 'html'])) {
+        if (! in_array($ext, ['htm', 'html'])) {
             return false;
         }
 
@@ -41,7 +41,6 @@ class HtmlTableParser implements MediaPlanParserInterface
             return false;
         }
     }
-
 
     public function parse(string $filePath): array
     {

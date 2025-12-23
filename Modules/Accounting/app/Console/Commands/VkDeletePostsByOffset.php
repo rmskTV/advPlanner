@@ -2,9 +2,9 @@
 
 namespace Modules\Accounting\app\Console\Commands;
 
-use Illuminate\Console\Command;
-use GuzzleHttp\Client;
 use Carbon\Carbon;
+use GuzzleHttp\Client;
+use Illuminate\Console\Command;
 
 class VkDeletePostsByOffset extends Command
 {
@@ -20,21 +20,29 @@ class VkDeletePostsByOffset extends Command
     protected $description = 'Удаление записей с фото/альбомами по offset с учетом смещения после удаления';
 
     private $client;
+
     private $token;
+
     private $ownerDomain;
+
     private $ownerId;
+
     private $isDryRun;
+
     private $isForce;
+
     private $stopTimestamp;
+
     private $batchSize;
+
     private $maxBatches;
 
     public function handle()
     {
         $this->ownerDomain = 'keytobaikal';
         $this->ownerId = -137776330;
-        $startOffset = (int)$this->option('start_offset');
-        $count = (int)$this->option('count');
+        $startOffset = (int) $this->option('start_offset');
+        $count = (int) $this->option('count');
         $stopDate = $this->option('stop-date');
         $this->token = 'tokrn';
         $this->isDryRun = $this->option('dry-run');
@@ -43,8 +51,9 @@ class VkDeletePostsByOffset extends Command
         $batchSize = 100;
         $maxBatches = 0;
 
-        if (!$this->token) {
+        if (! $this->token) {
             $this->error('VK API токен не найден. Укажите через --token или настройте в config/services.php');
+
             return 1;
         }
 
@@ -52,21 +61,21 @@ class VkDeletePostsByOffset extends Command
             $this->stopTimestamp = Carbon::parse($stopDate)->endOfDay()->timestamp;
         }
 
-        $this->client = new Client();
+        $this->client = new Client;
         try {
-            $this->info("=== НАСТРОЙКИ ===");
+            $this->info('=== НАСТРОЙКИ ===');
             $this->info("Владелец стены: {$this->ownerId}");
             $this->info("Стартовый offset: {$startOffset}");
             $this->info("Размер батча: {$batchSize}");
-            $this->info("Максимум батчей: " . ($maxBatches > 0 ? $maxBatches : 'без лимита'));
-            $this->info("Режим: " . ($this->isDryRun ? 'ТЕСТ' : 'УДАЛЕНИЕ'));
+            $this->info('Максимум батчей: '.($maxBatches > 0 ? $maxBatches : 'без лимита'));
+            $this->info('Режим: '.($this->isDryRun ? 'ТЕСТ' : 'УДАЛЕНИЕ'));
             if ($stopDate) {
                 $this->info("Остановка при: {$stopDate}");
             }
             $this->newLine();
 
-            if (!$this->isDryRun && !$this->isForce) {
-                if (!$this->confirm('Продолжить?')) {
+            if (! $this->isDryRun && ! $this->isForce) {
+                if (! $this->confirm('Продолжить?')) {
                     return 0;
                 }
             }
@@ -92,11 +101,11 @@ class VkDeletePostsByOffset extends Command
                 $posts = $this->getPostsBatch($currentOffset, $batchSize);
 
                 if (empty($posts)) {
-                    $this->info("Посты не найдены. Конец стены.");
+                    $this->info('Посты не найдены. Конец стены.');
                     break;
                 }
 
-                $this->info("Получено постов в батче: " . count($posts));
+                $this->info('Получено постов в батче: '.count($posts));
 
                 // Обрабатываем посты в батче
                 $batchStats = $this->processBatch($posts);
@@ -121,7 +130,7 @@ class VkDeletePostsByOffset extends Command
                 $this->line("Новый offset для следующего батча: {$currentOffset}");
 
                 // Проверяем дату остановки (по последнему посту в батче)
-                if ($this->stopTimestamp && !empty($posts)) {
+                if ($this->stopTimestamp && ! empty($posts)) {
                     $lastPost = end($posts);
                     if ($lastPost['date'] < $this->stopTimestamp) {
                         $lastDate = Carbon::createFromTimestamp($lastPost['date'])->format('Y-m-d H:i:s');
@@ -131,7 +140,7 @@ class VkDeletePostsByOffset extends Command
                 }
 
                 // Пауза между батчами
-                usleep(100 *1000);
+                usleep(100 * 1000);
             }
 
             $this->showFinalStats($batchCount, $totalProcessed, $totalDeleted, $totalSkipped, $totalErrors);
@@ -139,7 +148,8 @@ class VkDeletePostsByOffset extends Command
             return 0;
 
         } catch (\Exception $e) {
-            $this->error('Ошибка: ' . $e->getMessage());
+            $this->error('Ошибка: '.$e->getMessage());
+
             return 1;
         }
     }
@@ -153,21 +163,23 @@ class VkDeletePostsByOffset extends Command
                     'count' => $count,
                     'offset' => $offset,
                     'access_token' => $this->token,
-                    'v' => '5.131'
-                ]
+                    'v' => '5.131',
+                ],
             ]);
 
             $data = json_decode($response->getBody(), true);
 
             if (isset($data['error'])) {
-                $this->error("Ошибка получения батча (offset {$offset}): " . $data['error']['error_msg']);
+                $this->error("Ошибка получения батча (offset {$offset}): ".$data['error']['error_msg']);
+
                 return [];
             }
 
             return $data['response']['items'] ?? [];
 
         } catch (\Exception $e) {
-            $this->error("Ошибка запроса батча: " . $e->getMessage());
+            $this->error('Ошибка запроса батча: '.$e->getMessage());
+
             return [];
         }
     }
@@ -178,34 +190,34 @@ class VkDeletePostsByOffset extends Command
             'processed' => 0,
             'deleted' => 0,
             'skipped' => 0,
-            'errors' => 0
+            'errors' => 0,
         ];
 
         foreach ($posts as $post) {
             $stats['processed']++;
 
             $postDate = Carbon::createFromTimestamp($post['date'])->format('Y-m-d H:i:s');
-            $text = mb_substr(str_replace("\n", " ", $post['text']), 0, 40);
+            $text = mb_substr(str_replace("\n", ' ', $post['text']), 0, 40);
 
             $this->line("  ID {$post['id']} | {$postDate} | {$text}...");
 
             if ($this->hasMediaAttachments($post) || 1) {
                 if ($this->isDryRun) {
-                    $this->line("    → [ТЕСТ] Будет удален");
+                    $this->line('    → [ТЕСТ] Будет удален');
                     $stats['deleted']++;
                 } else {
                     if ($this->deletePost($post['id'])) {
-                        $this->line("    → ✓ Удален");
+                        $this->line('    → ✓ Удален');
                         $stats['deleted']++;
                         // Небольшая пауза после удаления
                         usleep(100 * 1000); // 100мс
                     } else {
-                        $this->line("    → ✗ Ошибка удаления");
+                        $this->line('    → ✗ Ошибка удаления');
                         $stats['errors']++;
                     }
                 }
             } else {
-                $this->line("    → Без медиа");
+                $this->line('    → Без медиа');
                 $stats['skipped']++;
             }
         }
@@ -237,21 +249,23 @@ class VkDeletePostsByOffset extends Command
                     'owner_id' => $this->ownerId,
                     'post_id' => $postId,
                     'access_token' => $this->token,
-                    'v' => '5.131'
-                ]
+                    'v' => '5.131',
+                ],
             ]);
 
             $data = json_decode($response->getBody(), true);
 
             if (isset($data['error'])) {
-                $this->line("      Ошибка: " . $data['error']['error_msg']);
+                $this->line('      Ошибка: '.$data['error']['error_msg']);
+
                 return false;
             }
 
             return $data['response'] == 1;
 
         } catch (\Exception $e) {
-            $this->line("      Исключение: " . $e->getMessage());
+            $this->line('      Исключение: '.$e->getMessage());
+
             return false;
         }
     }
@@ -268,7 +282,7 @@ class VkDeletePostsByOffset extends Command
     private function showFinalStats($batches, $processed, $deleted, $skipped, $errors)
     {
         $this->newLine(2);
-        $this->info("=== ИТОГОВАЯ СТАТИСТИКА ===");
+        $this->info('=== ИТОГОВАЯ СТАТИСТИКА ===');
         $this->info("Обработано батчей: {$batches}");
         $this->info("Всего постов обработано: {$processed}");
         $this->info("Всего удалено: {$deleted}");
@@ -281,7 +295,7 @@ class VkDeletePostsByOffset extends Command
         }
 
         if ($this->isDryRun) {
-            $this->warn("Это был тестовый запуск!");
+            $this->warn('Это был тестовый запуск!');
         }
     }
 }

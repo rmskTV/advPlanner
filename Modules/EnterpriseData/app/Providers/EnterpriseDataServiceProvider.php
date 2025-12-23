@@ -131,7 +131,7 @@ class EnterpriseDataServiceProvider extends ServiceProvider
             $registry->registerMapping('Справочник.КонтактныеЛица', new ContactPersonMapping);
             $registry->registerMapping('Документ.ЗаказКлиента', new CustomerOrderMapping);
             $registry->registerMapping('Документ.РеализацияТоваровУслуг', new SaleMapping);
-            $registry->registerMapping('Справочник.БанковскиеСчета', new BankAccountMapping());
+            $registry->registerMapping('Справочник.БанковскиеСчета', new BankAccountMapping);
             $registry->registerMapping('Документ.ПБДСРасчетыСКонтрагентами', new PaymentMapping);
             // Регистры состояний заказов
             $registry->registerMapping('Справочник.СостояниеОплатыЗаказа', new OrderPaymentStatusMapping);

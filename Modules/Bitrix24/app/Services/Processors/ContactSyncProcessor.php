@@ -1,4 +1,5 @@
 <?php
+
 // Modules/Bitrix24/app/Services/Processors/ContactSyncProcessor.php
 
 namespace Modules\Bitrix24\app\Services\Processors;
@@ -17,14 +18,14 @@ class ContactSyncProcessor extends AbstractBitrix24Processor
     {
         $contact = ContactPerson::find($change->local_id);
 
-        if (!$contact) {
+        if (! $contact) {
             throw new ValidationException("Contact not found: {$change->local_id}");
         }
 
         // Валидация зависимостей
         $this->validateDependencies($contact);
 
-        Log::info("Processing contact", ['guid' => $contact->guid_1c]);
+        Log::info('Processing contact', ['guid' => $contact->guid_1c]);
 
         // Ищем существующий контакт
         $existingContactId = $this->findContactByGuid($contact->guid_1c);
@@ -50,7 +51,7 @@ class ContactSyncProcessor extends AbstractBitrix24Processor
         // Проверяем, что родительская компания существует
         $counterparty = Counterparty::where('guid_1c', $contact->counterparty_guid_1c)->first();
 
-        if (!$counterparty || empty($counterparty->inn)) {
+        if (! $counterparty || empty($counterparty->inn)) {
             throw new ValidationException("Parent company not viable for contact {$contact->id}");
         }
     }
@@ -62,7 +63,7 @@ class ContactSyncProcessor extends AbstractBitrix24Processor
     {
         $companyId = $this->findCompanyIdByRequisiteGuid($contact->counterparty_guid_1c);
 
-        if (!$companyId) {
+        if (! $companyId) {
             throw new DependencyNotReadyException(
                 "Parent company not synced yet for GUID: {$contact->counterparty_guid_1c}"
             );
@@ -80,21 +81,21 @@ class ContactSyncProcessor extends AbstractBitrix24Processor
         $fields = $this->prepareContactFields($contact, $companyId);
 
         $result = $this->b24Service->call('crm.contact.add', [
-            'fields' => $fields
+            'fields' => $fields,
         ]);
 
         if (empty($result['result'])) {
-            throw new \Exception("Failed to create contact: " . json_encode($result));
+            throw new \Exception('Failed to create contact: '.json_encode($result));
         }
 
-        $contactId = (int)$result['result'];
+        $contactId = (int) $result['result'];
 
         // Сбрасываем кэш
         $this->invalidateCache('contact', $contact->guid_1c);
 
         $change->b24_id = $contactId;
 
-        Log::info("Contact created", ['b24_id' => $contactId]);
+        Log::info('Contact created', ['b24_id' => $contactId]);
     }
 
     /**
@@ -114,7 +115,7 @@ class ContactSyncProcessor extends AbstractBitrix24Processor
 
         $this->b24Service->call('crm.contact.update', [
             'id' => $contactId,
-            'fields' => $fields
+            'fields' => $fields,
         ]);
 
         // Сбрасываем кэш
@@ -122,7 +123,7 @@ class ContactSyncProcessor extends AbstractBitrix24Processor
 
         $change->b24_id = $contactId;
 
-        Log::debug("Contact updated", ['b24_id' => $contactId]);
+        Log::debug('Contact updated', ['b24_id' => $contactId]);
     }
 
     /**

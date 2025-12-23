@@ -1,4 +1,5 @@
 <?php
+
 namespace Modules\Bitrix24\app\Http\Controllers;
 
 use App\Http\Controllers\Controller;
@@ -17,7 +18,7 @@ class Bitrix24Controller extends Controller
     public function deals()
     {
         return $this->b24Service->call('crm.deal.list', [
-            'select' => ['ID', 'TITLE']
+            'select' => ['ID', 'TITLE'],
         ]);
     }
 

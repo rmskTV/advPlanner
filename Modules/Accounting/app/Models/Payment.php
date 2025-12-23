@@ -87,6 +87,7 @@ class Payment extends Document
 
     // Константы для типов платежей
     public const TYPE_INCOMING = 'incoming'; // СПокупателем - входящий платеж
+
     public const TYPE_OUTGOING = 'outgoing'; // СПоставщиком - исходящий платеж
 
     public static function getPaymentTypes(): array
@@ -169,6 +170,7 @@ class Payment extends Document
     public function getFullNameAttribute(): string
     {
         $typeLabel = $this->getPaymentTypeLabel();
+
         return "{$typeLabel} № {$this->number} от {$this->date->format('d.m.Y')}";
     }
 

@@ -1,4 +1,5 @@
 <?php
+
 // Modules/Bitrix24/app/Services/Processors/OrderPaymentStatusSyncProcessor.php
 
 namespace Modules\Bitrix24\app\Services\Processors;
@@ -24,23 +25,23 @@ class OrderPaymentStatusSyncProcessor extends AbstractBitrix24Processor
     {
         $paymentStatus = OrderPaymentStatus::find($change->local_id);
 
-        if (!$paymentStatus) {
+        if (! $paymentStatus) {
             throw new ValidationException("OrderPaymentStatus not found: {$change->local_id}");
         }
 
         // Валидация
         $this->validatePaymentStatus($paymentStatus);
 
-        Log::info("Processing payment status", [
+        Log::info('Processing payment status', [
             'order_guid' => $paymentStatus->order_guid_1c,
             'status' => $paymentStatus->payment_status,
-            'order_number' => $paymentStatus->order_number
+            'order_number' => $paymentStatus->order_number,
         ]);
 
         // Находим счёт в B24
         $invoiceId = $this->findInvoiceByGuid($paymentStatus->order_guid_1c);
 
-        if (!$invoiceId) {
+        if (! $invoiceId) {
             throw new DependencyNotReadyException(
                 "Invoice not synced yet for order GUID: {$paymentStatus->order_guid_1c}"
             );
@@ -49,7 +50,7 @@ class OrderPaymentStatusSyncProcessor extends AbstractBitrix24Processor
         // Маппим статус
         $statusValueId = $this->mapPaymentStatus($paymentStatus->payment_status);
 
-        if (!$statusValueId) {
+        if (! $statusValueId) {
             throw new ValidationException(
                 "Unknown payment status: {$paymentStatus->payment_status}"
             );
@@ -60,10 +61,10 @@ class OrderPaymentStatusSyncProcessor extends AbstractBitrix24Processor
 
         $change->b24_id = $invoiceId;
 
-        Log::info("Payment status synced", [
+        Log::info('Payment status synced', [
             'invoice_id' => $invoiceId,
             'status_1c' => $paymentStatus->payment_status,
-            'status_b24_id' => $statusValueId
+            'status_b24_id' => $statusValueId,
         ]);
     }
 
@@ -86,12 +87,12 @@ class OrderPaymentStatusSyncProcessor extends AbstractBitrix24Processor
             'entityTypeId' => self::INVOICE_ENTITY_TYPE_ID,
             'id' => $invoiceId,
             'fields' => [
-                'ufCrm_SMART_INVOICE_PAYMENT_STATUS_1C' => $statusValueId
-            ]
+                'ufCrm_SMART_INVOICE_PAYMENT_STATUS_1C' => $statusValueId,
+            ],
         ]);
 
         if (empty($result['result'])) {
-            throw new \Exception("Failed to update invoice payment status: " . json_encode($result));
+            throw new \Exception('Failed to update invoice payment status: '.json_encode($result));
         }
     }
 
