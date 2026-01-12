@@ -12,7 +12,7 @@ class ObjectChangeLog extends Model
     protected $fillable = [
         'entity_type',
         'local_id',
-        'guid_1c',
+        '1c_id',
         'change_type',
         'status',
         'retry_count',

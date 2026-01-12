@@ -31,7 +31,7 @@ trait HasBitrix24Operations
         return Cache::remember($cacheKey, 600, function () use ($guid) {
             $response = $this->b24Service->call('crm.requisite.list', [
                 'filter' => [Bitrix24FieldType::REQUISITE_GUID->value() => $guid],
-                'select' => ['ID', 'ENTITY_ID', 'ENTITY_TYPE_ID'],
+                'select' => ['ID', 'ENTITY_ID', 'ENTITY_TYPE_ID', 'RQ_COMPANY_NAME'],
             ]);
 
             return $response['result'][0] ?? null;

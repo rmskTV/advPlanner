@@ -4,6 +4,7 @@
 
 namespace Modules\Bitrix24\app\Services\Processors;
 
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Modules\Accounting\app\Models\ObjectChangeLog;
 use Modules\Accounting\app\Models\OrderPaymentStatus;
@@ -88,6 +89,7 @@ class OrderPaymentStatusSyncProcessor extends AbstractBitrix24Processor
             'id' => $invoiceId,
             'fields' => [
                 'ufCrm_SMART_INVOICE_PAYMENT_STATUS_1C' => $statusValueId,
+                'ufCrm_SMART_INVOICE_LAST_UPDATE_FROM_1C' => Carbon::now()->addSecond(5)->toIso8601String()
             ],
         ]);
 

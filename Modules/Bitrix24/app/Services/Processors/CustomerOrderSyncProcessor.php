@@ -171,6 +171,7 @@ class CustomerOrderSyncProcessor extends AbstractBitrix24Processor
             'currencyId' => 'RUB',
             'isManualOpportunity' => 'Y',
             'xmlId' => $order->guid_1c,
+            'ufCrm_SMART_INVOICE_LAST_UPDATE_FROM_1C' => Carbon::now()->addSecond(1)->toIso8601String()
         ];
 
         if ($order->date) {
@@ -352,10 +353,10 @@ class CustomerOrderSyncProcessor extends AbstractBitrix24Processor
     {
         $response = $this->b24Service->call('crm.item.list', [
             'entityTypeId' => self::CONTRACT_ENTITY_TYPE_ID,
-            'filter' => ['UF_CRM_19_GUID_1C' => $guid],
+            'filter' => ['UfCrm_19_GUID_1C' => $guid],
             'select' => ['id'],
             'limit' => 1,
-            'useOriginalUfNames' => 'Y',
+            //'useOriginalUfNames' => 'Y',
         ]);
 
         return $response['result']['items'][0]['id'] ?? null;

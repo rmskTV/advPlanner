@@ -4,6 +4,7 @@
 
 namespace Modules\Bitrix24\app\Services\Processors;
 
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Modules\Accounting\app\Models\ContactPerson;
 use Modules\Accounting\app\Models\Contract;
@@ -17,6 +18,10 @@ class ContractSyncProcessor extends AbstractBitrix24Processor
 
     const SPA_FIELD_ID = 19;
 
+    /**
+     * @throws ValidationException
+     * @throws DependencyNotReadyException
+     */
     protected function syncEntity(ObjectChangeLog $change): void
     {
         $contract = Contract::find($change->local_id);
@@ -78,6 +83,15 @@ class ContractSyncProcessor extends AbstractBitrix24Processor
             );
         }
 
+        // Реквизит (обязательно)
+        $requisiteId = $this->findRequisiteByGuid($contract->counterparty_guid_1c)['ID'];
+
+        if (!$requisiteId) {
+            throw new DependencyNotReadyException(
+                "Company not synced for requisite GUID: {$contract->counterparty_guid_1c}"
+            );
+        }
+
         // Контакт (опционально)
         $contactId = null;
         $localContact = ContactPerson::where('counterparty_guid_1c', $contract->counterparty_guid_1c)
@@ -95,6 +109,8 @@ class ContractSyncProcessor extends AbstractBitrix24Processor
 
         return [
             'company_id' => $companyId,
+            'company_name' => $contract->counterparty->name,
+            'requisite_id' => $requisiteId,
             'contact_id' => $contactId,
             'responsible_id' => $responsibleId,
         ];
@@ -111,14 +127,16 @@ class ContractSyncProcessor extends AbstractBitrix24Processor
         }
 
         $fields = [
-            'title' => $title,
+            'title' => $title . ' c ' . $dependencies['company_name'],
             'COMPANY_ID' => $dependencies['company_id'],
-            $this->getFieldName('NUMBER') => $contract->number,
-            $this->getFieldName('DATE') => $contract->date?->format('Y-m-d'),
-            $this->getFieldName('BASIS') => $this->cleanString($contract->signer_basis),
-            $this->getFieldName('GUID_1C') => $contract->guid_1c,
-            $this->getFieldName('IS_EDO') => $contract->is_edo ? 'Y' : 'N',
-            $this->getFieldName('IS_ANNULLED') => $contract->is_annulled ? 'Y' : 'N',
+            $this->getFieldName('ContractNo') => $contract->number,
+            $this->getFieldName('ContractDate') => $contract->date?->format('Y-m-d'),
+            $this->getFieldName('SignerBasis') => $this->cleanString($contract->signer_basis),
+            'ufCrm_19_GUID_1C' => $contract->guid_1c,
+            $this->getFieldName('RequisiteId') => $dependencies['requisite_id'],
+            $this->getFieldName('IsEdo') => $contract->is_edo ? 'Y' : 'N',
+            $this->getFieldName('IsAnnuled') => $contract->is_annulled ? 'Y' : 'N',
+            'ufCrm_19_LAST_UPDATE_FROM_1C' => Carbon::now()->addSecond(2)->toIso8601String(),
         ];
 
         if ($dependencies['contact_id']) {
@@ -140,7 +158,7 @@ class ContractSyncProcessor extends AbstractBitrix24Processor
         $result = $this->b24Service->call('crm.item.add', [
             'entityTypeId' => self::SPA_ID,
             'fields' => $fields,
-            'useOriginalUfNames' => 'Y',
+            //'useOriginalUfNames' => 'Y',
         ]);
 
         if (empty($result['result']['item']['id'])) {
@@ -163,7 +181,7 @@ class ContractSyncProcessor extends AbstractBitrix24Processor
             'entityTypeId' => self::SPA_ID,
             'id' => $contractId,
             'fields' => $fields,
-            'useOriginalUfNames' => 'Y',
+            //'useOriginalUfNames' => 'Y',
         ]);
 
         Log::debug('Contract updated', ['b24_id' => $contractId]);
@@ -174,16 +192,16 @@ class ContractSyncProcessor extends AbstractBitrix24Processor
      */
     protected function findContractByGuid(string $guid): ?int
     {
-        $guidFieldName = $this->getFieldName('GUID_1C');
+        $guidFieldName = 'ufCrm_19_GUID_1C';
 
         $response = $this->b24Service->call('crm.item.list', [
             'entityTypeId' => self::SPA_ID,
             'filter' => [$guidFieldName => $guid],
             'select' => ['id'],
             'limit' => 1,
-            'useOriginalUfNames' => 'Y',
+            //'useOriginalUfNames' => 'Y',
         ]);
-
+        Log::info($response['result']['items']);
         return $response['result']['items'][0]['id'] ?? null;
     }
 
@@ -192,6 +210,6 @@ class ContractSyncProcessor extends AbstractBitrix24Processor
      */
     protected function getFieldName(string $suffix): string
     {
-        return 'UF_CRM_'.self::SPA_FIELD_ID."_{$suffix}";
+        return 'UfCRM'.self::SPA_FIELD_ID."{$suffix}";
     }
 }

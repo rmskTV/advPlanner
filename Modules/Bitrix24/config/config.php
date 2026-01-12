@@ -7,7 +7,19 @@ return [
         'url' => env('B24_WEBHOOK_URL'),
         'timeout' => env('B24_TIMEOUT', 30),
     ],
+    'pull' => [
+        // Интервал polling (для cron)
+        'interval_minutes' => env('B24_PULL_INTERVAL', 5),
 
+        // Порядок импорта сущностей
+        'order' => [
+            'Requisite',  // Контрагенты первыми
+            'Contact',
+            'Contract',
+            'Product',
+            'Invoice',
+        ],
+    ],
     'sync' => [
         // Размер порции для чтения из БД (для экономии памяти)
         'chunk_size' => env('B24_CHUNK_SIZE', 500),

@@ -4,6 +4,7 @@
 
 namespace Modules\Bitrix24\app\Services\Processors;
 
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Modules\Accounting\app\Models\ObjectChangeLog;
@@ -79,6 +80,10 @@ class ProductSyncProcessor extends AbstractBitrix24Processor
 
         if (isset($propertyIds['ANALYTICS_GROUP_GUID']) && $product->analytics_group_guid_1c) {
             $fields['PROPERTY_'.$propertyIds['ANALYTICS_GROUP_GUID']] = $product->analytics_group_guid_1c;
+        }
+
+        if (isset($propertyIds['LASTUPDATEFROM1C_QAFUSO'])) {
+            $fields['PROPERTY_'.$propertyIds['LASTUPDATEFROM1C_QAFUSO']] = Carbon::now()->addSecond(5)->toIso8601String();
         }
 
         return $fields;

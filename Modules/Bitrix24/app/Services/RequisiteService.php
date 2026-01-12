@@ -2,6 +2,7 @@
 
 namespace Modules\Bitrix24\app\Services;
 
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Modules\Accounting\app\Models\BankAccount;
 use Modules\Accounting\app\Models\Counterparty;
@@ -248,9 +249,10 @@ class RequisiteService
             $cleanedFullName = $this->cleanString($counterparty->full_name);
 
             $requisiteFields = [
-                'ENTITY_TYPE_ID' => 4, 'ENTITY_ID' => $companyId, 'PRESET_ID' => $presetId,
+                 'ENTITY_ID' => $companyId, 'PRESET_ID' => $presetId,
                 'NAME' => $cleanedName,
                 'RQ_INN' => $counterparty->inn,
+                'UF_CRM_LAST_UPDATE_1C' => Carbon::now()->addSecond(5)->toIso8601String(),
                 self::REQUISITE_GUID_FIELD => $counterparty->guid_1c,
             ];
 
@@ -324,7 +326,11 @@ class RequisiteService
             $cleanedName = $this->cleanString($counterparty->name);
             $cleanedFullName = $this->cleanString($counterparty->full_name);
 
-            $requisiteFields = ['RQ_INN' => $counterparty->inn, self::REQUISITE_GUID_FIELD => $counterparty->guid_1c];
+            $requisiteFields = [
+                'RQ_INN' => $counterparty->inn,
+                self::REQUISITE_GUID_FIELD => $counterparty->guid_1c,
+                'UF_CRM_LAST_UPDATE_1C' => Carbon::now()->addSecond(5)->toIso8601String(),
+            ];
 
             if ($counterparty->kpp) {
                 $requisiteFields['RQ_KPP'] = $counterparty->kpp;
