@@ -178,39 +178,67 @@ class InvoicePuller extends AbstractPuller
     protected function syncInvoiceItems(int $invoiceB24Id, CustomerOrder $order): void
     {
         try {
-            // Получаем товарные позиции из B24
-            $response = $this->b24Service->call('crm.item.productrow.get', [
-                'ownerType' => 'SI', // SmartInvoice
-                'ownerId' => $invoiceB24Id,
+            Log::info('Starting to sync invoice items', [
+                'invoice_b24_id' => $invoiceB24Id,
+                'order_id' => $order->id,
             ]);
 
+            $response = $this->b24Service->call('crm.item.productrow.list', [
+                'filter' => [
+                    '=ownerId' => $invoiceB24Id,
+                    '=ownerType' => 'SI',
+                ],
+            ]);
+
+            // ✅ ИСПРАВЛЕНО: извлекаем из result.productRows
             $productRows = $response['result']['productRows'] ?? [];
 
             if (empty($productRows)) {
-                Log::debug('No product rows for invoice', ['invoice_b24_id' => $invoiceB24Id]);
+                Log::warning('No product rows for invoice', [
+                    'invoice_b24_id' => $invoiceB24Id,
+                    'response_structure' => json_encode($response),
+                ]);
                 return;
             }
+
+            Log::info('Found product rows', [
+                'invoice_b24_id' => $invoiceB24Id,
+                'count' => count($productRows),  // ← Теперь будет 4
+            ]);
 
             // Удаляем старые строки
             $order->items()->delete();
 
             // Создаём новые
             foreach ($productRows as $index => $row) {
+                // ✅ ИСПРАВЛЕНО: явное приведение типов
+                $quantity = (float) ($row['quantity'] ?? 1);
+                $price = (float) ($row['price'] ?? 0);
+                $amount = $quantity * $price;
+
                 $order->items()->create([
                     'line_number' => $index + 1,
                     'product_guid_1c' => $this->findProductGuidByB24Id($row['productId'] ?? null),
                     'product_name' => $row['productName'] ?? 'Товар/Услуга',
-                    'quantity' => $row['quantity'] ?? 1,
+                    'quantity' => $quantity,
                     'unit_guid_1c' => $this->mapMeasureCodeToGuid($row['measureCode'] ?? null),
                     'unit_name' => $row['measureName'] ?? null,
-                    'price' => $row['price'] ?? 0,
-                    'amount' => ($row['quantity'] ?? 1) * ($row['price'] ?? 0),
+                    'price' => $price,
+                    'amount' => $amount,
                     'vat_amount' => $this->calculateVatAmount($row),
                     'content' => $row['productName'] ?? null,
                 ]);
+
+                Log::debug('Invoice item created', [
+                    'line_number' => $index + 1,
+                    'product_name' => $row['productName'] ?? 'N/A',
+                    'quantity' => $quantity,
+                    'price' => $price,
+                    'amount' => $amount,
+                ]);
             }
 
-            Log::info('Invoice items synced', [
+            Log::info('Invoice items synced successfully', [
                 'order_id' => $order->id,
                 'items_count' => count($productRows),
             ]);
@@ -220,7 +248,11 @@ class InvoicePuller extends AbstractPuller
                 'invoice_b24_id' => $invoiceB24Id,
                 'order_id' => $order->id,
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
+
+            // Пробрасываем исключение дальше, чтобы транзакция откатилась
+            throw $e;
         }
     }
 

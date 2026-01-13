@@ -283,7 +283,10 @@ class ExchangeMessageProcessor
      */
     private function generateBody(DOMDocument $dom, array $objects): \DOMElement
     {
-        $bodyElement = $dom->createElement('Body');
+        $bodyElement = $dom->createElementNS(
+            'http://v8.1c.ru/edi/edi_stnd/EnterpriseData/1.20',
+            'Body'
+        );
 
         foreach ($objects as $object) {
             $this->addObjectToBody($dom, $bodyElement, $object);
@@ -300,31 +303,55 @@ class ExchangeMessageProcessor
         try {
             $objectType = $object['type'] ?? 'UnknownObject';
 
+            Log::debug('Adding object to body', [
+                'object_type' => $objectType,
+                'ref' => $object['ref'] ?? null,
+                'properties_keys' => array_keys($object['properties'] ?? []),
+            ]);
+
             // Создаем элемент объекта
             $objectElement = $dom->createElement($objectType);
             $bodyElement->appendChild($objectElement);
 
             // Добавляем атрибут Ref если есть
-            if (! empty($object['ref'])) {
+            if (!empty($object['ref'])) {
                 $objectElement->setAttribute('Ref', $object['ref']);
             }
 
             // Добавляем свойства объекта
             $properties = $object['properties'] ?? [];
             foreach ($properties as $propertyName => $propertyValue) {
-                $this->addPropertyToObject($dom, $objectElement, $propertyName, $propertyValue);
+                try {
+                    $this->addPropertyToObject($dom, $objectElement, $propertyName, $propertyValue);
+                } catch (\Exception $e) {
+                    Log::error('Failed to add property', [
+                        'property_name' => $propertyName,
+                        'property_value' => is_scalar($propertyValue) ? $propertyValue : '(complex)',
+                        'error' => $e->getMessage(),
+                    ]);
+                    throw $e;
+                }
             }
 
             // Добавляем табличные части
             $tabularSections = $object['tabular_sections'] ?? [];
             foreach ($tabularSections as $sectionName => $sectionRows) {
-                $this->addTabularSectionToObject($dom, $objectElement, $sectionName, $sectionRows);
+                try {
+                    $this->addTabularSectionToObject($dom, $objectElement, $sectionName, $sectionRows);
+                } catch (\Exception $e) {
+                    Log::error('Failed to add tabular section', [
+                        'section_name' => $sectionName,
+                        'error' => $e->getMessage(),
+                    ]);
+                    throw $e;
+                }
             }
 
         } catch (\Exception $e) {
             Log::error('Failed to add object to body', [
                 'object_type' => $object['type'] ?? 'unknown',
                 'error' => $e->getMessage(),
+                'object_data' => json_encode($object, JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR),
             ]);
 
             throw new ExchangeGenerationException('Failed to add object to body: '.$e->getMessage(), 0, $e);
@@ -336,26 +363,67 @@ class ExchangeMessageProcessor
      */
     private function addPropertyToObject(DOMDocument $dom, \DOMElement $objectElement, string $propertyName, $propertyValue): void
     {
-        $propertyElement = $dom->createElement($propertyName);
-        $objectElement->appendChild($propertyElement);
+        try {
+            // Безопасное создание элемента
+            $propertyElement = $dom->createElement($propertyName);
+            $objectElement->appendChild($propertyElement);
 
-        if (is_array($propertyValue)) {
-            // Если значение - массив, добавляем его элементы рекурсивно
-            foreach ($propertyValue as $key => $value) {
-                $this->addPropertyToObject($dom, $propertyElement, $key, $value);
-            }
-        } else {
-            // Простое значение
-            $propertyElement->textContent = $this->formatValueForXml($propertyValue);
+            if (is_array($propertyValue)) {
+                // НОВОЕ: Проверяем это табличная часть (числовые ключи)?
+                if ($this->isNumericArray($propertyValue)) {
+                    // Это табличная часть - оборачиваем каждый элемент в <Строка>
+                    foreach ($propertyValue as $rowData) {
+                        $rowElement = $dom->createElement('Строка');
+                        $propertyElement->appendChild($rowElement);
 
-            // Добавление типа если необходимо
-            $type = $this->getXmlTypeForValue($propertyValue);
-            if ($type) {
-                $propertyElement->setAttributeNS('http://www.w3.org/2001/XMLSchema-instance', 'xsi:type', $type);
+                        if (is_array($rowData)) {
+                            foreach ($rowData as $columnName => $columnValue) {
+                                $this->addPropertyToObject($dom, $rowElement, $columnName, $columnValue);
+                            }
+                        }
+                    }
+                } else {
+                    // Обычный ассоциативный массив
+                    foreach ($propertyValue as $key => $value) {
+                        $this->addPropertyToObject($dom, $propertyElement, $key, $value);
+                    }
+                }
+            } else {
+                // Форматируем значение
+                $formattedValue = $this->formatValueForXml($propertyValue);
+
+                // Дополнительная очистка перед добавлением
+                $formattedValue = $this->cleanXmlValue($formattedValue);
+
+                // Используем textContent (безопасно для спецсимволов)
+                $propertyElement->textContent = $formattedValue;
             }
+        } catch (\DOMException $e) {
+            Log::error('DOM exception in addPropertyToObject', [
+                'property_name' => $propertyName,
+                'property_value' => is_scalar($propertyValue) ? substr((string)$propertyValue, 0, 100) : '(complex)',
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
         }
     }
 
+    private function cleanXmlValue(string $value): string
+    {
+        // Удаление недопустимых XML символов
+        // Разрешены: Tab (0x09), LF (0x0A), CR (0x0D), и символы >= 0x20
+        $value = preg_replace('/[^\x{0009}\x{000A}\x{000D}\x{0020}-\x{D7FF}\x{E000}-\x{FFFD}]/u', '', $value);
+
+        // Удаление NULL байтов
+        $value = str_replace("\0", '', $value);
+
+        // Проверка UTF-8
+        if (!mb_check_encoding($value, 'UTF-8')) {
+            $value = mb_convert_encoding($value, 'UTF-8', 'UTF-8');
+        }
+
+        return $value;
+    }
     /**
      * Добавление табличной части к объекту
      */
@@ -694,6 +762,26 @@ class ExchangeMessageProcessor
         } catch (\Exception $e) {
             return null;
         }
+    }
+
+    /**
+     * Проверка является ли массив табличной частью для генерации XML
+     */
+    private function isNumericArray(array $data): bool
+    {
+        if (empty($data)) {
+            return false;
+        }
+
+        // Проверяем что все ключи числовые (0, 1, 2, ...)
+        $keys = array_keys($data);
+        if ($keys !== range(0, count($data) - 1)) {
+            return false;
+        }
+
+        // Проверяем что первый элемент - массив (строка табличной части)
+        $firstElement = reset($data);
+        return is_array($firstElement);
     }
 
     private function isTabularSection(\DOMNode $node): bool

@@ -429,10 +429,125 @@ class ExchangeDataMapper
 
     public function getObjectsForSending(ExchangeFtpConnector $connector): Collection
     {
-        // Отправка объектов предусмотрена,
-        // но будет реализована позже
-        return collect([]);
+        try {
+            // Получаем pending записи из object_change_logs (не от 1С)
+            $changeLogs = ObjectChangeLog::readyForProcessing(
+                supportedEntityTypes: ['Modules\Accounting\app\Models\CustomerOrder'],
+                source: null
+            )
+                ->where('source', '!=', ObjectChangeLog::SOURCE_1C)
+                ->orderBy('created_at', 'asc')
+                ->get();
+
+            if ($changeLogs->isEmpty()) {
+                return collect([]);
+            }
+
+            Log::info('Found objects for sending', [
+                'connector_id' => $connector->id,
+                'change_logs_count' => $changeLogs->count(),
+            ]);
+
+            $objectsToSend = collect();
+
+            foreach ($changeLogs as $changeLog) {
+                try {
+                    $entityType = $changeLog->entity_type;
+
+                    // Загружаем модель с relationships
+                    $model = $entityType::with('items')->find($changeLog->local_id);
+
+                    if (!$model) {
+                        Log::warning('Model not found for change log', [
+                            'change_log_id' => $changeLog->id,
+                            'entity_type' => $entityType,
+                            'local_id' => $changeLog->local_id,
+                        ]);
+                        continue;
+                    }
+
+// ДОБАВИТЬ логирование items
+                    if ($model instanceof \Modules\Accounting\app\Models\CustomerOrder) {
+                        Log::info('CustomerOrder loaded for sending', [
+                            'order_id' => $model->id,
+                            'guid_1c' => $model->guid_1c,
+                            'items_count' => $model->items->count(),
+                            'items_loaded' => $model->relationLoaded('items'),
+                        ]);
+                    }
+
+
+                    if (!$model) {
+                        Log::warning('Model not found for change log', [
+                            'change_log_id' => $changeLog->id,
+                            'entity_type' => $entityType,
+                            'local_id' => $changeLog->local_id,
+                        ]);
+                        continue;
+                    }
+
+                    // Определяем тип объекта 1С
+                    $objectType1C = $this->getObjectType1C($model);
+
+                    // Проверяем наличие маппинга
+                    $mapping = $this->mappingRegistry->getMapping($objectType1C);
+                    if (!$mapping) {
+                        Log::warning('No mapping found', [
+                            'change_log_id' => $changeLog->id,
+                            'object_type_1c' => $objectType1C,
+                        ]);
+                        continue;
+                    }
+
+                    $objectsToSend->push([
+                        'model' => $model,
+                        'object_type' => $objectType1C,
+                        'change_log_id' => $changeLog->id,
+                    ]);
+
+                } catch (\Exception $e) {
+                    Log::error('Failed to prepare object for sending', [
+                        'change_log_id' => $changeLog->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            Log::info('Prepared objects for sending', [
+                'connector_id' => $connector->id,
+                'objects_count' => $objectsToSend->count(),
+            ]);
+
+            return $objectsToSend;
+
+        } catch (\Exception $e) {
+            Log::error('Failed to get objects for sending', [
+                'connector_id' => $connector->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw new ExchangeMappingException(
+                'Failed to get objects for sending: ' . $e->getMessage(),
+                0,
+                $e
+            );
+        }
     }
+
+    /**
+     * Получение типа объекта 1С по модели Laravel
+     */
+    private function getObjectType1C(Model $model): string
+    {
+        return match (get_class($model)) {
+            CustomerOrder::class => 'Документ.ЗаказКлиента',
+            // Добавить другие типы по мере необходимости
+            default => throw new ExchangeMappingException(
+                'Unsupported model type: ' . get_class($model)
+            ),
+        };
+    }
+
 
     private function groupObjectsByType(array $objects1C): array
     {

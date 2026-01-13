@@ -6,9 +6,11 @@ use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Modules\Accounting\app\Models\ObjectChangeLog;
 use Modules\EnterpriseData\app\Exceptions\ExchangeException;
 use Modules\EnterpriseData\app\Models\ExchangeFtpConnector;
 use Modules\EnterpriseData\app\Models\ExchangeLog;
+use Modules\EnterpriseData\app\Registry\ObjectMappingRegistry;
 use Modules\EnterpriseData\app\ValueObjects\ExchangeResult;
 use Modules\EnterpriseData\app\ValueObjects\ParsedExchangeMessage;
 use Modules\EnterpriseData\app\ValueObjects\ProcessingResult;
@@ -21,7 +23,9 @@ readonly class ExchangeOrchestrator
         private ExchangeTransactionManager $transactionManager,
         private ExchangeDataMapper $dataMapper,
         private ExchangeLogger $logger,
-        private ExchangeConfigValidator $configValidator
+        private ExchangeConfigValidator $configValidator,
+        private readonly ObjectMappingRegistry $mappingRegistry,
+        private readonly ExchangeDataSanitizer $sanitizer
     ) {}
 
     public function processIncomingExchange(ExchangeFtpConnector $connector): ExchangeResult
@@ -143,42 +147,40 @@ readonly class ExchangeOrchestrator
 
         try {
             // Определение объектов для отправки
-            $objectsToSend = $this->dataMapper->getObjectsForSending($connector);
+            $objectsData = $this->dataMapper->getObjectsForSending($connector);
 
             // Получение номера последнего успешно обработанного входящего сообщения
             $lastProcessedIncomingMessageNo = $this->getLastProcessedIncomingMessageNo($connector);
 
-            // Если нет объектов для отправки, но есть подтверждение - отправляем пустое сообщение с подтверждением
-            if ($objectsToSend->isEmpty() && $lastProcessedIncomingMessageNo === null) {
+            // Если нет объектов для отправки, но есть подтверждение - отправляем пустое сообщение
+            if ($objectsData->isEmpty() && $lastProcessedIncomingMessageNo === null) {
                 return new ExchangeResult(true, 0, 0, [], [], $startTime, Carbon::now());
             }
 
-            // Группировка объектов по типам
-            $groupedObjects = $objectsToSend->groupBy('object_type');
             $messageNo = $connector->getNextOutgoingMessageNo();
-
-            $totalObjects = 0;
             $allErrors = [];
             $allWarnings = [];
+            $totalObjects = $objectsData->count();
 
-            // Если есть объекты для отправки, группируем их
-            if (! $objectsToSend->isEmpty()) {
-                foreach ($groupedObjects as $objectType => $objects) {
-                    try {
-                        $result = $this->processOutgoingObjects(
-                            $connector,
-                            $objectType,
-                            $objects,
-                            $messageNo++,
-                            $lastProcessedIncomingMessageNo
-                        );
+            // Если есть объекты для отправки - отправляем ВСЕ в ОДНОМ сообщении
+            if (!$objectsData->isEmpty()) {
+                try {
+                    $result = $this->sendObjectsInSingleMessage(
+                        $connector,
+                        $objectsData,
+                        $messageNo,
+                        $lastProcessedIncomingMessageNo
+                    );
 
-                        $totalObjects += $objects->count();
-                        $allErrors = array_merge($allErrors, $result->errors);
-                        $allWarnings = array_merge($allWarnings, $result->warnings);
-                    } catch (\Exception $e) {
-                        $allErrors[] = "Object type {$objectType}: ".$e->getMessage();
-                    }
+                    $allErrors = array_merge($allErrors, $result->errors);
+                    $allWarnings = array_merge($allWarnings, $result->warnings);
+
+                } catch (\Exception $e) {
+                    $allErrors[] = 'Failed to send objects: ' . $e->getMessage();
+                    Log::error('Outgoing message sending failed', [
+                        'connector_id' => $connector->id,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
             } else {
                 // Отправляем пустое сообщение только с подтверждением
@@ -186,7 +188,7 @@ readonly class ExchangeOrchestrator
                     $this->sendConfirmationOnlyMessage($connector, $messageNo, $lastProcessedIncomingMessageNo);
                     $connector->updateLastOutgoingMessageNo($messageNo);
                 } catch (\Exception $e) {
-                    $allErrors[] = 'Confirmation message: '.$e->getMessage();
+                    $allErrors[] = 'Confirmation message: ' . $e->getMessage();
                 }
             }
 
@@ -197,7 +199,7 @@ readonly class ExchangeOrchestrator
 
             $result = new ExchangeResult(
                 empty($allErrors),
-                $groupedObjects->count(),
+                1, // Одно сообщение
                 $totalObjects,
                 $allErrors,
                 $allWarnings,
@@ -210,10 +212,123 @@ readonly class ExchangeOrchestrator
             return $result;
 
         } catch (\Exception $e) {
-            $this->logger->logError('Outgoing exchange failed', ['connector' => $connector->id, 'error' => $e->getMessage()]);
+            $this->logger->logError('Outgoing exchange failed', [
+                'connector' => $connector->id,
+                'error' => $e->getMessage()
+            ]);
 
             return new ExchangeResult(false, 0, 0, [$e->getMessage()], [], $startTime, Carbon::now());
         }
+    }
+
+    /**
+     * Отправка всех объектов в одном сообщении
+     */
+    private function sendObjectsInSingleMessage(
+        ExchangeFtpConnector $connector,
+        Collection $objectsData,
+        int $messageNo,
+        ?int $lastProcessedIncomingMessageNo
+    ): ProcessingResult
+    {
+        return $this->transactionManager->executeInTransaction(function () use (
+            $connector, $objectsData, $messageNo, $lastProcessedIncomingMessageNo
+        ) {
+            $objects1C = [];
+            $changeLogIds = [];
+
+            // Преобразование всех объектов в формат 1С
+            foreach ($objectsData as $objectData) {
+                try {
+                    $model = $objectData['model'];
+                    $objectType = $objectData['object_type'];
+                    $changeLogId = $objectData['change_log_id'];
+
+                    // Получаем маппинг
+                    $mapping = $this->mappingRegistry->getMapping($objectType);
+                    if (!$mapping) {
+                        Log::warning('No mapping for object type', ['object_type' => $objectType]);
+                        continue;
+                    }
+
+                    // Маппинг в 1С
+                    $object1C = $mapping->mapTo1C($model);
+
+                    // Санитизация
+                    $object1C = $this->sanitizer->sanitizeOutgoingObject($object1C);
+
+                    $objects1C[] = $object1C;
+                    $changeLogIds[] = $changeLogId;
+
+                    Log::info('Prepared object for sending', [
+                        'object_type' => $objectType,
+                        'model_id' => $model->id,
+                        'guid_1c' => $model->guid_1c ?? null,
+                    ]);
+
+                } catch (\Exception $e) {
+                    Log::error('Failed to map object', [
+                        'object_type' => $objectData['object_type'] ?? 'unknown',
+                        'change_log_id' => $objectData['change_log_id'] ?? null,
+                        'error' => $e->getMessage(),
+                    ]);
+                    // Продолжаем обработку других объектов
+                }
+            }
+
+            if (empty($objects1C)) {
+                throw new ExchangeException('No valid objects to send');
+            }
+
+            // Генерация XML сообщения с подтверждением
+            $xmlContent = $this->messageProcessor->generateOutgoingMessage(
+                $connector,
+                $messageNo,
+                $lastProcessedIncomingMessageNo,
+                $objects1C
+            );
+
+            // Генерация имени файла
+            $fileName = $this->fileManager->generateFileName($connector, $messageNo);
+
+            Log::info('Uploading outgoing message', [
+                'connector_id' => $connector->id,
+                'message_no' => $messageNo,
+                'file_name' => $fileName,
+                'objects_count' => count($objects1C),
+                'xml_size' => strlen($xmlContent),
+            ]);
+
+            // Загрузка файла на FTP
+            $uploadResult = $this->fileManager->uploadFile($connector, $xmlContent, $fileName);
+
+            if (!$uploadResult) {
+                throw new ExchangeException("Failed to upload file {$fileName}");
+            }
+
+            // Обновление номера последнего исходящего сообщения
+            $connector->updateLastOutgoingMessageNo($messageNo);
+
+            // Отметка объектов как отправленных (processed)
+            $this->markObjectsAsProcessed($changeLogIds, $messageNo);
+
+            Log::info('Outgoing message sent successfully', [
+                'connector_id' => $connector->id,
+                'message_no' => $messageNo,
+                'objects_count' => count($objects1C),
+                'change_log_ids' => $changeLogIds,
+            ]);
+
+            return new ProcessingResult(
+                true,
+                count($objects1C),
+                [],
+                [],
+                [],
+                [],
+                []
+            );
+        });
     }
 
     private function processOutgoingObjects(
@@ -290,7 +405,7 @@ readonly class ExchangeOrchestrator
     {
         return DB::table('exchange_incoming_confirmations')
             ->where('connector_id', $connector->id)
-            ->where('confirmed', false) // Еще не подтверждено в исходящем сообщении
+            //->where('confirmed', false) // Еще не подтверждено в исходящем сообщении
             ->orderBy('message_no', 'desc')
             ->value('message_no');
     }
@@ -352,4 +467,31 @@ readonly class ExchangeOrchestrator
         // Реализация зависит от структуры ваших моделей
         // Например, обновление поля last_exchange_message_no
     }
+
+    /**
+     * Отметка объектов как обработанных
+     */
+    private function markObjectsAsProcessed(array $changeLogIds, int $messageNo): void
+    {
+        foreach ($changeLogIds as $changeLogId) {
+            try {
+                $changeLog = ObjectChangeLog::find($changeLogId);
+                if ($changeLog) {
+                    $changeLog->markProcessed();
+
+                    Log::info('Marked change log as processed', [
+                        'change_log_id' => $changeLogId,
+                        'message_no' => $messageNo,
+                    ]);
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to mark change log as processed', [
+                    'change_log_id' => $changeLogId,
+                    'error' => $e->getMessage(),
+                ]);
+                // Не прерываем выполнение - объект уже отправлен
+            }
+        }
+    }
+
 }

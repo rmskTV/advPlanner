@@ -234,25 +234,376 @@ class CustomerOrderMapping extends ObjectMapping
     public function mapTo1C(Model $laravelModel): array
     {
         /** @var CustomerOrder $laravelModel */
-        return [
+
+        // Получаем связанные объекты
+        $organization = $laravelModel->organization;
+        $counterparty = $laravelModel->counterparty_guid_1c
+            ? \Modules\Accounting\app\Models\Counterparty::findByGuid1C($laravelModel->counterparty_guid_1c)
+            : null;
+
+        $contract = $laravelModel->contract_guid_1c
+            ? \Modules\Accounting\app\Models\Contract::findByGuid1C($laravelModel->contract_guid_1c)
+            : null;
+
+        $currency = $laravelModel->currency_guid_1c
+            ? \Modules\Accounting\app\Models\Currency::findByGuid1C($laravelModel->currency_guid_1c)
+            : null;
+
+        // ВАЖНО: Строгий порядок свойств для XDTO!
+        $properties = [];
+
+        // 1. КлючевыеСвойства
+        $keyProperties = [
+            'Ссылка' => $laravelModel->guid_1c,
+            'Дата' => $laravelModel->date?->format('Y-m-d\TH:i:s'),  // Дата ПЕРВАЯ!
+            'Номер' => $laravelModel->number,                         // Номер ВТОРОЙ!
+        ];
+
+        // Добавляем Организацию в КлючевыеСвойства
+        if ($organization) {
+            $keyProperties['Организация'] = [
+                'Ссылка' => $organization->guid_1c,
+                'Наименование' => $organization->name,
+                'НаименованиеСокращенное' => $organization->name,
+                'НаименованиеПолное' => $organization->full_name ?? $organization->name,
+                'ИНН' => $organization->inn,
+                'КПП' => $organization->kpp,
+                'ЮридическоеФизическоеЛицо' => 'ЮридическоеЛицо',
+            ];
+        }
+
+        $properties['КлючевыеСвойства'] = $keyProperties;
+
+        // 2. Валюта (ОБЯЗАТЕЛЬНО перед Сумма!)
+        if ($currency) {
+            $properties['Валюта'] = [
+                'Ссылка' => $currency->guid_1c,
+                'ДанныеКлассификатора' => [
+                    'Код' => $currency->code,
+                    'Наименование' => $currency->name,
+                ],
+            ];
+        } else {
+            // Fallback - рубль по умолчанию
+            $properties['Валюта'] = [
+                'Ссылка' => 'f1a17773-5488-11e0-91e9-00e04c771318',
+                'ДанныеКлассификатора' => [
+                    'Код' => '643',
+                    'Наименование' => 'руб.',
+                ],
+            ];
+        }
+
+        // 3. Сумма (ПОСЛЕ Валюты!)
+        $properties['Сумма'] = $laravelModel->amount;
+
+        // 4. Контрагент
+        if ($counterparty) {
+            $properties['Контрагент'] = $this->buildCounterpartySection($counterparty);
+        }
+
+        // 5. ДанныеВзаиморасчетов
+        if ($contract) {
+            $properties['ДанныеВзаиморасчетов'] = $this->buildSettlementDataSection(
+                $laravelModel,
+                $contract,
+                $organization,
+                $counterparty,
+                $currency
+            );
+        }
+
+        // 6. АдресДоставки
+        $properties['АдресДоставки'] = $laravelModel->delivery_address ?? '';
+
+        // 7. СуммаВключаетНДС
+        $properties['СуммаВключаетНДС'] = $laravelModel->amount_includes_vat ? 'true' : 'false';
+
+        // 8. БанковскийСчетОрганизации (если есть)
+        if ($laravelModel->organization_bank_account_guid_1c) {
+            $bankAccount = \Modules\Accounting\app\Models\BankAccount::findByGuid1C(
+                $laravelModel->organization_bank_account_guid_1c
+            );
+
+            if ($bankAccount && $organization) {
+                $properties['БанковскийСчетОрганизации'] = $this->buildBankAccountSection(
+                    $bankAccount,
+                    $organization
+                );
+            }
+        }
+
+// 9. Услуги (ПЕРЕД ОбщиеСвойстваОбъектовФормата!)
+        $properties['Услуги'] = $this->buildServicesSection($laravelModel);
+
+// 10. ОбщиеСвойстваОбъектовФормата (ПОСЛЕДНЕЕ!)
+        if ($laravelModel->responsible_guid_1c && $laravelModel->responsible_name) {
+            $properties['ОбщиеСвойстваОбъектовФормата'] = [
+                'Ответственный' => [
+                    'Ссылка' => $laravelModel->responsible_guid_1c,
+                    'Наименование' => $laravelModel->responsible_name,
+                ],
+            ];
+        }
+
+        $result = [
             'type' => 'Документ.ЗаказКлиента',
             'ref' => $laravelModel->guid_1c,
-            'properties' => [
-                'КлючевыеСвойства' => [
-                    'Ссылка' => $laravelModel->guid_1c,
-                    'Номер' => $laravelModel->number,
-                    'Дата' => $laravelModel->date?->format('Y-m-d\TH:i:s'),
-                ],
-                'Сумма' => $laravelModel->amount,
-                'СуммаВключаетНДС' => $laravelModel->amount_includes_vat ? 'true' : 'false',
-                'АдресДоставки' => $laravelModel->delivery_address,
-            ],
-            'tabular_sections' => [
-                'Услуги' => $this->buildServicesSection($laravelModel),
-            ],
+            'properties' => $properties,
+            'tabular_sections' => [],  // Услуги теперь в properties
         ];
+
+
+        return $result;
     }
 
+    /**
+     * Построение секции Контрагента
+     */
+    /**
+     * Построение секции Контрагента
+     */
+    private function buildCounterpartySection($counterparty): array
+    {
+        // ВАЖНО: Строгий порядок для XDTO!
+        $section = [];
+
+        // 1. Ссылка
+        $section['Ссылка'] = $counterparty->guid_1c;
+
+        // 2. Наименование
+        $section['Наименование'] = $counterparty->name;
+
+        // 3. НаименованиеПолное
+        $section['НаименованиеПолное'] = $counterparty->full_name ?? $counterparty->name;
+
+        // 4. ИНН
+        if ($counterparty->inn) {
+            $section['ИНН'] = $counterparty->inn;
+        }
+
+        // 5. КПП (ОБЯЗАТЕЛЬНО перед ЮридическоеФизическоеЛицо!)
+        if ($counterparty->kpp) {
+            $section['КПП'] = $counterparty->kpp;
+        }
+
+        // 6. ЮридическоеФизическоеЛицо
+        $section['ЮридическоеФизическоеЛицо'] = $counterparty->isLegalEntity()
+            ? 'ЮридическоеЛицо'
+            : 'ФизическоеЛицо';
+
+        // 7. СтранаРегистрации
+        if ($counterparty->country_guid_1c) {
+            $section['СтранаРегистрации'] = [
+                'Ссылка' => $counterparty->country_guid_1c,
+                'ДанныеКлассификатора' => [
+                    'Код' => $counterparty->country_code ?? '643',
+                    'Наименование' => $counterparty->country_name ?? 'РОССИЯ',
+                ],
+            ];
+        }
+
+        // 8. Группа контрагента
+        if ($counterparty->group_guid_1c) {
+            $section['Группа'] = [
+                'Ссылка' => $counterparty->group_guid_1c,
+                'Наименование' => $counterparty->group->name ?? '',
+            ];
+        }
+
+        // 9. РегистрационныйНомер
+        if ($counterparty->ogrn) {
+            $section['РегистрационныйНомер'] = $counterparty->ogrn;
+        }
+
+        // 10. ИндивидуальныйПредприниматель (если это ИП)
+        if (!$counterparty->isLegalEntity()) {
+            $section['ИндивидуальныйПредприниматель'] = $counterparty->is_pseudoip ? 'true' : 'false';
+        } else {
+            $section['ИндивидуальныйПредприниматель'] = 'false';
+        }
+
+        return $section;
+    }
+
+    /**
+     * Построение секции ДанныеВзаиморасчетов
+     */
+    /**
+     * Построение секции ДанныеВзаиморасчетов
+     */
+    private function buildSettlementDataSection(
+        $order,
+        $contract,
+        $organization,
+        $counterparty,
+        $currency
+    ): array {
+        $section = [];
+
+        // Договор
+        if ($contract) {
+            // ВАЖНО: Строгий порядок для XDTO!
+            $contractSection = [];
+
+            // 1. Ссылка
+            $contractSection['Ссылка'] = $contract->guid_1c;
+
+            // 2. ВидДоговора
+            $contractSection['ВидДоговора'] = $contract->contract_type;
+
+            // 3. Организация (ПЕРЕД Наименование!)
+            if ($organization) {
+                $contractSection['Организация'] = $this->buildOrganizationSection($organization);
+            }
+
+            // 4. Контрагент (ПЕРЕД Наименование!)
+            if ($counterparty) {
+                $contractSection['Контрагент'] = $this->buildCounterpartySection($counterparty);
+            }
+
+            // 5. ВалютаВзаиморасчетов
+            if ($currency) {
+                $contractSection['ВалютаВзаиморасчетов'] = [
+                    'Ссылка' => $currency->guid_1c,
+                    'ДанныеКлассификатора' => [
+                        'Код' => $currency->code,
+                        'Наименование' => $currency->name,
+                    ],
+                ];
+            } else {
+                // Fallback - рубль по умолчанию
+                $contractSection['ВалютаВзаиморасчетов'] = [
+                    'Ссылка' => 'f1a17773-5488-11e0-91e9-00e04c771318',
+                    'ДанныеКлассификатора' => [
+                        'Код' => '643',
+                        'Наименование' => 'руб.',
+                    ],
+                ];
+            }
+
+            // 6. РасчетыВУсловныхЕдиницах
+            $contractSection['РасчетыВУсловныхЕдиницах'] = $contract->calculations_in_conditional_units ? 'true' : 'false';
+
+            // 7. Наименование (ПОСЛЕ всех объектов!)
+            $contractSection['Наименование'] = $contract->name;
+
+            // 8. Дата
+            $contractSection['Дата'] = $contract->date->format('Y-m-d');
+
+            // 9. Номер
+            $contractSection['Номер'] = $contract->number;
+
+            $section['Договор'] = $contractSection;
+        }
+
+        // Валюта взаиморасчетов (на уровне ДанныеВзаиморасчетов)
+        if ($currency) {
+            $section['ВалютаВзаиморасчетов'] = [
+                'Ссылка' => $currency->guid_1c,
+                'ДанныеКлассификатора' => [
+                    'Код' => $currency->code,
+                    'Наименование' => $currency->name,
+                ],
+            ];
+        } else {
+            // Fallback - рубль по умолчанию
+            $section['ВалютаВзаиморасчетов'] = [
+                'Ссылка' => 'f1a17773-5488-11e0-91e9-00e04c771318',
+                'ДанныеКлассификатора' => [
+                    'Код' => '643',
+                    'Наименование' => 'руб.',
+                ],
+            ];
+        }
+
+        // Курс и кратность
+        $section['КурсВзаиморасчетов'] = $order->exchange_rate ?? 1;
+        $section['КратностьВзаиморасчетов'] = $order->exchange_multiplier ?? 1;
+        $section['РасчетыВУсловныхЕдиницах'] = $order->calculations_in_conditional_units ? 'true' : 'false';
+
+        return $section;
+    }
+    /**
+     * Построение секции Организации
+     */
+    private function buildOrganizationSection($organization): array
+    {
+        return [
+            'Ссылка' => $organization->guid_1c,
+            'Наименование' => $organization->name,
+            'НаименованиеСокращенное' => $organization->name,
+            'НаименованиеПолное' => $organization->full_name ?? $organization->name,
+            'ИНН' => $organization->inn,
+            'КПП' => $organization->kpp,
+            'ЮридическоеФизическоеЛицо' => 'ЮридическоеЛицо',
+        ];
+    }
+    /**
+     * Построение секции БанковскийСчетОрганизации
+     */
+    private function buildBankAccountSection($bankAccount, $organization): array
+    {
+        $section = [
+            'Ссылка' => $bankAccount->guid_1c,
+            'НомерСчета' => $bankAccount->account_number,
+        ];
+
+        // Банк
+        if ($bankAccount->bank_guid_1c) {
+            $section['Банк'] = [
+                'Ссылка' => $bankAccount->bank_guid_1c,
+                'ДанныеКлассификатораБанков' => [
+                    'Наименование' => $bankAccount->bank_name,
+                    'БИК' => $bankAccount->bank_bik,
+                    'КоррСчет' => $bankAccount->bank_correspondent_account,
+                ],
+            ];
+
+            if ($bankAccount->bank_swift) {
+                $section['Банк']['ДанныеКлассификатораБанков']['СВИФТБИК'] = $bankAccount->bank_swift;
+            }
+        }
+
+        // Владелец счета
+        $section['Владелец'] = [
+            'ОрганизацииСсылка' => [
+                'Ссылка' => $organization->guid_1c,
+                'Наименование' => $organization->name,
+                'НаименованиеСокращенное' => $organization->name,
+                'НаименованиеПолное' => $organization->full_name ?? $organization->name,
+                'ИНН' => $organization->inn,
+                'КПП' => $organization->kpp,
+                'ЮридическоеФизическоеЛицо' => 'ЮридическоеЛицо',
+            ],
+        ];
+
+        return $section;
+    }
+    /**
+     * Построение иерархии групп номенклатуры
+     */
+    private function buildProductGroupHierarchy($group): array
+    {
+        $groupSection = [
+            'Ссылка' => $group->guid_1c,
+            'Наименование' => $group->name,
+        ];
+
+        if ($group->code) {
+            $groupSection['КодВПрограмме'] = $group->code;
+        }
+
+        // Рекурсивно добавляем родительскую группу
+        if ($group->parent_guid_1c) {
+            $parentGroup = \Modules\Accounting\app\Models\ProductGroup::findByGuid1C($group->parent_guid_1c);
+            if ($parentGroup) {
+                $groupSection['Группа'] = $this->buildProductGroupHierarchy($parentGroup);
+            }
+        }
+
+        return $groupSection;
+    }
     /**
      * Построение табличной части Услуги
      */
@@ -260,22 +611,114 @@ class CustomerOrderMapping extends ObjectMapping
     {
         $services = [];
 
+        Log::info('Building services section', [
+            'order_id' => $order->id,
+            'items_count' => $order->items->count(),
+            'relation_loaded' => $order->relationLoaded('items'),
+        ]);
+
         foreach ($order->items as $item) {
-            $services[] = [
-                'ДанныеНоменклатуры' => [
-                    'Ссылка' => $item->product_guid_1c,
-                    'Наименование' => $item->product_name,
+            // Получаем продукт для полной информации
+// Получаем продукт для полной информации
+            $product = null;
+            if ($item->product_guid_1c) {
+                $product = \Modules\Accounting\app\Models\Product::findByGuid1C($item->product_guid_1c);
+            }
+
+// ВАЖНО: Строгий порядок для XDTO!
+            $nomenclatureSection = [];
+
+// 1. Ссылка
+            $nomenclatureSection['Ссылка'] = $item->product_guid_1c;
+
+// 2. НаименованиеПолное (ВТОРОЕ!)
+            $nomenclatureSection['НаименованиеПолное'] = $item->product_name;
+
+// 3. КодВПрограмме (ТРЕТЬЕ!)
+            if ($product && $product->code) {
+                $nomenclatureSection['КодВПрограмме'] = $product->code;
+            }
+
+// 4. Наименование (ЧЕТВЕРТОЕ!)
+            $nomenclatureSection['Наименование'] = $item->product_name;
+
+// 5. Группа (ПЯТОЕ!)
+            if ($product && $product->group_guid_1c) {
+                $group = \Modules\Accounting\app\Models\ProductGroup::findByGuid1C($product->group_guid_1c);
+                if ($group) {
+                    $nomenclatureSection['Группа'] = $this->buildProductGroupHierarchy($group);
+                }
+            }
+
+
+            $serviceRow = [];
+
+// 1. Номенклатура
+            $serviceRow['Номенклатура'] = $nomenclatureSection;
+
+// 2. Количество
+            $serviceRow['Количество'] = $item->quantity;
+
+// 3. Сумма (ПЕРЕД Цена!)
+            $serviceRow['Сумма'] = $item->amount;
+
+// 4. Цена (ПОСЛЕ Сумма!)
+            $serviceRow['Цена'] = $item->price;
+
+
+// 5. СтавкаНДС
+// Вычисляем ставку НДС из СуммаНДС и Суммы, если не указана явно
+            $vatRate = $item->vat_rate_value;
+
+            if (!$vatRate && $item->vat_amount && $item->amount && $item->amount > 0) {
+                // Вычисляем по формуле: ставка = (СуммаНДС / (Сумма - СуммаНДС)) * 100
+                $vatRate = round(($item->vat_amount / ($item->amount - $item->vat_amount)) * 100);
+            }
+
+// Если все равно не получилось вычислить - ставим 5% по умолчанию
+            if (!$vatRate) {
+                $vatRate = 5;
+            }
+
+            $serviceRow['СтавкаНДС'] = [
+                'Ставка' => $vatRate,
+                'РасчетнаяСтавка' => 'false',
+                'НеОблагается' => 'false',
+                'ВидСтавки' => 'Общая',
+                'Страна' => [
+                    'Ссылка' => '90fb0551-c879-11e5-b34d-00e0433f0101',  // GUID России из классификатора
+                    'ДанныеКлассификатора' => [
+                        'Код' => '643',
+                        'Наименование' => 'РОССИЯ',
+                    ],
                 ],
-                'Количество' => $item->quantity,
-                'Цена' => $item->price,
-                'Сумма' => $item->amount,
-                'СуммаНДС' => $item->vat_amount,
-                'Содержание' => $item->content,
             ];
+
+
+// 6. СуммаНДС
+            $serviceRow['СуммаНДС'] = $item->vat_amount ?? 0;
+
+// 7. Содержание
+            $serviceRow['Содержание'] = $item->content ?? '';
+
+
+            $services[] = $serviceRow;
+
+            Log::debug('Added service row', [
+                'product_guid' => $item->product_guid_1c,
+                'product_name' => $item->product_name,
+                'amount' => $item->amount,
+            ]);
         }
+
+        Log::info('Services section built', [
+            'order_id' => $order->id,
+            'services_count' => count($services),
+        ]);
 
         return $services;
     }
+
 
     public function validateStructure(array $object1C): ValidationResult
     {

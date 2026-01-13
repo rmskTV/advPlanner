@@ -16,7 +16,8 @@ readonly class ProcessingResult
         public array $createdIds = [],
         public array $updatedIds = [],
         public array $deletedIds = [],
-        public array $errors = []
+        public array $errors = [],
+        public array $warnings = []
     ) {}
 
     public function hasErrors(): bool
@@ -47,7 +48,8 @@ readonly class ProcessingResult
             array_merge($this->createdIds, $other->createdIds),
             array_merge($this->updatedIds, $other->updatedIds),
             array_merge($this->deletedIds, $other->deletedIds),
-            array_merge($this->errors, $other->errors)
+            array_merge($this->errors, $other->errors),
+            array_merge($this->warnings, $other->warnings)  // ← ДОБАВИТЬ
         );
     }
 
@@ -60,6 +62,7 @@ readonly class ProcessingResult
             'updated_count' => count($this->updatedIds),
             'deleted_count' => count($this->deletedIds),
             'error_count' => $this->getErrorCount(),
+            'warning_count' => count($this->warnings),  // ← ДОБАВИТЬ
             'total_changes' => $this->getTotalChanges(),
         ];
     }

@@ -85,13 +85,51 @@ class ExchangeDataSanitizer
                     throw new ExchangeMappingException('Dangerous content detected in string value');
                 }
             }
+
+            // ДЛЯ ВХОДЯЩИХ: экранируем для безопасности
+            $value = htmlspecialchars($value, ENT_QUOTES | ENT_XML1, 'UTF-8');
+
+            // Старая очистка для входящих (НЕ ТРОГАЕМ!)
+            $value = $this->sanitizeForXmlIncoming($value);
+        } else {
+            // ДЛЯ ИСХОДЯЩИХ: декодируем обратно (т.к. данные в БД уже экранированы)
+            $value = html_entity_decode($value, ENT_QUOTES | ENT_XML1, 'UTF-8');
+
+            // Агрессивная очистка для исходящих
+            $value = $this->sanitizeForXmlOutgoing($value);
         }
 
-        // Кодирование HTML-сущностей для безопасности
-        $value = htmlspecialchars($value, ENT_QUOTES | ENT_XML1, 'UTF-8');
+        return $value;
+    }
+    /**
+     * Очистка для входящих XML (консервативная, НЕ ТРОГАТЬ!)
+     */
+    private function sanitizeForXmlIncoming(string $value): string
+    {
+        // Удаление недопустимых XML символов
+        $value = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', '', $value);
 
-        // Дополнительная очистка для XML
-        $value = $this->sanitizeForXml($value);
+        // Замена амперсандов, которые не являются частью сущностей
+        $value = preg_replace('/&(?!(?:amp|lt|gt|quot|apos);)/', '&amp;', $value);
+
+        return $value;
+    }
+    /**
+     * Агрессивная очистка для исходящих XML
+     */
+    private function sanitizeForXmlOutgoing(string $value): string
+    {
+        // Удаление ВСЕХ недопустимых XML символов
+        // Разрешены: Tab (0x09), LF (0x0A), CR (0x0D), и символы >= 0x20
+        $value = preg_replace('/[^\x{0009}\x{000A}\x{000D}\x{0020}-\x{D7FF}\x{E000}-\x{FFFD}]/u', '', $value);
+
+        // Удаление NULL байтов
+        $value = str_replace("\0", '', $value);
+
+        // Проверка UTF-8
+        if (!mb_check_encoding($value, 'UTF-8')) {
+            $value = mb_convert_encoding($value, 'UTF-8', 'UTF-8');
+        }
 
         return $value;
     }
