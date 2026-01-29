@@ -2,14 +2,18 @@
 
 namespace Modules\Bitrix24\app\Services\Pull;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Modules\Accounting\app\Models\CustomerOrder;
+use Modules\Accounting\app\Models\Product;
 use Modules\Bitrix24\app\Models\B24SyncState;
 use Modules\Bitrix24\app\Services\Mappers\B24InvoiceMapper;
 
 class InvoicePuller extends AbstractPuller
 {
     const INVOICE_ENTITY_TYPE_ID = 31; // SmartInvoice
+
+    protected array $productGuidCache = [];
 
     protected function getEntityType(): string
     {
@@ -153,6 +157,7 @@ class InvoicePuller extends AbstractPuller
 
     /**
      * Переопределяем обработку - нужно синхронизировать и строки
+     * @throws \Exception
      */
     protected function processItem(array $b24Item): array
     {
@@ -203,7 +208,7 @@ class InvoicePuller extends AbstractPuller
 
             Log::info('Found product rows', [
                 'invoice_b24_id' => $invoiceB24Id,
-                'count' => count($productRows),  // ← Теперь будет 4
+                'count' => count($productRows),
             ]);
 
             // Удаляем старые строки
@@ -256,8 +261,15 @@ class InvoicePuller extends AbstractPuller
         }
     }
 
+
     /**
      * Найти GUID товара по B24 ID
+     *
+     * Логика:
+     * 1. Проверяем кэш
+     * 2. Ищем локально по b24_id
+     * 3. Запрашиваем из B24 и извлекаем GUID из свойства
+     * 4. Обновляем локальную запись если нашли по GUID
      */
     protected function findProductGuidByB24Id(?int $productId): ?string
     {
@@ -265,10 +277,126 @@ class InvoicePuller extends AbstractPuller
             return null;
         }
 
-        $product = \Modules\Accounting\app\Models\Product::where('b24_id', $productId)->first();
+        // 1. Проверяем кэш
+        if (isset($this->productGuidCache[$productId])) {
+            return $this->productGuidCache[$productId];
+        }
 
-        return $product?->guid_1c;
+        // 2. Ищем локально по b24_id
+        $product = Product::where('b24_id', $productId)->first();
+
+        if ($product && $product->guid_1c) {
+            $this->productGuidCache[$productId] = $product->guid_1c;
+            return $product->guid_1c;
+        }
+
+        // 3. Запрашиваем из B24
+        try {
+            Log::debug('Fetching product from B24', ['product_id' => $productId]);
+
+            // Получаем ID свойства GUID_1C
+            $propertyIds = $this->getProductPropertyIds();
+
+            if (!isset($propertyIds['GUID_1C'])) {
+                Log::warning('GUID_1C property not found for products');
+                $this->productGuidCache[$productId] = null;
+                return null;
+            }
+
+            $guidPropertyId = $propertyIds['GUID_1C'];
+
+            // Запрашиваем товар
+            $response = $this->b24Service->call('crm.product.get', [
+                'id' => $productId,
+            ]);
+
+            if (empty($response['result'])) {
+                Log::warning('Product not found in B24', ['product_id' => $productId]);
+                $this->productGuidCache[$productId] = null;
+                return null;
+            }
+
+            $b24Product = $response['result'];
+
+            // Извлекаем GUID из свойства
+            $propertyKey = 'PROPERTY_' . $guidPropertyId;
+            $guid = null;
+
+            if (isset($b24Product[$propertyKey])) {
+                $value = $b24Product[$propertyKey];
+
+                // Свойство может быть массивом
+                if (is_array($value)) {
+                    $guid = $value['value'] ?? null;
+                } else {
+                    $guid = $value;
+                }
+            }
+
+            if (empty($guid)) {
+                Log::info('Product has no GUID in B24', ['product_id' => $productId]);
+                $this->productGuidCache[$productId] = null;
+                return null;
+            }
+
+            $guid = (string) $guid;
+
+            // 4. Обновляем локальную запись если нашли по GUID
+            $localProduct = Product::where('guid_1c', $guid)->first();
+
+            if ($localProduct) {
+                // Привязываем b24_id к существующему товару
+                if (!$localProduct->b24_id) {
+                    $localProduct->b24_id = $productId;
+                    $localProduct->save();
+
+                    Log::info('Linked B24 product to local', [
+                        'local_id' => $localProduct->id,
+                        'b24_id' => $productId,
+                        'guid' => $guid,
+                    ]);
+                }
+            } else {
+                Log::info('Product exists in B24 but not in local DB', [
+                    'b24_id' => $productId,
+                    'guid' => $guid,
+                ]);
+            }
+
+            // Кэшируем
+            $this->productGuidCache[$productId] = $guid;
+
+            return $guid;
+
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch product from B24', [
+                'product_id' => $productId,
+                'error' => $e->getMessage(),
+            ]);
+
+            $this->productGuidCache[$productId] = null;
+            return null;
+        }
     }
+    /**
+     * Получить ID свойств товара (с кэшированием)
+     */
+    protected function getProductPropertyIds(): array
+    {
+        return Cache::remember('b24:product_properties', 3600, function () {
+            $response = $this->b24Service->call('crm.product.property.list');
+
+            $properties = [];
+            foreach ($response['result'] ?? [] as $property) {
+                if (!empty($property['CODE'])) {
+                    $properties[$property['CODE']] = (int) $property['ID'];
+                }
+            }
+
+            return $properties;
+        });
+    }
+
 
     /**
      * Маппинг кода единицы измерения → GUID

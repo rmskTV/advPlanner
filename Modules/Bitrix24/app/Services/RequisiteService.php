@@ -244,7 +244,6 @@ class RequisiteService
             if ($isIpOrPhys) {
                 $presetId = 3;
             } // ИП
-
             $cleanedName = $this->cleanString($counterparty->name);
             $cleanedFullName = $this->cleanString($counterparty->full_name);
 
@@ -289,14 +288,15 @@ class RequisiteService
                     $requisiteFields['RQ_SECOND_NAME'] = $fio['second'];
                 }
             }
-
+            $requisiteFields['ENTITY_TYPE_ID'] = 4;
             Log::info('Creating requisite with GUID', ['company_id' => $companyId, 'guid_1c' => $counterparty->guid_1c]);
 
             // 2. Создание реквизита в Б24
             $result = $this->b24Service->call('crm.requisite.add', ['fields' => $requisiteFields]);
 
+
             if (empty($result['result'])) {
-                throw new \Exception("Failed to create requisite for company {$companyId}. API response empty.");
+                throw new \Exception("Failed to create requisite for company {$companyId}. API response empty. Result " . $result);
             }
             $requisiteId = $result['result'];
 
