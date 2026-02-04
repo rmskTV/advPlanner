@@ -70,7 +70,28 @@ class InvoicePuller extends AbstractPuller
         $filter = [];
 
         if ($lastSync) {
-            $filter['>updatedTime'] = $lastSync->format('Y-m-d\TH:i:sP');
+            /*
+             * WORKAROUND: Баг Битрикс24 REST API (crm.item.list)
+             *
+             * При фильтрации по полю updatedTime Битрикс24 игнорирует указание
+             * часового пояса (суффиксы Z, +03:00 и т.д.) и сравнивает только
+             * datetime-часть как "наивное" время.
+             *
+             * Пример проблемы:
+             *   Фильтр: filter[>updatedTime]=2026-01-07T13:29:13Z (UTC)
+             *   Запись: updatedTime: "2026-01-07T11:29:15+03:00" (= 08:29:15 UTC)
+             *   Ожидание: запись НЕ попадёт (08:29 < 13:29 в UTC)
+             *   Реальность: запись попадает, т.к. Б24 сравнивает 11:29 vs 13:29
+             *
+             * Решение: вручную пересчитываем время — добавляем 8 часов смещения
+             * и суффикс 'C' для корректной фильтрации на стороне Б24.
+             *
+             * @see https://idea.1c-bitrix.ru/ — если баг будет исправлен, этот
+             *      workaround нужно будет убрать
+             */
+            $adjustedTime = (clone $lastSync)->modify('+8 hours');
+            $filter['>updatedTime'] = $adjustedTime->format('Y-m-d\TH:i:s') . 'C';
+            Log::info($adjustedTime->format('Y-m-d\TH:i:s') . 'C');
         }
 
         $response = $this->b24Service->call('crm.item.list', [

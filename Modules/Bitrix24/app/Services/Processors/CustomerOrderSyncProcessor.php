@@ -171,7 +171,7 @@ class CustomerOrderSyncProcessor extends AbstractBitrix24Processor
             'currencyId' => 'RUB',
             'isManualOpportunity' => 'Y',
             'xmlId' => $order->guid_1c,
-            'ufCrm_SMART_INVOICE_LAST_UPDATE_FROM_1C' => Carbon::now()->addSecond(1)->toIso8601String()
+            'ufCrm_SMART_INVOICE_LAST_UPDATE_FROM_1C' => Carbon::now()->addSecond(5)->toIso8601String()
         ];
 
         if ($order->date) {
