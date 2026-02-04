@@ -28,7 +28,7 @@ return new class extends Migration
             $table->string('product_guid_1c', 36)->nullable()
                 ->comment('GUID номенклатуры в 1С');
 
-            $table->string('product_name', 255)->nullable()
+            $table->string('product_name', 1255)->nullable()
                 ->comment('Наименование номенклатуры');
 
             // Количество и единица измерения

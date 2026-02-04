@@ -2,6 +2,7 @@
 
 namespace Modules\Bitrix24\app\Services\Mappers;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Modules\Accounting\app\Models\Contract;
 use Modules\Accounting\app\Models\Counterparty;
@@ -27,9 +28,14 @@ class B24InvoiceMapper
             'number' => $this->extractNumber($b24Invoice['title'] ?? null),
             'date' => $this->parseDate($b24Invoice['begindate'] ?? null),
             'amount' => (float) ($b24Invoice['opportunity'] ?? 0),
-            'currency_guid_1c' => $this->mapCurrency($b24Invoice['currencyId'] ?? 'RUB'),
+            'currency_guid_1c' => 'f1a17773-5488-11e0-91e9-00e04c771318',
+            'settlement_currency_guid_1c' => 'f1a17773-5488-11e0-91e9-00e04c771318',
             'comment' => $this->cleanString($b24Invoice['comments'] ?? null),
-            'amount_includes_vat' => true, // По умолчанию с НДС
+            'amount_includes_vat' => true, // По умолчанию с НДС,
+            'exchange_rate' => '1.000000',
+            'exchange_multiplier' => '1.000000',
+            'organization_bank_account_guid_1c' => '9ec1feea-6136-11dd-8753-de071bdd34b1',
+
         ];
 
         // Связь с контрагентом (ОБЯЗАТЕЛЬНА!)
@@ -73,7 +79,76 @@ class B24InvoiceMapper
             }
         }
 
+        // Ответственный (опционально)
+        if (!empty($b24Invoice['assignedById'])) {
+            $userInfo = $this->getUserInfo($b24Invoice['assignedById']);
+
+            if ($userInfo) {
+                $data['responsible_name'] = $userInfo['name'];
+                $data['responsible_guid_1c'] = $userInfo['guid_1c'];
+            }
+        }
+
         return $data;
+    }
+
+
+    /**
+     * Получить информацию о пользователе (с кэшированием)
+     */
+    protected function getUserInfo(int $userId): ?array
+    {
+        try {
+            return Cache::remember("b24:user:{$userId}", 3600, function () use ($userId) {
+                $response = $this->b24Service->call('user.get', [
+                    'ID' => $userId,
+                ]);
+
+                if (empty($response['result'][0])) {
+                    Log::warning('User not found in B24', ['user_id' => $userId]);
+                    return null;
+                }
+
+                $user = $response['result'][0];
+
+                // Формируем полное имя
+                $name = trim(($user['NAME'] ?? '') . ' ' . ($user['LAST_NAME'] ?? ''));
+                if (empty($name)) {
+                    $name = $user['EMAIL'] ?? "User #{$userId}";
+                }
+
+                // Ищем поле GUID 1C (может называться по-разному)
+                $guid1c = null;
+                foreach ($user as $key => $value) {
+                    if (stripos($key, 'GUID') !== false && stripos($key, '1C') !== false) {
+                        $guid1c = $value;
+                        break;
+                    }
+                }
+
+                // Если не нашли автоматически, пробуем стандартные варианты
+                if (!$guid1c) {
+                    $guid1c = $user['UF_GUID_1C']
+                        ?? $user['UF_USR_GUID_1C']
+                        ?? $user['UF_USR_1C_GUID']
+                        ?? $user['UF_1C_GUID']
+                        ?? null;
+                }
+
+                return [
+                    'name' => $name,
+                    'guid_1c' => $guid1c,
+                ];
+            });
+
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch user from B24', [
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
     }
 
     /**
@@ -218,8 +293,7 @@ class B24InvoiceMapper
      */
     protected function mapCurrency(string $currencyCode): ?string
     {
-        // Пока заглушка - нужна таблица валют с GUID
-        return null;
+        return 'f1a17773-5488-11e0-91e9-00e04c771318';
     }
 
     /**
