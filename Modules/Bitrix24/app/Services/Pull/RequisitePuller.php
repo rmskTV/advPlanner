@@ -39,13 +39,13 @@ class RequisitePuller extends AbstractPuller
             'RQ_INN',
             'RQ_KPP',
             'RQ_OGRN',
-            'RQ_OGRNIP',
+            'RQ_OGRNIP',      // ← Уже было
             'RQ_OKPO',
             'RQ_COMPANY_NAME',
             'RQ_COMPANY_FULL_NAME',
-            'RQ_LAST_NAME',
-            'RQ_FIRST_NAME',
-            'RQ_SECOND_NAME',
+            'RQ_LAST_NAME',   // Для ИП
+            'RQ_FIRST_NAME',  // Для ИП
+            'RQ_SECOND_NAME', // Для ИП
             'UF_CRM_GUID_1C',
             'UF_CRM_LAST_UPDATE_1C',
         ];
@@ -64,24 +64,59 @@ class RequisitePuller extends AbstractPuller
     /**
      * Фильтр: только реквизиты компаний (ENTITY_TYPE_ID = 4)
      */
+    /**
+     * 🆕 Переопределяем для получения полных данных ИП
+     */
     protected function fetchChangedItems(?\Carbon\Carbon $lastSync): array
     {
         $filter = [
             'ENTITY_TYPE_ID' => 4, // Только реквизиты компаний
         ];
 
-         //Если нужен фильтр по времени:
-         if ($lastSync) {
-             Log::info($lastSync->format('Y-m-d\TH:i:s T'));
-             $filter['>DATE_MODIFY'] = $lastSync->format('Y-m-d\TH:i:sP');
-         }
+        if ($lastSync) {
+            $filter['>DATE_MODIFY'] = $lastSync->format('Y-m-d\TH:i:sP');
+        }
 
+        // 1. Получаем список изменённых реквизитов
         $response = $this->b24Service->call($this->getB24Method() . '.list', [
             'filter' => $filter,
-            'select' => $this->getSelectFields(),
+            'select' => ['ID', 'PRESET_ID', 'DATE_MODIFY'], // Минимум
             'order' => ['DATE_MODIFY' => 'ASC'],
         ]);
-        return $response['result'] ?? [];
+
+        $items = $response['result'] ?? [];
+
+        // 2. 🆕 Для ИП запрашиваем детально (чтобы получить RQ_OGRNIP)
+        $detailedItems = [];
+
+        foreach ($items as $item) {
+            $requisiteId = (int) $item['ID'];
+            $presetId = (int) ($item['PRESET_ID'] ?? 1);
+
+            // Для ИП (preset=3) запрашиваем детально
+            if ($presetId === 3) {
+                $detailResponse = $this->b24Service->call('crm.requisite.get', [
+                    'id' => $requisiteId,
+                ]);
+
+                $detailedItem = $detailResponse['result'] ?? null;
+
+                if ($detailedItem) {
+                    $detailedItems[] = $detailedItem;
+
+                    Log::debug('Fetched IP requisite with details', [
+                        'id' => $requisiteId,
+                        'has_RQ_OGRNIP' => isset($detailedItem['RQ_OGRNIP']),
+                        'RQ_OGRNIP' => $detailedItem['RQ_OGRNIP'] ?? 'empty',
+                    ]);
+                }
+            } else {
+                // Для ЮЛ используем данные из list
+                $detailedItems[] = $item;
+            }
+        }
+
+        return $detailedItems;
     }
 
     protected function mapToLocal(array $b24Item): array

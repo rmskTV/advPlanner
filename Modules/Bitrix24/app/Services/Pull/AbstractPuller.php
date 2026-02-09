@@ -65,30 +65,23 @@ abstract class AbstractPuller
             return $this->processDeletedItem($b24Item);
         }
 
-        // 3. Проверяем/генерируем GUID
-        $guid1c = $this->extractGuid1C($b24Item);
+        // 3. 🆕 ПРАВИЛЬНАЯ ЛОГИКА GUID
+        $guid1c = $this->resolveGuid($b24Item, $b24Id);
         $guidWasGenerated = false;
 
-        Log::info('Existed GUID for B24 entity', [
-            'entity' => $this->getEntityType(),
-            'b24_id' => $b24Id,
-            'guid' => $guid1c,
-        ]);
+        // Если GUID был сгенерирован (а не взят из B24 или локальной записи)
+        if (!$this->extractGuid1C($b24Item)) {
+            $localModel = $this->findOrCreateLocalSmart($b24Id, null);
 
-        if (!$guid1c) {
-            $guid1c = $this->generateGuid();
-            $guidWasGenerated = true;
-
-            if ($this->output) {
-                $this->output->line("    🆕 New GUID generated: {$guid1c}");
+            if (!$localModel->exists || !$localModel->guid_1c) {
+                $guidWasGenerated = true;
             }
-
-            Log::info('Generated new GUID for B24 entity', [
-                'entity' => $this->getEntityType(),
-                'b24_id' => $b24Id,
-                'guid' => $guid1c,
-            ]);
         }
+
+        if ($this->output && $guidWasGenerated) {
+            $this->output->line("    🆕 New GUID generated: {$guid1c}");
+        }
+
         // 4. Маппинг B24 → локальная модель
         try {
             $localData = $this->mapToLocal($b24Item);
@@ -107,7 +100,7 @@ abstract class AbstractPuller
 
         // === NORMAL MODE ===
 
-        // 5. Найти или создать локальную запись (УЛУЧШЕННАЯ ЛОГИКА)
+        // 5. Найти или создать локальную запись
         $localModel = $this->findOrCreateLocalSmart($b24Id, $guid1c);
         $isNew = !$localModel->exists;
 
@@ -142,6 +135,55 @@ abstract class AbstractPuller
         $this->logChangeFor1C($localModel, $isNew ? 'create' : 'update');
 
         return ['action' => $isNew ? 'created' : 'updated'];
+    }
+
+    /**
+     * 🆕 Правильное разрешение GUID (БЕЗ перезаписи существующего!)
+     *
+     * Приоритет:
+     * 1. GUID из B24 (если есть)
+     * 2. GUID локальной записи (если есть)
+     * 3. Генерируем новый
+     */
+    protected function resolveGuid(array $b24Item, int $b24Id): string
+    {
+        // 1. Проверяем GUID в B24
+        $b24Guid = $this->extractGuid1C($b24Item);
+
+        if ($b24Guid) {
+            Log::debug('Using GUID from B24', [
+                'entity' => $this->getEntityType(),
+                'b24_id' => $b24Id,
+                'guid' => $b24Guid,
+            ]);
+            return $b24Guid;
+        }
+
+        // 2. ☝️ КРИТИЧНО: Проверяем локальную запись
+        $localModel = $this->findOrCreateLocalSmart($b24Id, null);
+
+        if ($localModel->exists && $localModel->guid_1c) {
+            Log::info('Preserving existing local GUID (not in B24)', [
+                'entity' => $this->getEntityType(),
+                'b24_id' => $b24Id,
+                'local_id' => $localModel->id,
+                'guid' => $localModel->guid_1c,
+            ]);
+
+            // ☝️ GUID есть локально, но нет в B24 → отправим его туда
+            return $localModel->guid_1c;
+        }
+
+        // 3. Генерируем новый GUID
+        $newGuid = $this->generateGuid();
+
+        Log::info('Generated new GUID for B24 entity', [
+            'entity' => $this->getEntityType(),
+            'b24_id' => $b24Id,
+            'guid' => $newGuid,
+        ]);
+
+        return $newGuid;
     }
 
 
@@ -741,31 +783,24 @@ abstract class AbstractPuller
     /**
      * 🆕 Принудительная обработка элемента (без проверки shouldImport)
      */
+    /**
+     * Принудительная обработка элемента (без проверки shouldImport)
+     */
     protected function forceProcessItem(array $b24Item): array
     {
         $b24Id = $this->extractB24Id($b24Item);
-
-        // Пропускаем проверку shouldImport!
 
         // Проверяем удаление
         if ($this->isDeleted($b24Item)) {
             return $this->processDeletedItem($b24Item);
         }
 
-        // Проверяем/генерируем GUID
-        $guid1c = $this->extractGuid1C($b24Item);
-        $guidWasGenerated = false;
+        // 🆕 ПРАВИЛЬНОЕ разрешение GUID (без перезаписи!)
+        $guid1c = $this->resolveGuid($b24Item, $b24Id);
 
-        if (!$guid1c) {
-            $guid1c = $this->generateGuid();
-            $guidWasGenerated = true;
-
-            Log::info('Generated new GUID for B24 entity (forced)', [
-                'entity' => $this->getEntityType(),
-                'b24_id' => $b24Id,
-                'guid' => $guid1c,
-            ]);
-        }
+        // Проверяем нужно ли отправлять GUID обратно в B24
+        $b24Guid = $this->extractGuid1C($b24Item);
+        $guidWasGenerated = empty($b24Guid); // Если в B24 нет — нужно отправить
 
         // Маппинг
         $localData = $this->mapToLocal($b24Item);
@@ -786,7 +821,7 @@ abstract class AbstractPuller
 
         $localModel->save();
 
-        // Отправляем GUID обратно в B24
+        // Отправляем GUID обратно в B24 (если его там не было)
         if ($guidWasGenerated) {
             $this->updateGuidInB24($b24Id, $guid1c);
         }

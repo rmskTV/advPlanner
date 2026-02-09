@@ -218,6 +218,7 @@ class DependencySyncService
     /**
      * Получить реквизит компании из B24
      */
+
     protected function fetchCompanyRequisite(int $companyId): ?array
     {
         // Проверяем кэш
@@ -225,33 +226,71 @@ class DependencySyncService
             return $this->requisiteCache[$companyId];
         }
 
-        $response = $this->b24Service->call('crm.requisite.list', [
+        // 1. Сначала получаем ID реквизита через list (быстро)
+        $listResponse = $this->b24Service->call('crm.requisite.list', [
             'filter' => [
                 'ENTITY_TYPE_ID' => 4, // Компания
                 'ENTITY_ID' => $companyId,
             ],
-            'select' => [
-                'ID',
-                'NAME',
-                'DATE_CREATE',
-                'DATE_MODIFY',
-                'RQ_INN',
-                'RQ_KPP',
-                'RQ_OGRN',
-                'RQ_COMPANY_NAME',
-                'RQ_COMPANY_FULL_NAME',
-                'PRESET_ID',
-                'UF_CRM_GUID_1C',
-                'UF_CRM_LAST_UPDATE_1C',
-                'ENTITY_ID',
-                'ENTITY_TYPE_ID',
-            ],
+            'select' => ['ID', 'PRESET_ID'], // Минимальный набор
             'limit' => 1,
         ]);
 
-        $requisite = $response['result'][0] ?? null;
-        $this->requisiteCache[$companyId] = $requisite;
+        if (empty($listResponse['result'][0])) {
+            $this->requisiteCache[$companyId] = null;
+            return null;
+        }
 
+        $requisiteId = (int) $listResponse['result'][0]['ID'];
+        $presetId = (int) ($listResponse['result'][0]['PRESET_ID'] ?? 1);
+
+        // 2. 🆕 Если это ИП (preset=3) — запрашиваем детально для получения RQ_OGRNIP
+        if ($presetId === 3) {
+            $detailResponse = $this->b24Service->call('crm.requisite.get', [
+                'id' => $requisiteId,
+            ]);
+
+            $requisite = $detailResponse['result'] ?? null;
+
+            if ($requisite) {
+                Log::debug('Fetched requisite detail for IP', [
+                    'requisite_id' => $requisiteId,
+                    'has_RQ_OGRNIP' => isset($requisite['RQ_OGRNIP']),
+                    'RQ_OGRNIP' => $requisite['RQ_OGRNIP'] ?? 'not set',
+                ]);
+            }
+        } else {
+            // 3. Для ЮЛ используем обычный list (там все поля есть)
+            $detailResponse = $this->b24Service->call('crm.requisite.list', [
+                'filter' => ['ID' => $requisiteId],
+                'select' => [
+                    'ID',
+                    'NAME',
+                    'DATE_CREATE',
+                    'DATE_MODIFY',
+                    'RQ_INN',
+                    'RQ_KPP',
+                    'RQ_OGRN',
+                    'RQ_OGRNIP',
+                    'RQ_OKPO',
+                    'RQ_COMPANY_NAME',
+                    'RQ_COMPANY_FULL_NAME',
+                    'RQ_LAST_NAME',
+                    'RQ_FIRST_NAME',
+                    'RQ_SECOND_NAME',
+                    'PRESET_ID',
+                    'UF_CRM_GUID_1C',
+                    'UF_CRM_LAST_UPDATE_1C',
+                    'ENTITY_ID',
+                    'ENTITY_TYPE_ID',
+                ],
+                'limit' => 1,
+            ]);
+
+            $requisite = $detailResponse['result'][0] ?? null;
+        }
+
+        $this->requisiteCache[$companyId] = $requisite;
         return $requisite;
     }
 

@@ -2,6 +2,7 @@
 
 namespace Modules\Bitrix24\app\Services\Mappers;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Modules\Accounting\app\Models\Counterparty;
 use Modules\Bitrix24\app\Services\Bitrix24Service;
@@ -20,6 +21,16 @@ class B24RequisiteMapper
      */
     public function map(array $b24Requisite): array
     {
+        Log::info('=== ALL REQUISITE FIELDS ===', [
+            'requisite_id' => $b24Requisite['ID'] ?? null,
+            'preset_id' => $b24Requisite['PRESET_ID'] ?? null,
+            'all_keys' => array_keys($b24Requisite),
+            'RQ_fields' => array_filter(
+                $b24Requisite,
+                fn($key) => str_starts_with($key, 'RQ_'),
+                ARRAY_FILTER_USE_KEY
+            ),
+        ]);
         $presetId = (int) ($b24Requisite['PRESET_ID'] ?? 1);
         $isIp = ($presetId === 3); // 3 = ИП, 1 = Организация
 
@@ -34,11 +45,12 @@ class B24RequisiteMapper
             // Реквизиты
             'inn' => $this->cleanString($b24Requisite['RQ_INN'] ?? null),
             'kpp' => $this->cleanString($b24Requisite['RQ_KPP'] ?? null),
-            'ogrn' => $this->cleanString(
-                (!empty($b24Requisite['RQ_OGRN']) ? $b24Requisite['RQ_OGRN'] :
-                (!empty($b24Requisite['RQ_OGRNIP']) ? $b24Requisite['RQ_OGRNIP'] : null))
-            ),
+            'ogrn' => $this->extractOgrn($b24Requisite, $isIp), // 🆕 Улучшенная логика
             'okpo' => $this->cleanString($b24Requisite['RQ_OKPO'] ?? null),
+
+            // 🆕 Страна (хардкод для России)
+            'country_code' => '643',
+            'country_name' => 'РОССИЯ',
         ];
 
         // Получаем дополнительные данные из компании-контейнера
@@ -75,6 +87,61 @@ class B24RequisiteMapper
     }
 
     /**
+     * 🆕 Извлечь ОГРН/ОГРНИП
+     *
+     * Для ИП: RQ_OGRNIP
+     * Для ЮЛ: RQ_OGRN
+     */
+    protected function extractOgrn(array $b24Requisite, bool $isIp): ?string
+    {
+        Log::info('=== EXTRACTING OGRN ===', [
+            'is_ip' => $isIp,
+            'preset_id' => $b24Requisite['PRESET_ID'] ?? null,
+            'has_RQ_OGRNIP' => isset($b24Requisite['RQ_OGRNIP']),
+            'RQ_OGRNIP_raw' => $b24Requisite['RQ_OGRNIP'] ?? 'NOT SET',
+            'RQ_OGRNIP_type' => gettype($b24Requisite['RQ_OGRNIP'] ?? null),
+            'has_RQ_OGRN' => isset($b24Requisite['RQ_OGRN']),
+            'RQ_OGRN_raw' => $b24Requisite['RQ_OGRN'] ?? 'NOT SET',
+        ]);
+
+        // Для ИП проверяем ОГРНИП
+        if ($isIp) {
+            $ogrnip = $this->cleanString($b24Requisite['RQ_OGRNIP'] ?? null);
+            if ($ogrnip) {
+                Log::debug('Extracted OGRNIP for IP', [
+                    'value' => $ogrnip,
+                    'requisite_id' => $b24Requisite['ID'] ?? null,
+                ]);
+                return $ogrnip;
+            }
+        }
+
+        // Для ЮЛ или если у ИП нет ОГРНИП — проверяем ОГРН
+        $ogrn = $this->cleanString($b24Requisite['RQ_OGRN'] ?? null);
+        if ($ogrn) {
+            Log::debug('Extracted OGRN', [
+                'value' => $ogrn,
+                'is_ip' => $isIp,
+                'requisite_id' => $b24Requisite['ID'] ?? null,
+            ]);
+            return $ogrn;
+        }
+
+        // Если ничего не нашли — логируем
+        if ($isIp) {
+            Log::debug('No OGRN/OGRNIP found for IP', [
+                'requisite_id' => $b24Requisite['ID'] ?? null,
+                'has_RQ_OGRN' => isset($b24Requisite['RQ_OGRN']),
+                'has_RQ_OGRNIP' => isset($b24Requisite['RQ_OGRNIP']),
+                'RQ_OGRN_value' => $b24Requisite['RQ_OGRN'] ?? 'not set',
+                'RQ_OGRNIP_value' => $b24Requisite['RQ_OGRNIP'] ?? 'not set',
+            ]);
+        }
+
+        return null;
+    }
+
+    /**
      * Получить данные компании-контейнера
      */
     protected function fetchCompanyData(int $companyId): ?array
@@ -91,12 +158,28 @@ class B24RequisiteMapper
 
             $company = $result['result'];
 
-            return [
+            $data = [
                 'phone' => $this->extractFirstPhone($company),
                 'email' => $this->extractFirstEmail($company),
                 'comment' => $this->cleanString($company['COMMENTS'] ?? null),
-                'responsible_guid_1c' => $this->mapResponsible($company['ASSIGNED_BY_ID'] ?? null),
             ];
+
+            // 🆕 Ответственный через getUserInfo (аналогично InvoiceMapper)
+            if (!empty($company['ASSIGNED_BY_ID'])) {
+                $userInfo = $this->getUserInfo((int) $company['ASSIGNED_BY_ID']);
+
+                if ($userInfo && !empty($userInfo['guid_1c'])) {
+                    $data['responsible_guid_1c'] = $userInfo['guid_1c'];
+
+                    Log::debug('Responsible GUID set for counterparty', [
+                        'company_id' => $companyId,
+                        'user_id' => $company['ASSIGNED_BY_ID'],
+                        'guid' => $userInfo['guid_1c'],
+                    ]);
+                }
+            }
+
+            return $data;
 
         } catch (\Exception $e) {
             Log::error('Failed to fetch company data', [
@@ -105,6 +188,91 @@ class B24RequisiteMapper
             ]);
             return null;
         }
+    }
+
+    /**
+     * 🆕 Получить информацию о пользователе (с кэшированием)
+     *
+     * Копия из B24InvoiceMapper для консистентности
+     */
+    protected function getUserInfo(int $userId): ?array
+    {
+        try {
+            return Cache::remember("b24:user:{$userId}", 3600, function () use ($userId) {
+                $response = $this->b24Service->call('user.get', [
+                    'ID' => $userId,
+                ]);
+
+                if (empty($response['result'][0])) {
+                    Log::warning('User not found in B24', ['user_id' => $userId]);
+                    return null;
+                }
+
+                $user = $response['result'][0];
+
+                // Формируем полное имя
+                $name = trim(($user['NAME'] ?? '') . ' ' . ($user['LAST_NAME'] ?? ''));
+                if (empty($name)) {
+                    $name = $user['EMAIL'] ?? "User #{$userId}";
+                }
+
+                // Поиск GUID в различных вариантах полей
+                $guid1c = $this->findUserGuidField($user);
+
+                return [
+                    'name' => $name,
+                    'guid_1c' => $guid1c,
+                ];
+            });
+
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch user from B24', [
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * 🆕 Найти поле с GUID пользователя
+     */
+    protected function findUserGuidField(array $user): ?string
+    {
+        // Список возможных названий (в порядке приоритета)
+        $possibleFields = [
+            'UF_USR_1C_GUID',
+            'UF_1C_GUID',
+            'UF_GUID_1C',
+            'UF_USR_GUID_1C',
+        ];
+
+        // Сначала проверяем известные поля
+        foreach ($possibleFields as $field) {
+            if (!empty($user[$field])) {
+                return (string) $user[$field];
+            }
+        }
+
+        // Если не нашли — ищем любое поле содержащее "GUID" и "1C"
+        foreach ($user as $key => $value) {
+            if (empty($value)) {
+                continue;
+            }
+
+            $keyUpper = strtoupper($key);
+
+            if (str_contains($keyUpper, 'GUID') && str_contains($keyUpper, '1C')) {
+                Log::info('Found user GUID in non-standard field', [
+                    'field' => $key,
+                    'value' => $value,
+                ]);
+                return (string) $value;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -140,20 +308,6 @@ class B24RequisiteMapper
     }
 
     /**
-     * Маппинг ответственного (B24 user ID → GUID 1С)
-     * TODO: реализовать через таблицу маппинга пользователей
-     */
-    protected function mapResponsible(?int $assignedById): ?string
-    {
-        if (!$assignedById) {
-            return null;
-        }
-
-        // Пока возвращаем null - маппинг пользователей отдельная задача
-        return null;
-    }
-
-    /**
      * Очистка строки
      */
     protected function cleanString(?string $value): ?string
@@ -162,6 +316,9 @@ class B24RequisiteMapper
             return null;
         }
 
-        return trim(html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        $cleaned = trim(html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+
+        // 🆕 Дополнительная проверка: если после очистки пустая строка — возвращаем null
+        return $cleaned !== '' ? $cleaned : null;
     }
 }
