@@ -2,6 +2,7 @@
 
 namespace Modules\Bitrix24\app\Services\Mappers;
 
+use AllowDynamicProperties;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Modules\Accounting\app\Models\Contract;
@@ -10,14 +11,38 @@ use Modules\Accounting\app\Models\Organization;
 use Modules\Bitrix24\app\Exceptions\DependencyNotReadyException;
 use Modules\Bitrix24\app\Services\Bitrix24Service;
 
-class B24InvoiceMapper
+#[AllowDynamicProperties] class B24InvoiceMapper
 {
     protected Bitrix24Service $b24Service;
 
+    /**
+     * Strict mode: выбрасывать исключения если зависимости не найдены
+     */
+    protected bool $strictMode = true;
     public function __construct(Bitrix24Service $b24Service)
     {
         $this->b24Service = $b24Service;
     }
+
+    /**
+     * Установить режим строгой проверки
+     */
+    public function setStrictMode(bool $strict): self
+    {
+        $this->strictMode = $strict;
+        return $this;
+    }
+
+
+    /**
+     * 🆕 Установить предварительно разрешённые зависимости
+     */
+    public function setResolvedDependencies(array $dependencies): self
+    {
+        $this->resolvedDependencies = $dependencies;
+        return $this;
+    }
+
 
     /**
      * Маппинг счета B24 → CustomerOrder
@@ -31,38 +56,47 @@ class B24InvoiceMapper
             'currency_guid_1c' => 'f1a17773-5488-11e0-91e9-00e04c771318',
             'settlement_currency_guid_1c' => 'f1a17773-5488-11e0-91e9-00e04c771318',
             'comment' => $this->cleanString($b24Invoice['comments'] ?? null),
-            'amount_includes_vat' => true, // По умолчанию с НДС,
+            'amount_includes_vat' => true,
             'exchange_rate' => '1.000000',
             'exchange_multiplier' => '1.000000',
             'organization_bank_account_guid_1c' => '9ec1feea-6136-11dd-8753-de071bdd34b1',
-
         ];
 
-        // Связь с контрагентом (ОБЯЗАТЕЛЬНА!)
-        if (!empty($b24Invoice['companyId'])) {
+        // ═══════════════════════════════════════════════════════════════
+        // КОНТРАГЕНТ
+        // ═══════════════════════════════════════════════════════════════
+
+        // 🆕 Сначала проверяем предварительно разрешённые зависимости
+        $counterpartyGuid = $this->resolvedDependencies['counterparty_guid'] ?? null;
+
+        // Если не передан — пытаемся найти сами (fallback)
+        if (!$counterpartyGuid && !empty($b24Invoice['companyId'])) {
             $counterpartyGuid = $this->findCounterpartyGuidByCompanyId($b24Invoice['companyId']);
-
-            if (!$counterpartyGuid) {
-                throw new DependencyNotReadyException(
-                    "Counterparty not synced yet for company ID: {$b24Invoice['companyId']}"
-                );
-            }
-
-            $data['counterparty_guid_1c'] = $counterpartyGuid;
-        } else {
-            throw new DependencyNotReadyException(
-                "Invoice has no companyId: {$b24Invoice['id']}"
-            );
         }
 
-        // Связь с организацией (опционально)
+        if ($counterpartyGuid) {
+            $data['counterparty_guid_1c'] = $counterpartyGuid;
+        } elseif ($this->strictMode) {
+            throw new DependencyNotReadyException(
+                "Counterparty not found for invoice: {$b24Invoice['id']}"
+            );
+        } else {
+            Log::warning('Counterparty GUID not found for invoice', [
+                'invoice_id' => $b24Invoice['id'] ?? null,
+                'company_id' => $b24Invoice['companyId'] ?? null,
+            ]);
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // ОРГАНИЗАЦИЯ (mycompanyId)
+        // ═══════════════════════════════════════════════════════════════
+
         if (!empty($b24Invoice['mycompanyId'])) {
             $organizationGuid = $this->findOrganizationGuidByCompanyId($b24Invoice['mycompanyId']);
 
             if ($organizationGuid) {
                 $data['organization_guid_1c'] = $organizationGuid;
 
-                // Находим локальную организацию
                 $organization = Organization::where('guid_1c', $organizationGuid)->first();
                 if ($organization) {
                     $data['organization_id'] = $organization->id;
@@ -70,28 +104,57 @@ class B24InvoiceMapper
             }
         }
 
-        // Связь с договором (опционально)
-        if (!empty($b24Invoice['parentId1064'])) {
-            $contractGuid = $this->findContractGuidById($b24Invoice['parentId1064']);
+        // ═══════════════════════════════════════════════════════════════
+        // ДОГОВОР
+        // ═══════════════════════════════════════════════════════════════
 
-            if ($contractGuid) {
-                $data['contract_guid_1c'] = $contractGuid;
-            }
+        // 🆕 Сначала проверяем предварительно разрешённые зависимости
+        $contractGuid = $this->resolvedDependencies['contract_guid'] ?? null;
+
+        // Если не передан — пытаемся найти сами (fallback)
+        if (!$contractGuid && !empty($b24Invoice['parentId1064'])) {
+            $contractGuid = $this->findContractGuidById($b24Invoice['parentId1064']);
         }
 
-        // Ответственный (опционально)
+        if ($contractGuid) {
+            $data['contract_guid_1c'] = $contractGuid;
+
+            Log::debug('Contract GUID set for invoice', [
+                'invoice_id' => $b24Invoice['id'] ?? null,
+                'contract_guid' => $contractGuid,
+            ]);
+        } else {
+            Log::info('No contract GUID for invoice', [
+                'invoice_id' => $b24Invoice['id'] ?? null,
+                'parent_id_1064' => $b24Invoice['parentId1064'] ?? null,
+                'resolved_contract_guid' => $this->resolvedDependencies['contract_guid'] ?? 'not set',
+            ]);
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // ОТВЕТСТВЕННЫЙ
+        // ═══════════════════════════════════════════════════════════════
+
         if (!empty($b24Invoice['assignedById'])) {
             $userInfo = $this->getUserInfo($b24Invoice['assignedById']);
 
             if ($userInfo) {
                 $data['responsible_name'] = $userInfo['name'];
-                $data['responsible_guid_1c'] = $userInfo['guid_1c'];
+
+                // 🆕 Только если GUID реально есть
+                if (!empty($userInfo['guid_1c'])) {
+                    $data['responsible_guid_1c'] = $userInfo['guid_1c'];
+                } else {
+                    Log::debug('User has no GUID_1C', [
+                        'user_id' => $b24Invoice['assignedById'],
+                        'user_name' => $userInfo['name'],
+                    ]);
+                }
             }
         }
 
         return $data;
     }
-
 
     /**
      * Получить информацию о пользователе (с кэшированием)
@@ -117,22 +180,20 @@ class B24InvoiceMapper
                     $name = $user['EMAIL'] ?? "User #{$userId}";
                 }
 
-                // Ищем поле GUID 1C (может называться по-разному)
-                $guid1c = null;
-                foreach ($user as $key => $value) {
-                    if (stripos($key, 'GUID') !== false && stripos($key, '1C') !== false) {
-                        $guid1c = $value;
-                        break;
-                    }
-                }
+                // 🆕 Проверяем все возможные варианты поля GUID
+                $guid1c = $user['UF_GUID_1C']
+                    ?? $user['UF_USR_GUID_1C']
+                    ?? $user['UF_USR_1C_GUID']  // ← ДОБАВЛЕНО!
+                    ?? $user['UF_1C_GUID']
+                    ?? null;
 
-                // Если не нашли автоматически, пробуем стандартные варианты
+                // 🆕 Логируем для отладки (временно)
                 if (!$guid1c) {
-                    $guid1c = $user['UF_GUID_1C']
-                        ?? $user['UF_USR_GUID_1C']
-                        ?? $user['UF_USR_1C_GUID']
-                        ?? $user['UF_1C_GUID']
-                        ?? null;
+                    Log::debug('User GUID not found, available UF fields', [
+                        'user_id' => $userId,
+                        'user_name' => $name,
+                        'uf_fields' => array_filter($user, fn($key) => str_starts_with($key, 'UF_'), ARRAY_FILTER_USE_KEY),
+                    ]);
                 }
 
                 return [
@@ -160,12 +221,10 @@ class B24InvoiceMapper
             return null;
         }
 
-        // Пробуем извлечь номер по паттерну
         if (preg_match('/№\s*([^\s]+)/', $title, $matches)) {
             return $matches[1];
         }
 
-        // Если не получилось - возвращаем весь title
         return $this->cleanString($title);
     }
 
@@ -194,7 +253,6 @@ class B24InvoiceMapper
                 return $requisite['UF_CRM_GUID_1C'];
             }
 
-            // Ищем локально
             $requisiteId = $requisite['ID'];
             $counterparty = Counterparty::where('b24_id', $requisiteId)->first();
 
@@ -209,7 +267,6 @@ class B24InvoiceMapper
             return null;
         }
     }
-
     /**
      * Найти GUID организации по ID "Моей компании"
      */
@@ -235,7 +292,6 @@ class B24InvoiceMapper
                 return $requisite['UF_CRM_GUID_1C'];
             }
 
-            // Ищем локально
             $requisiteId = $requisite['ID'];
             $organization = Organization::where('b24_id', $requisiteId)->first();
 
@@ -256,14 +312,12 @@ class B24InvoiceMapper
      */
     protected function findContractGuidById(int $contractB24Id): ?string
     {
-        // Сначала ищем локально
         $contract = Contract::where('b24_id', $contractB24Id)->first();
 
         if ($contract && $contract->guid_1c) {
             return $contract->guid_1c;
         }
 
-        // Если не найден локально - запрашиваем из B24
         try {
             $response = $this->b24Service->call('crm.item.get', [
                 'entityTypeId' => 1064,
@@ -308,7 +362,6 @@ class B24InvoiceMapper
         try {
             return \Carbon\Carbon::parse($dateStr);
         } catch (\Exception $e) {
-            Log::warning('Failed to parse date', ['date' => $dateStr]);
             return null;
         }
     }

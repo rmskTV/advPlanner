@@ -453,12 +453,23 @@ abstract class AbstractPuller
     /**
      * Проверка: нужно ли импортировать (фильтр по last_update_from_1c)
      *
-     * Логика: импортируем если:
-     * 1. last_update_from_1c пустой (создано в B24)
-     * 2. last_update_from_1c < DATE_MODIFY (менялось после импорта из 1С)
+     * Логика:
+     * 1. Если GUID пустой — это НОВАЯ запись из B24, ВСЕГДА импортируем
+     * 2. Если last_update_from_1c пустой — импортируем
+     * 3. Если last_update_from_1c < DATE_MODIFY — импортируем (менялось после 1С)
      */
     protected function shouldImport(array $b24Item): bool
     {
+        // 🆕 НОВЫЕ ЗАПИСИ БЕЗ GUID — ВСЕГДА ИМПОРТИРУЕМ!
+        $guid1c = $this->extractGuid1C($b24Item);
+        if (empty($guid1c)) {
+            Log::debug('Item has no GUID - will import as new', [
+                'entity' => $this->getEntityType(),
+                'b24_id' => $this->extractB24Id($b24Item),
+            ]);
+            return true;
+        }
+
         $lastUpdateFrom1C = $this->extractLastUpdateFrom1C($b24Item);
         $dateModify = $this->extractDateModify($b24Item);
 
@@ -470,10 +481,12 @@ abstract class AbstractPuller
             return false;
         }
 
+        // Если нет last_update_from_1c — импортируем
         if (!$lastUpdateFrom1C) {
             return true;
         }
 
+        // Импортируем если менялось ПОСЛЕ last_update_from_1c
         return $lastUpdateFrom1C < $dateModify;
     }
 
@@ -664,4 +677,124 @@ abstract class AbstractPuller
 
         return $this->parseB24DateTime($dateStr);
     }
+
+    /**
+     * Синхронизировать один элемент
+     *
+     * @param array $b24Item Данные элемента из B24
+     * @param bool $force Принудительная синхронизация (игнорировать shouldImport)
+     * @return array ['action' => string, 'guid_1c' => string|null, 'local_id' => int|null]
+     */
+    public function syncSingleItem(array $b24Item, bool $force = false): array
+    {
+        try {
+            \Illuminate\Support\Facades\DB::beginTransaction();
+
+            // 🆕 Если force=true, используем специальный метод
+            if ($force) {
+                $result = $this->forceProcessItem($b24Item);
+            } else {
+                $result = $this->processItem($b24Item);
+            }
+
+            // Если скипнули — всё равно пытаемся получить данные
+            $b24Id = $this->extractB24Id($b24Item);
+            $guid1c = $this->extractGuid1C($b24Item);
+
+            // Ищем локальную запись
+            $localModel = $this->findOrCreateLocalSmart($b24Id, $guid1c);
+
+            $result['guid_1c'] = $localModel->guid_1c ?? null;
+            $result['local_id'] = $localModel->id ?? null;
+            $result['b24_id'] = $b24Id;
+
+            \Illuminate\Support\Facades\DB::commit();
+
+            Log::info('Single item synced', [
+                'entity' => $this->getEntityType(),
+                'b24_id' => $b24Id,
+                'guid_1c' => $result['guid_1c'],
+                'action' => $result['action'],
+                'force' => $force,
+            ]);
+
+            return $result;
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+
+            Log::error('Failed to sync single item', [
+                'entity' => $this->getEntityType(),
+                'b24_id' => $b24Item['ID'] ?? $b24Item['id'] ?? null,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'action' => 'error',
+                'guid_1c' => null,
+                'local_id' => null,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * 🆕 Принудительная обработка элемента (без проверки shouldImport)
+     */
+    protected function forceProcessItem(array $b24Item): array
+    {
+        $b24Id = $this->extractB24Id($b24Item);
+
+        // Пропускаем проверку shouldImport!
+
+        // Проверяем удаление
+        if ($this->isDeleted($b24Item)) {
+            return $this->processDeletedItem($b24Item);
+        }
+
+        // Проверяем/генерируем GUID
+        $guid1c = $this->extractGuid1C($b24Item);
+        $guidWasGenerated = false;
+
+        if (!$guid1c) {
+            $guid1c = $this->generateGuid();
+            $guidWasGenerated = true;
+
+            Log::info('Generated new GUID for B24 entity (forced)', [
+                'entity' => $this->getEntityType(),
+                'b24_id' => $b24Id,
+                'guid' => $guid1c,
+            ]);
+        }
+
+        // Маппинг
+        $localData = $this->mapToLocal($b24Item);
+        $localData['guid_1c'] = $guid1c;
+
+        // Найти или создать локальную запись
+        $localModel = $this->findOrCreateLocalSmart($b24Id, $guid1c);
+        $isNew = !$localModel->exists;
+
+        // Обновить поля
+        $localModel->fill($localData);
+        $localModel->b24_id = $b24Id;
+        $localModel->last_pulled_at = now();
+
+        if (isset($localModel->deletion_mark)) {
+            $localModel->deletion_mark = false;
+        }
+
+        $localModel->save();
+
+        // Отправляем GUID обратно в B24
+        if ($guidWasGenerated) {
+            $this->updateGuidInB24($b24Id, $guid1c);
+        }
+
+        // Логируем для 1С
+        $this->logChangeFor1C($localModel, $isNew ? 'create' : 'update');
+
+        return ['action' => $isNew ? 'created' : 'updated'];
+    }
+
 }
