@@ -337,15 +337,33 @@ class RequisitePuller extends AbstractPuller
                     $bankAccount = new BankAccount(['guid_1c' => $guid]);
                 }
 
+                // 🆕 Разрешаем bank_guid_1c по БИК
+                $bankBik = $this->cleanString($b24Account['RQ_BIK'] ?? null);
+                $bankGuid = null;
+
+                if ($bankBik) {
+                    $bankGuid = $this->resolveBankGuidByBik($bankBik);
+                }
+
                 // Заполняем данные
                 $bankAccount->fill([
                     'counterparty_id' => $counterparty->id,
-                    'name' =>  $this->cleanString($b24Account['RQ_ACC_NUM'] ?? null) . ' ' . $this->cleanString($b24Account['NAME'] ?? 'Основной счёт'),
+                    'counterparty_guid_1c' => $counterparty->guid_1c, // 🆕 ДОБАВЛЕНО!
+                    'name' => $this->cleanString($b24Account['RQ_ACC_NUM'] ?? null) . ' ' .
+                        $this->cleanString($b24Account['NAME'] ?? 'Основной счёт'),
                     'account_number' => $this->cleanString($b24Account['RQ_ACC_NUM'] ?? null),
                     'bank_name' => $this->cleanString($b24Account['RQ_BANK_NAME'] ?? null),
-                    'bank_bik' => $this->cleanString($b24Account['RQ_BIK'] ?? null),
+                    'bank_bik' => $bankBik,
                     'bank_correspondent_account' => $this->cleanString($b24Account['RQ_COR_ACC_NUM'] ?? null),
                     'bank_swift' => $this->cleanString($b24Account['RQ_SWIFT'] ?? null),
+                    'bank_guid_1c' => $bankGuid, // 🆕 Разрешённый GUID банка
+
+                    // 🆕 Захардкоженные значения
+                    'currency_id' => 1,
+                    'currency_guid_1c' => 'f1a17773-5488-11e0-91e9-00e04c771318',
+                    'currency_code' => '643',
+                    'account_type' => 'Расчетный',
+
                     'is_active' => true,
                     'deletion_mark' => false,
                 ]);
@@ -355,6 +373,9 @@ class RequisitePuller extends AbstractPuller
                 Log::debug('Bank account synced', [
                     'guid' => $guid,
                     'account_number' => $bankAccount->account_number,
+                    'counterparty_guid' => $counterparty->guid_1c,
+                    'bank_bik' => $bankBik,
+                    'bank_guid' => $bankGuid,
                 ]);
             }
 
@@ -369,6 +390,47 @@ class RequisitePuller extends AbstractPuller
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * 🆕 Разрешить bank_guid_1c по БИК
+     *
+     * Логика:
+     * 1. Ищем другой счёт с таким же БИК
+     * 2. Если есть - используем его bank_guid_1c
+     * 3. Если нет - генерируем новый GUID и запоминаем для этого БИК
+     */
+    protected function resolveBankGuidByBik(string $bik): ?string
+    {
+        if (empty($bik)) {
+            return null;
+        }
+
+        // 1. Ищем существующий счёт с таким БИК
+        $existingAccount = BankAccount::where('bank_bik', $bik)
+            ->whereNotNull('bank_guid_1c')
+            ->where('bank_guid_1c', '!=', '')
+            ->first();
+
+        if ($existingAccount && $existingAccount->bank_guid_1c) {
+            Log::debug('Reusing bank_guid_1c from existing account', [
+                'bik' => $bik,
+                'bank_guid' => $existingAccount->bank_guid_1c,
+                'source_account_id' => $existingAccount->id,
+            ]);
+
+            return $existingAccount->bank_guid_1c;
+        }
+
+        // 2. Не нашли - генерируем новый GUID для этого БИК
+        $newBankGuid = $this->generateGuid();
+
+        Log::info('Generated new bank_guid_1c for BIK', [
+            'bik' => $bik,
+            'bank_guid' => $newBankGuid,
+        ]);
+
+        return $newBankGuid;
     }
 
     /**

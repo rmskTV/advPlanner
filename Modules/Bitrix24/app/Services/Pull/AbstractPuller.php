@@ -732,23 +732,26 @@ abstract class AbstractPuller
         try {
             \Illuminate\Support\Facades\DB::beginTransaction();
 
-            // 🆕 Если force=true, используем специальный метод
+            // Обработка элемента
             if ($force) {
                 $result = $this->forceProcessItem($b24Item);
             } else {
                 $result = $this->processItem($b24Item);
             }
 
-            // Если скипнули — всё равно пытаемся получить данные
+            // Получаем данные о созданной/обновлённой записи
             $b24Id = $this->extractB24Id($b24Item);
             $guid1c = $this->extractGuid1C($b24Item);
-
-            // Ищем локальную запись
             $localModel = $this->findOrCreateLocalSmart($b24Id, $guid1c);
 
             $result['guid_1c'] = $localModel->guid_1c ?? null;
             $result['local_id'] = $localModel->id ?? null;
             $result['b24_id'] = $b24Id;
+
+            // 🆕 СИНХРОНИЗАЦИЯ СВЯЗАННЫХ СУЩНОСТЕЙ (адреса, банки и т.д.)
+            if ($localModel->exists && in_array($result['action'], ['created', 'updated'])) {
+                $this->syncRelatedEntitiesIfSupported($b24Id, $localModel);
+            }
 
             \Illuminate\Support\Facades\DB::commit();
 
@@ -777,6 +780,17 @@ abstract class AbstractPuller
                 'local_id' => null,
                 'error' => $e->getMessage(),
             ];
+        }
+    }
+
+    /**
+     * 🆕 Синхронизировать связанные сущности (если поддерживается конкретным пуллером)
+     */
+    protected function syncRelatedEntitiesIfSupported(int $b24Id, $localModel): void
+    {
+        // Проверяем есть ли метод syncRelatedEntities в наследнике
+        if (method_exists($this, 'syncRelatedEntities')) {
+            $this->syncRelatedEntities($b24Id, $localModel);
         }
     }
 

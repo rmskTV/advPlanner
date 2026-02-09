@@ -4,6 +4,7 @@ namespace Modules\Bitrix24\app\Services\Mappers;
 
 use Illuminate\Support\Facades\Log;
 use Modules\Accounting\app\Models\Counterparty;
+use Modules\Accounting\app\Models\Organization;
 use Modules\Bitrix24\app\Exceptions\DependencyNotReadyException;
 use Modules\Bitrix24\app\Services\Bitrix24Service;
 
@@ -28,7 +29,23 @@ class B24ContractMapper
             'signer_basis' => $this->cleanString($b24Contract['ufCrm_19_BASIS'] ?? null),
             'is_edo' => $this->parseBoolean($b24Contract['ufCrm_19_IS_EDO'] ?? null),
             'is_annulled' => $this->parseBoolean($b24Contract['ufCrm_19_IS_ANNULLED'] ?? null),
+
+            // 🆕 Захардкоженные значения
+            'organization_id' => 4,
+            'currency_guid_1c' => 'f1a17773-5488-11e0-91e9-00e04c771318',
+            'contract_type' => 'СПокупателем',
         ];
+
+        // 🆕 Получаем organization_guid_1c для организации с id=4
+        $organization = Organization::find(4);
+        if ($organization && $organization->guid_1c) {
+            $data['organization_guid_1c'] = $organization->guid_1c;
+
+            Log::debug('Organization GUID set for contract', [
+                'organization_id' => 4,
+                'organization_guid' => $organization->guid_1c,
+            ]);
+        }
 
         // Связь с контрагентом через companyId (ОБЯЗАТЕЛЬНА!)
         if (!empty($b24Contract['companyId'])) {
@@ -42,7 +59,6 @@ class B24ContractMapper
 
             $data['counterparty_guid_1c'] = $counterpartyGuid;
         } else {
-            // Договор без компании - пропускаем
             throw new DependencyNotReadyException(
                 "Contract has no companyId: {$b24Contract['id']}"
             );
