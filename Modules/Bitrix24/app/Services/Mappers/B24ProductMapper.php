@@ -22,18 +22,19 @@ class B24ProductMapper
     public function map(array $b24Product): array
     {
         $data = [
-            'name' => $this->cleanString($b24Product['NAME']),
-            'code' => $b24Product['CODE'] ?? null,
+            'name' => $this->cleanString($b24Product['NAME'] ?? null),
+            'code' => $this->cleanString($b24Product['CODE'] ?? null),
             'description' => $this->cleanString($b24Product['DESCRIPTION'] ?? null),
-            'product_type' => 'service', // По умолчанию услуга (или определять как-то?)
+            'product_type' => 'service', // По умолчанию услуга
         ];
 
-        // НДС
-        $data['vat_rate'] = $this->mapVatRate($b24Product['VAT_ID'] ?? null);
+        // НДС (в B24 VAT_ID часто строка)
+        $vatId = isset($b24Product['VAT_ID']) && $b24Product['VAT_ID'] !== '' ? (int) $b24Product['VAT_ID'] : null;
+        $data['vat_rate'] = $this->mapVatRate($vatId);
 
-        // Единица измерения
+        // Единица измерения (в B24 поле MEASURE часто строка с кодом)
         if (!empty($b24Product['MEASURE'])) {
-            $unitGuid = $this->mapMeasureToGuid($b24Product['MEASURE']);
+            $unitGuid = $this->mapMeasureToGuid((int) $b24Product['MEASURE']);
             if ($unitGuid) {
                 $data['unit_guid_1c'] = $unitGuid;
 
@@ -47,7 +48,7 @@ class B24ProductMapper
 
         // Группа товара
         if (!empty($b24Product['SECTION_ID'])) {
-            $groupGuid = $this->findGroupGuidBySectionId($b24Product['SECTION_ID']);
+            $groupGuid = $this->findGroupGuidBySectionId((int) $b24Product['SECTION_ID']);
             if ($groupGuid) {
                 $data['group_guid_1c'] = $groupGuid;
 
@@ -59,7 +60,7 @@ class B24ProductMapper
             }
         }
 
-        // Кастомные свойства (аналитическая группа и т.д.)
+        // Кастомные свойства (аналитическая группа, GUID аналитической группы и т.д.)
         $data = array_merge($data, $this->extractCustomProperties($b24Product));
 
         return $data;
@@ -109,11 +110,10 @@ class B24ProductMapper
 
             // CODE секции может содержать GUID
             if (!empty($section['CODE'])) {
-                return $section['CODE'];
+                return (string) $section['CODE'];
             }
 
-            // Или ищем локально по b24_id (если группы тоже синхронизируются)
-            // TODO: реализовать при необходимости
+            // TODO: при необходимости — искать локально по b24_id (если группы синхронизируются)
 
             return null;
 
@@ -128,7 +128,10 @@ class B24ProductMapper
     }
 
     /**
-     * Извлечь кастомные свойства
+     * Извлечь кастомные свойства.
+     * Важно: PROPERTY_* в B24 часто приходят объектом вида:
+     *   ["valueId" => "...", "value" => "..."]
+     * Поэтому мы всегда извлекаем scalar через getB24PropertyScalar().
      */
     protected function extractCustomProperties(array $b24Product): array
     {
@@ -137,21 +140,34 @@ class B24ProductMapper
         // Получаем ID свойств
         $propertyIds = $this->getProductPropertyIds();
 
-        // Аналитическая группа
+        // Аналитическая группа (название)
         if (isset($propertyIds['ANALYTICS_GROUP'])) {
             $key = 'PROPERTY_' . $propertyIds['ANALYTICS_GROUP'];
-            if (!empty($b24Product[$key])) {
-                $data['analytics_group_name'] = $b24Product[$key];
+            $val = $this->getB24PropertyScalar($b24Product[$key] ?? null);
+
+            if (!empty($val)) {
+                $data['analytics_group_name'] = $this->cleanString($val);
             }
         }
 
         // GUID аналитической группы
         if (isset($propertyIds['ANALYTICS_GROUP_GUID'])) {
             $key = 'PROPERTY_' . $propertyIds['ANALYTICS_GROUP_GUID'];
-            if (!empty($b24Product[$key])) {
-                $data['analytics_group_guid_1c'] = $b24Product[$key];
+            $val = $this->getB24PropertyScalar($b24Product[$key] ?? null);
+
+            if (!empty($val)) {
+                $data['analytics_group_guid_1c'] = $this->cleanString($val);
             }
         }
+
+        // (Опционально) Если хотите маппить GUID 1C товара прямо здесь:
+        // if (isset($propertyIds['GUID_1C'])) {
+        //     $key = 'PROPERTY_' . $propertyIds['GUID_1C'];
+        //     $val = $this->getB24PropertyScalar($b24Product[$key] ?? null);
+        //     if (!empty($val)) {
+        //         $data['guid_1c'] = $this->cleanString($val);
+        //     }
+        // }
 
         return $data;
     }
@@ -176,14 +192,55 @@ class B24ProductMapper
     }
 
     /**
-     * Очистка строки
+     * Нормализует значение B24-свойства к строке.
+     *
+     * Поддерживает форматы:
+     * - null
+     * - "строка"
+     * - ["value" => "строка", "valueId" => "..."]
+     * - [ ... ] (массив значений) — берём первый
      */
-    protected function cleanString(?string $value): ?string
+    protected function getB24PropertyScalar(mixed $value): ?string
     {
-        if (empty($value)) {
+        if ($value === null || $value === '') {
             return null;
         }
 
-        return trim(html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        if (is_array($value)) {
+            // Типичный формат: {"valueId": "...", "value": "..."}
+            if (array_key_exists('value', $value)) {
+                return $this->getB24PropertyScalar($value['value']);
+            }
+
+            // Иногда бывает список значений
+            if (count($value) === 0) {
+                return null;
+            }
+
+            return $this->getB24PropertyScalar(reset($value));
+        }
+
+        return (string) $value;
+    }
+
+    /**
+     * Очистка строки (и защита от случайного массива)
+     */
+    protected function cleanString(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        // Если вдруг прилетел массив — извлечём scalar
+        if (is_array($value)) {
+            $value = $this->getB24PropertyScalar($value);
+        }
+
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return trim(html_entity_decode((string) $value, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
     }
 }
