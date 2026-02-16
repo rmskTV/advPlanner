@@ -347,9 +347,9 @@ use Modules\Bitrix24\app\Services\Mappers\B24InvoiceMapper;
         }
 
         // Кэшируем и "пустые" результаты тоже, чтобы не долбить API повторно
-        if (array_key_exists($productId, $this->productGuidCache)) {
-            return $this->productGuidCache[$productId];
-        }
+//        if (array_key_exists($productId, $this->productGuidCache)) {
+//            return $this->productGuidCache[$productId];
+//        }
 
         // 1) Локальный поиск
         $guid = Product::where('b24_id', $productId)->value('guid_1c');
