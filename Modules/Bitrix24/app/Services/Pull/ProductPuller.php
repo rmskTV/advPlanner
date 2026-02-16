@@ -239,7 +239,7 @@ class ProductPuller extends AbstractPuller
     }
     public function syncOneById(int $b24ProductId): ?string
     {
-        // 1) Быстрый путь: уже есть локально
+        // 1) Быстрый путь: уже есть по b24_id
         $existing = Product::where('b24_id', $b24ProductId)->first();
         if ($existing?->guid_1c) {
             return $existing->guid_1c;
@@ -282,20 +282,38 @@ class ProductPuller extends AbstractPuller
         // 4) Маппим
         $data = $this->mapToLocal($item);
 
-        // ======================================================
-        // 5) 🔑 ИЗВЛЕКАЕМ guid_1c — маппер его НЕ добавляет!
-        //    Используем тот же extractGuid1C(), что и в основном потоке
-        // ======================================================
+        // 5) Извлекаем guid_1c
         $guid1c = $this->extractGuid1C($item);
         if (!empty($guid1c)) {
             $data['guid_1c'] = $guid1c;
         }
 
-        // 6) Сохраняем
-        $product = Product::updateOrCreate(
-            ['b24_id' => $b24ProductId],
-            $data
-        );
+        // ============================================================
+        // 6) Ищем существующую запись: сначала по b24_id, потом по guid_1c
+        // ============================================================
+        $product = Product::where('b24_id', $b24ProductId)->first();
+
+        if (!$product && !empty($guid1c)) {
+            $product = Product::where('guid_1c', $guid1c)->first();
+
+            if ($product) {
+                Log::info('Product found by guid_1c, linking b24_id', [
+                    'b24_product_id' => $b24ProductId,
+                    'guid_1c' => $guid1c,
+                    'local_id' => $product->id,
+                ]);
+            }
+        }
+
+        if ($product) {
+            // Обновляем существующую запись + привязываем b24_id
+            $data['b24_id'] = $b24ProductId;
+            $product->update($data);
+        } else {
+            // Создаём новую
+            $data['b24_id'] = $b24ProductId;
+            $product = Product::create($data);
+        }
 
         if (empty($product->guid_1c)) {
             Log::warning('B24 product synced but guid_1c is empty', [
@@ -306,6 +324,7 @@ class ProductPuller extends AbstractPuller
             Log::debug('B24 product synced with guid_1c', [
                 'b24_product_id' => $b24ProductId,
                 'guid_1c' => $product->guid_1c,
+                'local_id' => $product->id,
             ]);
         }
 
