@@ -245,7 +245,7 @@ class ProductPuller extends AbstractPuller
             return $existing->guid_1c;
         }
 
-        // 2) Готовим select как в fetchChangedItems (включая кастомные свойства)
+        // 2) Готовим select
         $propertyIds = $this->getProductPropertyIds();
 
         $select = $this->getSelectFields();
@@ -274,23 +274,24 @@ class ProductPuller extends AbstractPuller
             return null;
         }
 
-        // 4) Если удалён/неактивен — решите вашу политику (ниже: просто не возвращаем guid)
         if ($this->isDeleted($item)) {
-            Log::info('B24 product is inactive (deleted)', ['b24_product_id' => $b24ProductId]);
-
-            // опционально: пометить локальный как неактивный
-            if ($existing) {
-                $existing->active = false; // если у вас есть такое поле
-                $existing->save();
-            }
-
+            Log::info('B24 product is inactive', ['b24_product_id' => $b24ProductId]);
             return null;
         }
 
-        // 5) Маппим и сохраняем
+        // 4) Маппим
         $data = $this->mapToLocal($item);
 
-        // Важно: гарантируем привязку b24_id
+        // ======================================================
+        // 5) 🔑 ИЗВЛЕКАЕМ guid_1c — маппер его НЕ добавляет!
+        //    Используем тот же extractGuid1C(), что и в основном потоке
+        // ======================================================
+        $guid1c = $this->extractGuid1C($item);
+        if (!empty($guid1c)) {
+            $data['guid_1c'] = $guid1c;
+        }
+
+        // 6) Сохраняем
         $product = Product::updateOrCreate(
             ['b24_id' => $b24ProductId],
             $data
@@ -301,8 +302,14 @@ class ProductPuller extends AbstractPuller
                 'b24_product_id' => $b24ProductId,
                 'product_name' => $product->name ?? ($item['NAME'] ?? null),
             ]);
+        } else {
+            Log::debug('B24 product synced with guid_1c', [
+                'b24_product_id' => $b24ProductId,
+                'guid_1c' => $product->guid_1c,
+            ]);
         }
 
         return $product->guid_1c;
     }
+
 }
