@@ -346,21 +346,38 @@ use Modules\Bitrix24\app\Services\Mappers\B24InvoiceMapper;
             return null;
         }
 
-        if (isset($this->productGuidCache[$productId])) {
+        // Кэшируем и "пустые" результаты тоже, чтобы не долбить API повторно
+        if (array_key_exists($productId, $this->productGuidCache)) {
             return $this->productGuidCache[$productId];
         }
 
-        $product = Product::where('b24_id', $productId)->first();
-
-        if ($product && $product->guid_1c) {
-            $this->productGuidCache[$productId] = $product->guid_1c;
-            return $product->guid_1c;
+        // 1) Локальный поиск
+        $guid = Product::where('b24_id', $productId)->value('guid_1c');
+        if (!empty($guid)) {
+            return $this->productGuidCache[$productId] = $guid;
         }
 
-        // Если товар не найден локально - можно добавить ensureProduct()
-        // Пока возвращаем null
-        $this->productGuidCache[$productId] = null;
-        return null;
+        // 2) Fallback: подтянуть товар из B24 и сохранить локально
+        try {
+            $productPuller = new \Modules\Bitrix24\app\Services\Pull\ProductPuller($this->b24Service);
+            $productPuller->setDryRun($this->dryRun);
+
+            if ($this->output) {
+                $productPuller->setOutput($this->output);
+            }
+
+            $guid = $productPuller->syncOneById($productId);
+
+            return $this->productGuidCache[$productId] = ($guid ?: null);
+
+        } catch (\Throwable $e) {
+            Log::error('Failed to ensure product guid by b24 productId', [
+                'b24_product_id' => $productId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return $this->productGuidCache[$productId] = null;
+        }
     }
 
     protected function mapMeasureCodeToGuid(?int $measureCode): ?string

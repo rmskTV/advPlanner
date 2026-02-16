@@ -237,4 +237,72 @@ class ProductPuller extends AbstractPuller
     {
         return Product::class;
     }
+    public function syncOneById(int $b24ProductId): ?string
+    {
+        // 1) Быстрый путь: уже есть локально
+        $existing = Product::where('b24_id', $b24ProductId)->first();
+        if ($existing?->guid_1c) {
+            return $existing->guid_1c;
+        }
+
+        // 2) Готовим select как в fetchChangedItems (включая кастомные свойства)
+        $propertyIds = $this->getProductPropertyIds();
+
+        $select = $this->getSelectFields();
+        if (isset($propertyIds['GUID_1C'])) {
+            $select[] = 'PROPERTY_' . $propertyIds['GUID_1C'];
+        }
+        if (isset($propertyIds['LAST_UPDATE_FROM_1C'])) {
+            $select[] = 'PROPERTY_' . $propertyIds['LAST_UPDATE_FROM_1C'];
+        }
+        if (isset($propertyIds['ANALYTICS_GROUP'])) {
+            $select[] = 'PROPERTY_' . $propertyIds['ANALYTICS_GROUP'];
+        }
+        if (isset($propertyIds['ANALYTICS_GROUP_GUID'])) {
+            $select[] = 'PROPERTY_' . $propertyIds['ANALYTICS_GROUP_GUID'];
+        }
+
+        // 3) Тянем товар из B24
+        $response = $this->b24Service->call('crm.product.list', [
+            'filter' => ['=ID' => $b24ProductId],
+            'select' => $select,
+        ]);
+
+        $item = $response['result'][0] ?? null;
+        if (!$item) {
+            Log::warning('B24 product not found by ID', ['b24_product_id' => $b24ProductId]);
+            return null;
+        }
+
+        // 4) Если удалён/неактивен — решите вашу политику (ниже: просто не возвращаем guid)
+        if ($this->isDeleted($item)) {
+            Log::info('B24 product is inactive (deleted)', ['b24_product_id' => $b24ProductId]);
+
+            // опционально: пометить локальный как неактивный
+            if ($existing) {
+                $existing->active = false; // если у вас есть такое поле
+                $existing->save();
+            }
+
+            return null;
+        }
+
+        // 5) Маппим и сохраняем
+        $data = $this->mapToLocal($item);
+
+        // Важно: гарантируем привязку b24_id
+        $product = Product::updateOrCreate(
+            ['b24_id' => $b24ProductId],
+            $data
+        );
+
+        if (empty($product->guid_1c)) {
+            Log::warning('B24 product synced but guid_1c is empty', [
+                'b24_product_id' => $b24ProductId,
+                'product_name' => $product->name ?? ($item['NAME'] ?? null),
+            ]);
+        }
+
+        return $product->guid_1c;
+    }
 }
